@@ -1,0 +1,388 @@
+"use client";
+
+import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { ChevronDown, LayoutDashboard, LogOut, Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  MAIN_NAV_LINKS,
+  PROFESSIONALS_LINKS,
+  CONTACT_LINK,
+} from "@/constants/navigation";
+import { cn } from "@/lib/utils";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { useAuthStore } from "@/store/auth.store";
+import { authService } from "@/services/auth.service";
+import { getDashboardPath } from "@/features/authentication/utils/dashboard-route";
+import { DashboardUserAvatar } from "@/features/dashboard/components/dashboard-user-avatar";
+import { useDashboardUser } from "@/features/dashboard/hooks/use-dashboard-user";
+
+interface NavbarProps {
+  /** "transparent" floats over a hero image with light text; "solid" is for plain pages */
+  variant?: "transparent" | "solid";
+}
+
+export function Navbar({ variant = "solid" }: NavbarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const isTransparent = variant === "transparent";
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [professionalsOpen, setProfessionalsOpen] = useState(false);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const role = useAuthStore((state) => state.role);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
+  const user = useDashboardUser();
+  const dashboardPath = getDashboardPath(role);
+
+  async function handleLogout() {
+    try {
+      await authService.logout();
+    } catch {
+      // A stale or expired backend session should not prevent local logout.
+    } finally {
+      clearAuth();
+      setMobileOpen(false);
+      router.replace("/");
+    }
+  }
+
+  return (
+    <header className="sticky top-4 z-50 mx-auto w-full max-w-7xl px-6 lg:px-8">
+      <nav
+        className={cn(
+          "flex items-center justify-between rounded-full border px-6 lg:px-8 py-2.5 backdrop-blur-md transition-colors",
+          isTransparent
+            ? "border-white/25 bg-white/15"
+            : "border-border bg-card shadow-sm",
+        )}
+      >
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2">
+          <Image
+            src="/property%20arc%20logo-12.png"
+            alt="PropertyArk logo"
+            width={100}
+            height={20}
+            className="h-9 w-auto object-contain"
+            style={{ width: "auto", height: "auto" }}
+          />
+        </Link>
+
+        {/* Links */}
+        <div className="hidden items-center gap-6 lg:flex">
+          {MAIN_NAV_LINKS.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "text-sm font-medium transition-colors",
+                  isActive
+                    ? "border-b-2 border-primary pb-0.5 text-primary"
+                    : isTransparent
+                      ? "text-white/90 hover:text-white"
+                      : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className={cn(
+                  "flex items-center gap-1 text-sm font-medium transition-colors focus-visible:outline-none",
+                  isTransparent
+                    ? "text-white/90 hover:text-white"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Professionals
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {PROFESSIONALS_LINKS.map((link) => (
+                <DropdownMenuItem key={link.label} asChild>
+                  <Link href={link.href}>{link.label}</Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Link
+            href={CONTACT_LINK.href}
+            className={cn(
+              "text-sm font-medium transition-colors",
+              isTransparent
+                ? "text-white/90 hover:text-white"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {CONTACT_LINK.label}
+          </Link>
+        </div>
+
+        {/* Mobile menu trigger — this button still sits on the floating pill nav,
+            so it's correct for it to respect isTransparent */}
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "lg:hidden",
+                isTransparent
+                  ? "text-white/90 hover:text-white hover:bg-white/10"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              aria-label="Open navigation menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+
+          {/* Everything inside SheetContent renders on its own solid panel —
+              it must NEVER use isTransparent-based text colors */}
+          <SheetContent side="right" className="lg:hidden">
+            <SheetHeader>
+              <SheetTitle>Menu</SheetTitle>
+            </SheetHeader>
+            <div className="flex flex-col gap-4 px-4 pb-4">
+              <nav className="flex flex-col gap-3">
+                {MAIN_NAV_LINKS.map((link) => {
+                  const isActive = pathname === link.href;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setMobileOpen(false)}
+                      className={cn(
+                        "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                      )}
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                })}
+
+                <Collapsible
+                  open={professionalsOpen}
+                  onOpenChange={setProfessionalsOpen}
+                >
+                  <CollapsibleTrigger asChild>
+                    <button
+                      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      aria-expanded={professionalsOpen}
+                    >
+                      Professionals
+                      <ChevronDown
+                        className={cn(
+                          "h-4 w-4 transition-transform duration-200",
+                          professionalsOpen && "rotate-180",
+                        )}
+                      />
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-1 data-[state=open]:slide-in-from-top-1">
+                    <div className="flex flex-col gap-1 py-1 pl-3">
+                      {PROFESSIONALS_LINKS.map((link) => (
+                        <Link
+                          key={link.label}
+                          href={link.href}
+                          onClick={() => setMobileOpen(false)}
+                          className="rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                <Link
+                  href={CONTACT_LINK.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  {CONTACT_LINK.label}
+                </Link>
+              </nav>
+            </div>
+            <SheetFooter className="flex flex-col gap-3 px-4 pb-4 pt-2">
+              {isAuthenticated ? (
+                <>
+                  <div className="flex items-center gap-3 px-1">
+                    <DashboardUserAvatar />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">
+                        {user.firstName}
+                      </span>
+                      <span className="text-xs capitalize text-muted-foreground">
+                        {role ?? "user"}
+                      </span>
+                    </div>
+                  </div>
+                  <Button variant="outline" asChild className="w-full">
+                    <Link
+                      href={dashboardPath}
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      <LayoutDashboard data-icon="inline-start" />
+                      Dashboard
+                    </Link>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => void handleLogout()}
+                  >
+                    <LogOut data-icon="inline-start" />
+                    Log out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    onClick={() => setMobileOpen(false)}
+                    className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Login
+                  </Link>
+                  <Button
+                    asChild
+                    className="w-full rounded-full bg-secondary text-secondary-foreground hover:bg-secondary-hover"
+                  >
+                    <Link
+                      href="/register"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      Get Started
+                    </Link>
+                  </Button>
+                </>
+              )}
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+
+        {/* Right actions (desktop only) */}
+        <div className="hidden items-center gap-4 lg:flex">
+          {isAuthenticated ? (
+            <ProfileMenu
+              firstName={user.firstName}
+              dashboardPath={dashboardPath}
+              isTransparent={isTransparent}
+              onLogout={handleLogout}
+            />
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className={cn(
+                  "text-sm font-medium",
+                  isTransparent
+                    ? "text-white/90 hover:text-white"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Login
+              </Link>
+              <Button
+                asChild
+                className="rounded-full bg-secondary p-5 text-secondary-foreground hover:bg-secondary-hover"
+              >
+                <Link href="/register">Get Started</Link>
+              </Button>
+            </>
+          )}
+        </div>
+      </nav>
+    </header>
+  );
+}
+
+function ProfileMenu({
+  firstName,
+  dashboardPath,
+  isTransparent,
+  onLogout,
+}: {
+  firstName: string;
+  dashboardPath: string;
+  isTransparent: boolean;
+  onLogout: () => Promise<void>;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label="Open profile menu"
+          className={cn(
+            "flex items-center gap-2 rounded-full py-1 pl-1 pr-2.5 outline-none ring-offset-background transition-colors hover:bg-accent/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            isTransparent
+              ? "text-white ring-offset-transparent hover:bg-white/10"
+              : "text-foreground",
+          )}
+        >
+          <DashboardUserAvatar />
+          <span className="max-w-28 truncate text-sm font-medium">
+            {firstName}
+          </span>
+          <ChevronDown className="size-4 text-current opacity-75" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuLabel>Signed in as {firstName}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <Link href={dashboardPath}>
+              <LayoutDashboard />
+              Dashboard
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={() => void onLogout()}
+          >
+            <LogOut />
+            Log out
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}

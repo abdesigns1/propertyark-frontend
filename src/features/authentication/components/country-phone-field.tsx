@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -36,26 +37,18 @@ export function CountryPhoneField<T extends FieldValues>({
       <Controller
         control={control}
         name={countryName}
-        render={({ field, fieldState }) => {
-          const selected =
-            COUNTRIES.find((c) => c.code === field.value) ?? COUNTRIES[0];
-          return (
-            <Field>
-              <FieldLabel>Country</FieldLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger className="h-12">
-                  <span className="flex items-center gap-2">
-                    <Image
-                      src={selected.flagUrl}
-                      alt={selected.name}
-                      width={20}
-                      height={14}
-                      className="rounded-sm object-cover"
-                    />
-                    <SelectValue />
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
+        render={({ field, fieldState }) => (
+          <Field data-invalid={!!fieldState.error}>
+            <FieldLabel>Country</FieldLabel>
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger
+                className="h-12"
+                aria-invalid={!!fieldState.error}
+              >
+                <SelectValue placeholder="Select a country" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
                   {COUNTRIES.map((c) => (
                     <SelectItem key={c.code} value={c.code}>
                       <span className="flex items-center gap-2">
@@ -70,14 +63,14 @@ export function CountryPhoneField<T extends FieldValues>({
                       </span>
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-              {fieldState.error && (
-                <FieldError>{fieldState.error.message}</FieldError>
-              )}
-            </Field>
-          );
-        }}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            {fieldState.error && (
+              <FieldError>{fieldState.error.message}</FieldError>
+            )}
+          </Field>
+        )}
       />
 
       <Controller

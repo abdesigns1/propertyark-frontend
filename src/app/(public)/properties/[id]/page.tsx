@@ -34,7 +34,7 @@ export default async function PropertyDetailPage({
 
   return (
     <>
-      <Navbar variant="solid" />
+      <Navbar reserveSpace />
       <Breadcrumb
         items={[
           { label: "Home", href: "/" },

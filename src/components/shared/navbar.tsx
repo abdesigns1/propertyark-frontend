@@ -41,14 +41,12 @@ import { DashboardUserAvatar } from "@/features/dashboard/components/dashboard-u
 import { useDashboardUser } from "@/features/dashboard/hooks/use-dashboard-user";
 
 interface NavbarProps {
-  /** "transparent" floats over a hero image with light text; "solid" is for plain pages */
-  variant?: "transparent" | "solid";
+  reserveSpace?: boolean;
 }
 
-export function Navbar({ variant = "solid" }: NavbarProps) {
+export function Navbar({ reserveSpace = false }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const isTransparent = variant === "transparent";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [professionalsOpen, setProfessionalsOpen] = useState(false);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -70,15 +68,9 @@ export function Navbar({ variant = "solid" }: NavbarProps) {
   }
 
   return (
-    <header className="sticky top-4 z-50 mx-auto w-full max-w-7xl px-6 lg:px-8">
-      <nav
-        className={cn(
-          "flex items-center justify-between rounded-full border px-6 lg:px-8 py-2.5 backdrop-blur-md transition-colors",
-          isTransparent
-            ? "border-white/25 bg-white/15"
-            : "border-border bg-card shadow-sm",
-        )}
-      >
+    <>
+      <header className="fixed inset-x-0 top-4 z-40 mx-auto w-full max-w-7xl px-6 lg:px-8">
+        <nav className="flex items-center justify-between rounded-full border border-white/15 bg-navbar/90 px-6 py-2.5 text-navbar-foreground shadow-lg backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-navbar/75 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
           <Image
@@ -103,9 +95,7 @@ export function Navbar({ variant = "solid" }: NavbarProps) {
                   "text-sm font-medium transition-colors",
                   isActive
                     ? "border-b-2 border-primary pb-0.5 text-primary"
-                    : isTransparent
-                      ? "text-white/90 hover:text-white"
-                      : "text-muted-foreground hover:text-foreground",
+                    : "text-navbar-foreground/80 hover:text-navbar-foreground",
                 )}
               >
                 {link.label}
@@ -116,12 +106,7 @@ export function Navbar({ variant = "solid" }: NavbarProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className={cn(
-                  "flex items-center gap-1 text-sm font-medium transition-colors focus-visible:outline-none",
-                  isTransparent
-                    ? "text-white/90 hover:text-white"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
+                className="flex items-center gap-1 text-sm font-medium text-navbar-foreground/80 transition-colors hover:text-navbar-foreground focus-visible:outline-none"
               >
                 Professionals
                 <ChevronDown className="h-4 w-4" />
@@ -138,38 +123,26 @@ export function Navbar({ variant = "solid" }: NavbarProps) {
 
           <Link
             href={CONTACT_LINK.href}
-            className={cn(
-              "text-sm font-medium transition-colors",
-              isTransparent
-                ? "text-white/90 hover:text-white"
-                : "text-muted-foreground hover:text-foreground",
-            )}
+            className="text-sm font-medium text-navbar-foreground/80 transition-colors hover:text-navbar-foreground"
           >
             {CONTACT_LINK.label}
           </Link>
         </div>
 
-        {/* Mobile menu trigger — this button still sits on the floating pill nav,
-            so it's correct for it to respect isTransparent */}
+        {/* Mobile menu trigger */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className={cn(
-                "lg:hidden",
-                isTransparent
-                  ? "text-white/90 hover:text-white hover:bg-white/10"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
+              className="text-navbar-foreground hover:bg-white/10 hover:text-navbar-foreground lg:hidden"
               aria-label="Open navigation menu"
             >
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
 
-          {/* Everything inside SheetContent renders on its own solid panel —
-              it must NEVER use isTransparent-based text colors */}
+          {/* The sheet uses its own solid surface and semantic text colors. */}
           <SheetContent side="right" className="lg:hidden">
             <SheetHeader>
               <SheetTitle>Menu</SheetTitle>
@@ -303,19 +276,13 @@ export function Navbar({ variant = "solid" }: NavbarProps) {
             <ProfileMenu
               firstName={user.firstName}
               dashboardPath={dashboardPath}
-              isTransparent={isTransparent}
               onLogout={handleLogout}
             />
           ) : (
             <>
               <Link
                 href="/login"
-                className={cn(
-                  "text-sm font-medium",
-                  isTransparent
-                    ? "text-white/90 hover:text-white"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
+                className="text-sm font-medium text-navbar-foreground/80 transition-colors hover:text-navbar-foreground"
               >
                 Login
               </Link>
@@ -328,20 +295,20 @@ export function Navbar({ variant = "solid" }: NavbarProps) {
             </>
           )}
         </div>
-      </nav>
-    </header>
+        </nav>
+      </header>
+      {reserveSpace && <div aria-hidden="true" className="h-20" />}
+    </>
   );
 }
 
 function ProfileMenu({
   firstName,
   dashboardPath,
-  isTransparent,
   onLogout,
 }: {
   firstName: string;
   dashboardPath: string;
-  isTransparent: boolean;
   onLogout: () => Promise<void>;
 }) {
   return (
@@ -350,12 +317,7 @@ function ProfileMenu({
         <button
           type="button"
           aria-label="Open profile menu"
-          className={cn(
-            "flex items-center gap-2 rounded-full py-1 pl-1 pr-2.5 outline-none ring-offset-background transition-colors hover:bg-accent/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-            isTransparent
-              ? "text-white ring-offset-transparent hover:bg-white/10"
-              : "text-foreground",
-          )}
+          className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2.5 text-navbar-foreground outline-none ring-offset-transparent transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <DashboardUserAvatar />
           <span className="max-w-28 truncate text-sm font-medium">

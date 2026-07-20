@@ -10,6 +10,8 @@
   --background: #ffffff;
   --foreground: #101826;
   --surface: #eff4ff;
+  --navbar: #172033;
+  --navbar-foreground: #ffffff;
 
   --primary: #004ac6;
   --primary-hover: #1f35cc;
@@ -45,6 +47,8 @@
   --background: #0b0f19;
   --foreground: #f5f6f8;
   --surface: #121826;
+  --navbar: #101826;
+  --navbar-foreground: #ffffff;
 
   --primary: #5470ff;
   --primary-hover: #7b92ff;
@@ -80,6 +84,8 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
+  --color-navbar: var(--navbar);
+  --color-navbar-foreground: var(--navbar-foreground);
 
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);

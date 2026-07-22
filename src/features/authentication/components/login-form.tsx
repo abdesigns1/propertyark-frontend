@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronLeft } from "lucide-react";
@@ -20,10 +21,12 @@ import { getDashboardPath } from "@/features/authentication/utils/dashboard-rout
 import { normalizeLoginResponse } from "@/features/authentication/utils/normalize-login-response";
 import { toast } from "sonner";
 import { getLocalRegistrationProfile } from "@/features/authentication/utils/local-registration-profile";
+import { startGoogleAuth } from "@/features/authentication/utils/google-auth";
 
 export function LoginForm() {
   const login = useLogin();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const setAuth = useAuthStore((state) => state.setAuth);
 
   const { control, handleSubmit } = useForm<LoginValues>({
@@ -57,6 +60,7 @@ export function LoginForm() {
         onSubmit={handleSubmit((values) =>
           login.mutate(values, {
             onSuccess: (response) => {
+              queryClient.clear();
               const auth = normalizeLoginResponse(response);
               const registeredProfile = getLocalRegistrationProfile(
                 values.email,
@@ -137,9 +141,29 @@ export function LoginForm() {
         <Button
           type="button"
           variant="outline"
+          onClick={() => {
+            try {
+              const redirectTo = new URLSearchParams(
+                window.location.search,
+              ).get("redirect");
+              startGoogleAuth({ role: "USER", redirectTo });
+            } catch (error) {
+              toast.error(
+                error instanceof Error
+                  ? error.message
+                  : "Unable to start Google authentication.",
+              );
+            }
+          }}
           className="h-12 rounded-lg border-border text-sm font-medium text-foreground hover:bg-accent"
         >
-          <Image src="/icons8-google-50.svg" alt="" width={18} height={18} />
+          <Image
+            src="/icons8-google-50.svg"
+            alt=""
+            width={18}
+            height={18}
+            data-icon="inline-start"
+          />
           Continue with Google
         </Button>
       </form>

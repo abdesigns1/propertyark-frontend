@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, LayoutDashboard, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,6 +48,7 @@ interface NavbarProps {
 export function Navbar({ reserveSpace = false }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [professionalsOpen, setProfessionalsOpen] = useState(false);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -61,6 +63,7 @@ export function Navbar({ reserveSpace = false }: NavbarProps) {
     } catch {
       // A stale or expired backend session should not prevent local logout.
     } finally {
+      queryClient.clear();
       clearAuth();
       setMobileOpen(false);
       router.replace("/");

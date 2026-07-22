@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import {
   Pagination,
   PaginationContent,
@@ -21,6 +22,14 @@ export function PaginationControls({
   totalPages,
   onPageChange,
 }: PaginationControlsProps) {
+  const visiblePages = Array.from(
+    new Set(
+      [1, currentPage - 1, currentPage, currentPage + 1, totalPages].filter(
+        (page) => page >= 1 && page <= totalPages,
+      ),
+    ),
+  ).sort((a, b) => a - b);
+
   return (
     <Pagination>
       <PaginationContent>
@@ -35,39 +44,33 @@ export function PaginationControls({
           />
         </PaginationItem>
 
-        {[1, 2, 3].map((page) => (
-          <PaginationItem key={page}>
-            <PaginationLink
-              href="#"
-              isActive={currentPage === page}
-              className="rounded-lg"
-              onClick={(e) => {
-                e.preventDefault();
-                onPageChange(page);
-              }}
-            >
-              {page}
-            </PaginationLink>
-          </PaginationItem>
-        ))}
+        {visiblePages.map((page, index) => {
+          const previousPage = visiblePages[index - 1];
+          const hasGap = previousPage !== undefined && page - previousPage > 1;
 
-        <PaginationItem>
-          <PaginationEllipsis />
-        </PaginationItem>
-
-        <PaginationItem>
-          <PaginationLink
-            href="#"
-            isActive={currentPage === totalPages}
-            className="rounded-lg"
-            onClick={(e) => {
-              e.preventDefault();
-              onPageChange(totalPages);
-            }}
-          >
-            {totalPages}
-          </PaginationLink>
-        </PaginationItem>
+          return (
+            <Fragment key={page}>
+              {hasGap && (
+                <PaginationItem>
+                  <PaginationEllipsis />
+                </PaginationItem>
+              )}
+              <PaginationItem>
+                <PaginationLink
+                  href="#"
+                  isActive={currentPage === page}
+                  className="rounded-lg"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onPageChange(page);
+                  }}
+                >
+                  {page}
+                </PaginationLink>
+              </PaginationItem>
+            </Fragment>
+          );
+        })}
 
         <PaginationItem>
           <PaginationNext

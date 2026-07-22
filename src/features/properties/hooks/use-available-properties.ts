@@ -15,6 +15,26 @@ export function useAvailableProperties(page = 1, limit = 12) {
   });
 }
 
+export function usePaginatedAvailableProperties({
+  page,
+  limit,
+  filters,
+}: {
+  page: number;
+  limit: number;
+  filters: AvailablePropertyFilters;
+}) {
+  return useQuery({
+    queryKey: ["properties", "available", "page", page, limit, filters],
+    queryFn: () => propertyService.getAvailablePage({ page, limit, filters }),
+    placeholderData: (previousData) => previousData,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+  });
+}
+
 export function useAllAvailableProperties(
   filters: AvailablePropertyFilters = {},
 ) {

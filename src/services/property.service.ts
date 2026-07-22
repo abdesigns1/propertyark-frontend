@@ -14,6 +14,12 @@ export interface AvailablePropertyFilters {
   search?: string;
 }
 
+export interface AvailablePropertiesPageOptions {
+  page?: number;
+  limit?: number;
+  filters?: AvailablePropertyFilters;
+}
+
 export interface VendorPropertiesResult {
   properties: PropertyApiItem[];
   pagination: { page: number; limit: number; total: number; pages: number };
@@ -104,6 +110,30 @@ export const propertyService = {
       "/properties/available",
       { params: { page, limit } },
     );
+    return {
+      properties: data.data.properties.map(normalizePropertyResponse),
+      pagination: data.data.pagination,
+    };
+  },
+  getAvailablePage: async ({
+    page = 1,
+    limit = 12,
+    filters = {},
+  }: AvailablePropertiesPageOptions = {}) => {
+    const { listingTypes = [], ...commonFilters } = filters;
+    const { data } = await api.get<AvailablePropertiesResponse>(
+      "/properties/available",
+      {
+        params: {
+          page,
+          limit,
+          ...commonFilters,
+          listingType: listingTypes.length === 1 ? listingTypes[0] : undefined,
+          listingTypes: listingTypes.length > 1 ? listingTypes : undefined,
+        },
+      },
+    );
+
     return {
       properties: data.data.properties.map(normalizePropertyResponse),
       pagination: data.data.pagination,

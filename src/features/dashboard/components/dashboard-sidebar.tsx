@@ -44,14 +44,14 @@ const vendorNavigation = [
   {
     label: "Short let Bookings",
     icon: CalendarCheck2,
-    href: "/vendor/dashboard#short-let-bookings",
+    href: "/vendor/shortlet-bookings",
   },
   { label: "Inspections", icon: FileText, href: "/vendor/dashboard#inquiries" },
-  { label: "Mortgage", icon: Landmark, href: "/vendor/dashboard#mortgage" },
+  { label: "Mortgage", icon: Landmark, href: "/vendor/mortgage" },
   {
     label: "Investments",
     icon: WalletCards,
-    href: "/vendor/dashboard#investments",
+    href: "/vendor/investments",
   },
   {
     label: "Subscription & Rewards",
@@ -75,6 +75,7 @@ export function DashboardNavigation({
   const [hash, setHash] = useState("");
   const role = useAuthStore((state) => state.role);
   const navigation = role === "vendor" ? vendorNavigation : buyerNavigation;
+  const compactVendorNavigation = role === "vendor" && !closeOnSelect;
 
   useEffect(() => {
     const updateHash = () => setHash(window.location.hash);
@@ -85,7 +86,13 @@ export function DashboardNavigation({
   }, [pathname]);
 
   return (
-    <nav aria-label="Dashboard navigation" className="flex flex-col gap-1">
+    <nav
+      aria-label="Dashboard navigation"
+      className={cn(
+        "flex flex-col gap-1",
+        compactVendorNavigation && "h-full gap-0.5",
+      )}
+    >
       {navigation.map(({ label, icon: Icon, href }) => {
         const [itemPathname, itemHash = ""] = href.split("#");
         const active =
@@ -98,6 +105,8 @@ export function DashboardNavigation({
             aria-current={active ? "page" : undefined}
             className={cn(
               "flex min-h-12 items-center gap-4 rounded-xl px-4 py-2.5 text-[15px] font-medium leading-6 text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary",
+              compactVendorNavigation &&
+                "min-h-0 flex-1 gap-3 px-3 py-1.5 text-sm leading-5",
               active && "bg-primary/10 font-semibold text-primary",
             )}
           >
@@ -135,9 +144,9 @@ export function DashboardUserSummary() {
 
 export function DashboardSidebar() {
   return (
-    <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-surface px-6 py-8 lg:flex">
+    <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col overflow-hidden bg-surface px-5 py-5 lg:flex">
       <DashboardBrand />
-      <div className="mt-10 min-h-0 flex-1 overflow-y-auto">
+      <div className="mt-6 min-h-0 flex-1">
         <DashboardNavigation />
       </div>
       <div className="mt-6 shrink-0">

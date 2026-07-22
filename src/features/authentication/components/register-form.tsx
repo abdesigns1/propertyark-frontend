@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -15,6 +16,7 @@ import axios from "axios";
 import { ChevronLeft } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { FieldError } from "@/components/ui/field";
 import { TextField } from "./text-field";
 import { CountryPhoneField } from "./country-phone-field";
@@ -33,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { getApiErrorMessage } from "@/services/api-error";
 import { toast } from "sonner";
 import { saveLocalRegistrationProfile } from "@/features/authentication/utils/local-registration-profile";
+import { startGoogleAuth } from "@/features/authentication/utils/google-auth";
 
 const BASE_DEFAULTS = {
   firstName: "",
@@ -283,6 +286,38 @@ export function RegisterForm() {
           </Button>
         </form>
       )}
+
+      <div className="my-5 flex items-center gap-3">
+        <Separator className="flex-1" />
+        <span className="text-xs uppercase text-muted-foreground">or</span>
+        <Separator className="flex-1" />
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          try {
+            startGoogleAuth({ role: role === "vendor" ? "VENDOR" : "USER" });
+          } catch (error) {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Unable to start Google authentication.",
+            );
+          }
+        }}
+        className="h-12 rounded-lg border-border text-sm font-medium text-foreground hover:bg-accent"
+      >
+        <Image
+          src="/icons8-google-50.svg"
+          alt=""
+          width={18}
+          height={18}
+          data-icon="inline-start"
+        />
+        Continue with Google as {role === "vendor" ? "Vendor" : "User"}
+      </Button>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}

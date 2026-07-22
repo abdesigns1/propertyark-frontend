@@ -9,12 +9,26 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { DASHBOARD_STATS } from "@/features/dashboard/data/dashboard-data";
+import { useBuyerDashboardStats } from "@/features/dashboard/hooks/use-buyer-dashboard-stats";
 import { useDashboardUser } from "@/features/dashboard/hooks/use-dashboard-user";
 import { cn } from "@/lib/utils";
 import { AnimatedContainer, AnimatedItem, FadeIn } from "@/components/motion";
 
 export function DashboardOverview() {
   const user = useDashboardUser();
+  const stats = useBuyerDashboardStats();
+  const dashboardStats = DASHBOARD_STATS.map((stat) => {
+    if (stat.label === "Saved properties") {
+      return { ...stat, value: String(stats.savedProperties) };
+    }
+
+    if (stat.label === "Active inquiries") {
+      return { ...stat, value: String(stats.activeInquiries) };
+    }
+
+    return stat;
+  });
+
   return (
     <>
       <FadeIn duration={0.55}>
@@ -43,7 +57,7 @@ export function DashboardOverview() {
         aria-label="Portfolio summary"
         className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
       >
-        {DASHBOARD_STATS.map(
+        {dashboardStats.map(
           ({ label, value, note, icon: Icon, iconClass, badge }) => (
             <AnimatedItem key={label}>
               <Card className="min-h-44 justify-between py-5 shadow-sm">

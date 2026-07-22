@@ -1,5 +1,7 @@
+import { getCurrentAccountKey } from "@/lib/account-identity";
+
 export const PROPERTY_DRAFT_TTL_MS = 60 * 60 * 1000;
-const DRAFTS_KEY = "propertyark.vendor.property-drafts.v2";
+const DRAFTS_KEY_PREFIX = "propertyark.vendor.property-drafts.v3";
 const MEDIA_DB = "propertyark-property-drafts";
 const MEDIA_STORE = "media";
 
@@ -17,11 +19,23 @@ export interface PropertyDraftMedia {
   documents: { ownership: File[]; identification: File[]; tax: File[] };
 }
 
+function ownerKey() {
+  return getCurrentAccountKey() ?? "unresolved-session";
+}
+
+function draftsKey() {
+  return `${DRAFTS_KEY_PREFIX}:${encodeURIComponent(ownerKey())}`;
+}
+
+function mediaKey(id: string) {
+  return `${ownerKey()}:${id}`;
+}
+
 function readRaw<T>(): PropertyDraft<T>[] {
   if (typeof window === "undefined") return [];
   localStorage.removeItem("propertyark.vendor.property-draft.v1");
   try {
-    const value = JSON.parse(localStorage.getItem(DRAFTS_KEY) ?? "[]");
+    const value = JSON.parse(localStorage.getItem(draftsKey()) ?? "[]");
     return Array.isArray(value) ? value : [];
   } catch {
     return [];
@@ -29,7 +43,7 @@ function readRaw<T>(): PropertyDraft<T>[] {
 }
 
 function write<T>(drafts: PropertyDraft<T>[]) {
-  localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts));
+  localStorage.setItem(draftsKey(), JSON.stringify(drafts));
   window.dispatchEvent(new Event("propertyark:drafts-changed"));
 }
 
@@ -49,7 +63,7 @@ export async function deleteDraftMedia(id: string) {
     const request = db
       .transaction(MEDIA_STORE, "readwrite")
       .objectStore(MEDIA_STORE)
-      .delete(id);
+      .delete(mediaKey(id));
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });
@@ -116,7 +130,7 @@ export async function saveDraftMedia(id: string, media: PropertyDraftMedia) {
     const request = db
       .transaction(MEDIA_STORE, "readwrite")
       .objectStore(MEDIA_STORE)
-      .put(media, id);
+      .put(media, mediaKey(id));
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });
@@ -132,7 +146,7 @@ export async function getDraftMedia(
       const request = db
         .transaction(MEDIA_STORE)
         .objectStore(MEDIA_STORE)
-        .get(id);
+        .get(mediaKey(id));
       request.onsuccess = () => resolve(request.result ?? null);
       request.onerror = () => reject(request.error);
     },

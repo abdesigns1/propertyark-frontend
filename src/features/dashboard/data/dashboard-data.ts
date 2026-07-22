@@ -7,32 +7,31 @@ import type {
 export const DASHBOARD_STATS: DashboardStat[] = [
   {
     label: "Saved properties",
-    value: "12",
-    note: "+2 this week",
+    value: "0",
+    note: "Your saved listings",
     icon: Heart,
     iconClass: "bg-primary/10 text-primary",
   },
   {
     label: "Active inquiries",
-    value: "4",
-    note: "2 pending",
+    value: "0",
+    note: "Open inquiries",
     icon: MessageSquare,
     iconClass: "bg-secondary/15 text-secondary-hover",
   },
   {
     label: "Purchases",
-    value: "₦4,200,500",
-    note: "+5.2% growth",
+    value: "0",
+    note: "No data available",
     icon: WalletCards,
     iconClass: "bg-surface text-muted-foreground",
   },
   {
     label: "Mortgage request",
-    value: "1",
-    note: "Under review",
+    value: "0",
+    note: "No data available",
     icon: FileText,
     iconClass: "bg-primary/10 text-primary",
-    badge: true,
   },
 ];
 

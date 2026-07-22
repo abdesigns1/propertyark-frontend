@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   ChevronDown,
@@ -36,6 +37,7 @@ import { useAuthStore } from "@/store/auth.store";
 
 export function DashboardTopbar() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [propertySearch, setPropertySearch] = useState("");
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const role = useAuthStore((state) => state.role);
@@ -52,6 +54,7 @@ export function DashboardTopbar() {
     } catch {
       // Local logout must still succeed when the backend session has expired.
     } finally {
+      queryClient.clear();
       clearAuth();
       router.replace("/");
     }

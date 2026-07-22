@@ -2,7 +2,8 @@
 
 import { Suspense } from "react";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PageBanner } from "@/components/shared/page-banner";
 import { PropertySearchForm } from "@/components/shared/property-search-form";
 import {
@@ -15,7 +16,7 @@ import { BecomeVendorBanner } from "@/components/contact/become-vendor-banner";
 import { Footer } from "@/components/shared/footer";
 import { CONTAINER, cn } from "@/lib/utils";
 import { AnimatedContainer, AnimatedItem } from "@/components/motion";
-import { useAllAvailableProperties } from "@/features/properties/hooks/use-available-properties";
+import { usePaginatedAvailableProperties } from "@/features/properties/hooks/use-available-properties";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const DEFAULT_FILTERS: PropertyFilterState = {
@@ -41,9 +42,15 @@ const QUERY_TYPE_TO_LABEL: Record<string, string> = {
 };
 
 function PropertiesContent() {
+  const pathname = usePathname();
+  const queryClient = useQueryClient();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<PropertyFilterState>(DEFAULT_FILTERS);
+  const [searchQuery, setSearchQuery] = useState(
+    () => searchParams.get("search")?.trim() ?? "",
+  );
   const deferredFilters = useDeferredValue(filters);
   const backendFilters = useMemo(
     () => ({
@@ -51,13 +58,23 @@ function PropertiesContent() {
         .map((type) => LISTING_TYPE_MAP[type])
         .filter(Boolean),
       city: deferredFilters.location.trim() || undefined,
-      minPrice: deferredFilters.priceRange[0],
-      maxPrice: deferredFilters.priceRange[1],
-      search: searchParams.get("search")?.trim() || undefined,
+      minPrice:
+        deferredFilters.priceRange[0] > DEFAULT_FILTERS.priceRange[0]
+          ? deferredFilters.priceRange[0]
+          : undefined,
+      maxPrice:
+        deferredFilters.priceRange[1] < DEFAULT_FILTERS.priceRange[1]
+          ? deferredFilters.priceRange[1]
+          : undefined,
+      search: searchQuery || undefined,
     }),
-    [deferredFilters, searchParams],
+    [deferredFilters, searchQuery],
   );
-  const availableProperties = useAllAvailableProperties(backendFilters);
+  const availableProperties = usePaginatedAvailableProperties({
+    page,
+    limit: PROPERTIES_PER_PAGE,
+    filters: backendFilters,
+  });
 
   // Sync filters whenever the URL's query params change (e.g. after a search from the Hero)
   /* eslint-disable react-hooks/set-state-in-effect -- URL query parameters are external navigation state. */
@@ -67,6 +84,7 @@ function PropertiesContent() {
     const minPrice = searchParams.get("minPrice");
     const maxPrice = searchParams.get("maxPrice");
 
+    setSearchQuery(searchParams.get("search")?.trim() ?? "");
     setFilters({
       types:
         type && QUERY_TYPE_TO_LABEL[type] ? [QUERY_TYPE_TO_LABEL[type]] : [],
@@ -80,21 +98,24 @@ function PropertiesContent() {
   }, [searchParams]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const filteredProperties = availableProperties.data ?? [];
-
+  const filteredProperties = availableProperties.data?.properties ?? [];
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredProperties.length / PROPERTIES_PER_PAGE),
+    availableProperties.data?.pagination.pages ?? 1,
   );
   const currentPage = Math.min(page, totalPages);
-  const paginatedProperties = filteredProperties.slice(
-    (currentPage - 1) * PROPERTIES_PER_PAGE,
-    currentPage * PROPERTIES_PER_PAGE,
-  );
 
   function handleFiltersChange(next: PropertyFilterState) {
     setFilters(next);
     setPage(1);
+  }
+
+  function handleFiltersReset() {
+    setSearchQuery("");
+    void queryClient.invalidateQueries({
+      queryKey: ["properties", "available"],
+    });
+    router.replace(pathname, { scroll: false });
   }
 
   return (
@@ -113,7 +134,11 @@ function PropertiesContent() {
           "grid grid-cols-1 gap-8 pb-20 pt-24 lg:grid-cols-[280px_1fr]",
         )}
       >
-        <PropertyFilters onChange={handleFiltersChange} />
+        <PropertyFilters
+          value={filters}
+          onChange={handleFiltersChange}
+          onReset={handleFiltersReset}
+        />
 
         <div>
           {availableProperties.isLoading ? (
@@ -140,7 +165,7 @@ function PropertiesContent() {
             </div>
           ) : (
             <AnimatedContainer className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {paginatedProperties.map((property) => (
+              {filteredProperties.map((property) => (
                 <AnimatedItem key={property.id}>
                   <PropertyCard property={property} />
                 </AnimatedItem>
@@ -148,7 +173,7 @@ function PropertiesContent() {
             </AnimatedContainer>
           )}
 
-          {filteredProperties.length > 0 && (
+          {filteredProperties.length > 0 && totalPages > 1 && (
             <div className="mt-10 flex justify-center">
               <PaginationControls
                 currentPage={currentPage}

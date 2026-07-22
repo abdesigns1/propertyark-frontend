@@ -67,7 +67,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { PropertyApiItem } from "@/features/properties/types/api";
-import { useVendorProperties } from "@/features/vendor/hooks/use-vendor-properties";
+import {
+  useVendorProperties,
+  vendorPropertiesQueryKey,
+} from "@/features/vendor/hooks/use-vendor-properties";
+import { vendorDashboardQueryKey } from "@/features/vendor/hooks/use-vendor-dashboard";
+import { useAccountKey } from "@/lib/account-identity";
 import { getApiErrorMessage } from "@/services/api-error";
 import { propertyService } from "@/services/property.service";
 import {
@@ -208,6 +213,7 @@ function StatCard({
 export function VendorProperties() {
   const query = useVendorProperties();
   const queryClient = useQueryClient();
+  const accountKey = useAccountKey();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [type, setType] = useState("all");
@@ -292,12 +298,14 @@ export function VendorProperties() {
     mutationFn: propertyService.remove,
     onSuccess: async () => {
       setDeleteTarget(null);
-      await queryClient.invalidateQueries({
-        queryKey: ["vendor", "properties"],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["vendor", "dashboard"],
-      });
+      if (accountKey) {
+        await queryClient.invalidateQueries({
+          queryKey: vendorPropertiesQueryKey(accountKey),
+        });
+        await queryClient.invalidateQueries({
+          queryKey: vendorDashboardQueryKey(accountKey),
+        });
+      }
       toast.success("Property deleted.");
     },
     onError: (error) =>

@@ -61,7 +61,7 @@ export function Hero() {
           <div className="relative">
             <div className="relative overflow-hidden rounded-2xl border-4 border-white/90 shadow-2xl h-[340px] sm:h-[400px]">
               <Image
-                src="https://img.magnific.com/free-photo/house-isolated-field_1303-23773.jpg?semt=ais_test_b&w=740&q=80"
+                src="https://images.unsplash.com/photo-1707074743640-4cd022c3e58c?q=80&w=889&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
                 alt="Featured luxury property"
                 fill
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"

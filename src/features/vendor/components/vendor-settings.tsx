@@ -40,6 +40,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getApiErrorMessage } from "@/services/api-error";
 import { settingsService } from "@/services/settings.service";
 import { useAuthStore } from "@/store/auth.store";
+import { useAccountKey } from "@/lib/account-identity";
 import { cn } from "@/lib/utils";
 
 type Section =
@@ -149,9 +150,16 @@ function SettingsNavigation({
 function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
   const storedUser = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
+  const accountKey = useAccountKey();
   const profile = useQuery({
-    queryKey: ["vendor", "settings", "profile"],
+    queryKey: [
+      "vendor",
+      "settings",
+      "profile",
+      accountKey ?? "unresolved-session",
+    ],
     queryFn: settingsService.getProfile,
+    enabled: Boolean(accountKey),
     staleTime: 60_000,
   });
   const [fullName, setFullName] = useState(storedUser?.fullName ?? "");

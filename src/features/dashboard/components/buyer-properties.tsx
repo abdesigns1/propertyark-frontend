@@ -1,7 +1,8 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SlidersHorizontal } from "lucide-react";
 import { AnimatedContainer, AnimatedItem, FadeIn } from "@/components/motion";
 import { PaginationControls } from "@/components/shared/pagination-controls";
@@ -18,7 +19,7 @@ import {
   PropertyFilters,
   type PropertyFilterState,
 } from "@/features/properties/components/property-filters";
-import { useAllAvailableProperties } from "@/features/properties/hooks/use-available-properties";
+import { usePaginatedAvailableProperties } from "@/features/properties/hooks/use-available-properties";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RecommendedPropertyCard } from "./recommended-property-card";
 
@@ -37,9 +38,15 @@ const LISTING_TYPE_MAP: Record<string, string> = {
 };
 
 export function BuyerProperties() {
+  const pathname = usePathname();
+  const queryClient = useQueryClient();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState(
+    () => searchParams.get("search")?.trim() ?? "",
+  );
   const deferredFilters = useDeferredValue(filters);
   const backendFilters = useMemo(
     () => ({
@@ -47,28 +54,48 @@ export function BuyerProperties() {
         .map((type) => LISTING_TYPE_MAP[type])
         .filter(Boolean),
       city: deferredFilters.location.trim() || undefined,
-      minPrice: deferredFilters.priceRange[0],
-      maxPrice: deferredFilters.priceRange[1],
-      search: searchParams.get("search")?.trim() || undefined,
+      minPrice:
+        deferredFilters.priceRange[0] > DEFAULT_FILTERS.priceRange[0]
+          ? deferredFilters.priceRange[0]
+          : undefined,
+      maxPrice:
+        deferredFilters.priceRange[1] < DEFAULT_FILTERS.priceRange[1]
+          ? deferredFilters.priceRange[1]
+          : undefined,
+      search: searchQuery || undefined,
     }),
-    [deferredFilters, searchParams],
+    [deferredFilters, searchQuery],
   );
-  const availableProperties = useAllAvailableProperties(backendFilters);
-  const properties = availableProperties.data ?? [];
+
+  /* eslint-disable react-hooks/set-state-in-effect -- URL search is external navigation state. */
+  useEffect(() => {
+    setSearchQuery(searchParams.get("search")?.trim() ?? "");
+  }, [searchParams]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+  const availableProperties = usePaginatedAvailableProperties({
+    page,
+    limit: PROPERTIES_PER_PAGE,
+    filters: backendFilters,
+  });
+  const properties = availableProperties.data?.properties ?? [];
 
   const totalPages = Math.max(
     1,
-    Math.ceil(properties.length / PROPERTIES_PER_PAGE),
+    availableProperties.data?.pagination.pages ?? 1,
   );
   const currentPage = Math.min(page, totalPages);
-  const paginatedProperties = properties.slice(
-    (currentPage - 1) * PROPERTIES_PER_PAGE,
-    currentPage * PROPERTIES_PER_PAGE,
-  );
 
   function handleFiltersChange(next: PropertyFilterState) {
     setFilters(next);
     setPage(1);
+  }
+
+  function handleFiltersReset() {
+    setSearchQuery("");
+    void queryClient.invalidateQueries({
+      queryKey: ["properties", "available"],
+    });
+    router.replace(pathname, { scroll: false });
   }
 
   return (
@@ -100,7 +127,9 @@ export function BuyerProperties() {
               </SheetHeader>
               <div className="px-4 pb-6">
                 <PropertyFilters
+                  value={filters}
                   onChange={handleFiltersChange}
+                  onReset={handleFiltersReset}
                   className="border-0 p-0"
                 />
               </div>
@@ -111,7 +140,11 @@ export function BuyerProperties() {
 
       <div className="grid items-start gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
         <div className="sticky top-24 hidden lg:block">
-          <PropertyFilters onChange={handleFiltersChange} />
+          <PropertyFilters
+            value={filters}
+            onChange={handleFiltersChange}
+            onReset={handleFiltersReset}
+          />
         </div>
         <div>
           {availableProperties.isLoading ? (
@@ -131,7 +164,7 @@ export function BuyerProperties() {
             </Card>
           ) : properties.length ? (
             <AnimatedContainer className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {paginatedProperties.map((property, index) => (
+              {properties.map((property, index) => (
                 <AnimatedItem key={`${property.id}-${index}`}>
                   <RecommendedPropertyCard
                     property={property}
@@ -150,7 +183,7 @@ export function BuyerProperties() {
               </CardContent>
             </Card>
           )}
-          {properties.length > 0 && (
+          {properties.length > 0 && totalPages > 1 && (
             <div className="mt-10 flex justify-center pb-6">
               <PaginationControls
                 currentPage={currentPage}

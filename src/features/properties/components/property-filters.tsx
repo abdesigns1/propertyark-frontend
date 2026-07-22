@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { MapPin } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
@@ -32,17 +31,19 @@ export interface PropertyFilterState {
 }
 
 interface PropertyFiltersProps {
+  value: PropertyFilterState;
   onChange?: (filters: PropertyFilterState) => void;
+  onReset?: () => void;
   className?: string;
 }
 
-export function PropertyFilters({ onChange, className }: PropertyFiltersProps) {
-  const [types, setTypes] = useState<string[]>([]);
-  const [location, setLocation] = useState("");
-  const [priceRange, setPriceRange] = useState<[number, number]>([
-    MIN_PRICE,
-    MAX_PRICE,
-  ]);
+export function PropertyFilters({
+  value,
+  onChange,
+  onReset,
+  className,
+}: PropertyFiltersProps) {
+  const { types, location, priceRange } = value;
 
   function emit(next: Partial<PropertyFilterState>) {
     onChange?.({ types, location, priceRange, ...next });
@@ -52,22 +53,18 @@ export function PropertyFilters({ onChange, className }: PropertyFiltersProps) {
     const next = types.includes(type)
       ? types.filter((t) => t !== type)
       : [...types, type];
-    setTypes(next);
     emit({ types: next });
   }
 
   function selectCity(city: string) {
     // Toggle off if the same city is clicked again
     const next = location === city ? "" : city;
-    setLocation(next);
     emit({ location: next });
   }
 
   function handleReset() {
-    setTypes([]);
-    setLocation("");
-    setPriceRange([MIN_PRICE, MAX_PRICE]);
     emit({ types: [], location: "", priceRange: [MIN_PRICE, MAX_PRICE] });
+    onReset?.();
   }
 
   return (
@@ -117,7 +114,6 @@ export function PropertyFilters({ onChange, className }: PropertyFiltersProps) {
           <Input
             value={location}
             onChange={(e) => {
-              setLocation(e.target.value);
               emit({ location: e.target.value });
             }}
             placeholder="Search city or area"
@@ -139,7 +135,6 @@ export function PropertyFilters({ onChange, className }: PropertyFiltersProps) {
           value={priceRange}
           onValueChange={(value) => {
             const next = value as [number, number];
-            setPriceRange(next);
             emit({ priceRange: next });
           }}
           min={MIN_PRICE}

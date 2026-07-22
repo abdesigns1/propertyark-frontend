@@ -78,14 +78,13 @@ export const favoriteService = {
         rows.map(favoritePropertyId).filter((id): id is string => Boolean(id)),
       ),
     );
-    let properties = rows
+    const expandedProperties = rows
       .map(favoriteProperty)
       .filter((property): property is PropertyApiItem => Boolean(property))
       .map(normalizePropertyResponse);
+    let properties = expandedProperties;
 
-    // Some API deployments return favorite IDs without expanding the property.
-    // Resolve those IDs against the public collection so the UI remains usable.
-    if (properties.length < propertyIds.length) {
+    if (propertyIds.length) {
       const available = await propertyService.getAvailable({
         page: 1,
         limit: 1000,
@@ -93,8 +92,17 @@ export const favoriteService = {
       const availableById = new Map(
         available.properties.map((property) => [property.id, property]),
       );
+      const expandedById = new Map(
+        expandedProperties.map((property) => [property.id, property]),
+      );
+
+      // Favorite records can omit property media. Prefer the authoritative
+      // property collection so each saved card receives its real primary image.
       properties = propertyIds
-        .map((propertyId) => availableById.get(propertyId))
+        .map(
+          (propertyId) =>
+            availableById.get(propertyId) ?? expandedById.get(propertyId),
+        )
         .filter((property): property is Property => Boolean(property));
     }
 

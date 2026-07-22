@@ -28,16 +28,18 @@ export const AnimatedContainer = ({
   ...props
 }: AnimatedElementProps) => {
   const shouldReduceMotion = useReducedMotion();
-  return <motion.div
-    className={className}
-    initial={shouldReduceMotion ? false : "hidden"}
-    whileInView="visible"
-    viewport={{ once: true, margin: "-100px" }}
-    variants={containerVariants}
-    {...props}
-  >
-    {children}
-  </motion.div>;
+  return (
+    <motion.div
+      className={className}
+      initial={shouldReduceMotion ? false : "hidden"}
+      whileInView="visible"
+      viewport={{ once: true, margin: "-100px" }}
+      variants={containerVariants}
+      {...props}
+    >
+      {children}
+    </motion.div>
+  );
 };
 
 /**
@@ -64,16 +66,18 @@ export const FadeIn = ({
   ...props
 }: AnimatedElementProps) => {
   const shouldReduceMotion = useReducedMotion();
-  return <motion.div
-    className={className}
-    initial={shouldReduceMotion ? false : { opacity: 0 }}
-    whileInView={{ opacity: 1 }}
-    viewport={{ once: true, margin: "-100px" }}
-    transition={{ delay, duration }}
-    {...props}
-  >
-    {children}
-  </motion.div>;
+  return (
+    <motion.div
+      className={className}
+      initial={shouldReduceMotion ? false : { opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true, margin: "-100px" }}
+      transition={{ delay, duration }}
+      {...props}
+    >
+      {children}
+    </motion.div>
+  );
 };
 
 /**
@@ -152,17 +156,19 @@ export const SlideInBottom = ({
   ...props
 }: AnimatedElementProps) => {
   const shouldReduceMotion = useReducedMotion();
-  return <motion.div
-    className={className}
-    initial={shouldReduceMotion ? false : "hidden"}
-    whileInView="visible"
-    viewport={{ once: true, margin: "-100px" }}
-    variants={slideInFromBottom}
-    transition={{ delay }}
-    {...props}
-  >
-    {children}
-  </motion.div>;
+  return (
+    <motion.div
+      className={className}
+      initial={shouldReduceMotion ? false : "hidden"}
+      whileInView="visible"
+      viewport={{ once: true, margin: "-100px" }}
+      variants={slideInFromBottom}
+      transition={{ delay }}
+      {...props}
+    >
+      {children}
+    </motion.div>
+  );
 };
 
 /**

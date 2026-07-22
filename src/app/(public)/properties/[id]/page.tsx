@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Navbar } from "@/components/shared/navbar";
 import { Breadcrumb } from "@/components/shared/breadcrumb";
 import { PropertyGallery } from "@/features/properties/components/property-gallery";
@@ -22,6 +22,8 @@ export default async function PropertyDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  if (id.startsWith("draft:"))
+    redirect(`/vendor/properties/new?draft=${id.slice("draft:".length)}`);
 
   const { properties } = await getAvailablePropertiesServer();
   const base = properties.find((property) => property.id === id);
@@ -99,7 +101,12 @@ export default async function PropertyDetailPage({
             <PropertyCard key={p.id} property={p} />
           ))}
         </div>
-        <Link href="/properties" className="mt-8 inline-flex rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover">View All</Link>
+        <Link
+          href="/properties"
+          className="mt-8 inline-flex rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover"
+        >
+          View All
+        </Link>
       </section>
 
       <Footer />

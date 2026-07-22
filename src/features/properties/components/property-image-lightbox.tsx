@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback, TouchEvent } from "react";
+import { useEffect, useState, useCallback, type TouchEvent } from "react";
 import Image from "next/image";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 interface PropertyImageLightboxProps {
@@ -21,12 +25,32 @@ export function PropertyImageLightbox({
   open,
   onOpenChange,
 }: PropertyImageLightboxProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {open ? (
+        <PropertyImageLightboxContent
+          images={images}
+          initialIndex={initialIndex}
+          onClose={() => onOpenChange(false)}
+        />
+      ) : null}
+    </Dialog>
+  );
+}
+
+interface PropertyImageLightboxContentProps {
+  images: string[];
+  initialIndex: number;
+  onClose: () => void;
+}
+
+function PropertyImageLightboxContent({
+  images,
+  initialIndex,
+  onClose,
+}: PropertyImageLightboxContentProps) {
   const [index, setIndex] = useState(initialIndex);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (open) setIndex(initialIndex);
-  }, [open, initialIndex]);
 
   const goPrev = useCallback(() => {
     setIndex((i) => (i === 0 ? images.length - 1 : i - 1));
@@ -37,14 +61,13 @@ export function PropertyImageLightbox({
   }, [images.length]);
 
   useEffect(() => {
-    if (!open) return;
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "ArrowLeft") goPrev();
       if (e.key === "ArrowRight") goNext();
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, goPrev, goNext]);
+  }, [goPrev, goNext]);
 
   function handleTouchStart(e: TouchEvent) {
     setTouchStartX(e.touches[0].clientX);
@@ -59,19 +82,19 @@ export function PropertyImageLightbox({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        showCloseButton={false}
-        className="h-screen max-h-screen w-screen max-w-none border-0 bg-black/95 p-0 sm:rounded-none"
+    <DialogContent
+      showCloseButton={false}
+      className="h-screen max-h-screen w-screen max-w-none border-0 bg-black/95 p-0 sm:rounded-none"
+    >
+      <DialogTitle className="sr-only">Property image gallery</DialogTitle>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close gallery"
+        className="absolute right-4 top-4 z-20 flex size-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
       >
-        <button
-          type="button"
-          onClick={() => onOpenChange(false)}
-          aria-label="Close gallery"
-          className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-        >
-          <X className="h-5 w-5" />
-        </button>
+        <X className="size-5" />
+      </button>
 
         <div
           className="relative flex h-full w-full items-center justify-center"
@@ -82,7 +105,7 @@ export function PropertyImageLightbox({
             type="button"
             onClick={goPrev}
             aria-label="Previous image"
-            className="absolute left-4 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            className="absolute left-4 z-20 flex size-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
@@ -102,7 +125,7 @@ export function PropertyImageLightbox({
             type="button"
             onClick={goNext}
             aria-label="Next image"
-            className="absolute right-4 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            className="absolute right-4 z-20 flex size-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
           >
             <ChevronRight className="h-6 w-6" />
           </button>
@@ -131,7 +154,6 @@ export function PropertyImageLightbox({
             </button>
           ))}
         </div>
-      </DialogContent>
-    </Dialog>
+    </DialogContent>
   );
 }

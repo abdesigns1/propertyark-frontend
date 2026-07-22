@@ -2,12 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import {
-  BedDouble,
-  Bath,
-  Ruler,
-  MapPin,
-} from "lucide-react";
+import { BedDouble, Bath, Ruler, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Price } from "@/components/shared/price";
@@ -60,7 +55,11 @@ export function PropertyCard({ property }: PropertyCardProps) {
           {PURPOSE_LABELS[purpose]}
         </span>
 
-        <PropertyCardActions propertyId={id} propertyTitle={title} className="absolute right-3 top-3" />
+        <PropertyCardActions
+          propertyId={id}
+          propertyTitle={title}
+          className="absolute right-3 top-3"
+        />
       </div>
 
       {/* Content */}

@@ -15,7 +15,9 @@ export function useAvailableProperties(page = 1, limit = 12) {
   });
 }
 
-export function useAllAvailableProperties(filters: AvailablePropertyFilters = {}) {
+export function useAllAvailableProperties(
+  filters: AvailablePropertyFilters = {},
+) {
   return useQuery({
     queryKey: ["properties", "available", "all", filters],
     queryFn: () => propertyService.getAllAvailable(filters),

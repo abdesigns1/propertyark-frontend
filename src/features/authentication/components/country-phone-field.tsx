@@ -41,10 +41,7 @@ export function CountryPhoneField<T extends FieldValues>({
           <Field data-invalid={!!fieldState.error}>
             <FieldLabel>Country</FieldLabel>
             <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger
-                className="h-12"
-                aria-invalid={!!fieldState.error}
-              >
+              <SelectTrigger className="h-12" aria-invalid={!!fieldState.error}>
                 <SelectValue placeholder="Select a country" />
               </SelectTrigger>
               <SelectContent>

@@ -11,6 +11,7 @@ import {
   useForm,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import axios from "axios";
 import { ChevronLeft } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ const BASE_DEFAULTS = {
 };
 
 type RegisterRole = "user" | "vendor";
+const RECOVERABLE_REGISTRATION_STATUSES = new Set([403, 502, 503, 504]);
 
 export function RegisterForm() {
   const [role, setRole] = useState<RegisterRole>("user");
@@ -66,7 +68,9 @@ export function RegisterForm() {
     },
   });
 
-  function handleRegistrationSuccess(values: BuyerRegisterValues | VendorRegisterValues) {
+  function saveRegistrationProfile(
+    values: BuyerRegisterValues | VendorRegisterValues,
+  ) {
     saveLocalRegistrationProfile({
       id: null,
       fullName: `${values.firstName.trim()} ${values.lastName.trim()}`,
@@ -75,11 +79,43 @@ export function RegisterForm() {
       phone: values.phoneNumber,
       location: values.country,
     });
-    toast.success("Account created. Check your email for the verification code.");
-    router.push(`/verify?email=${encodeURIComponent(values.email)}`);
   }
 
-  function handleRegistrationError(error: unknown) {
+  function continueToVerification(email: string) {
+    router.push(`/verify?email=${encodeURIComponent(email)}`);
+  }
+
+  function handleRegistrationSuccess(
+    values: BuyerRegisterValues | VendorRegisterValues,
+  ) {
+    saveRegistrationProfile(values);
+    toast.success(
+      "Account created. Check your email for the verification code.",
+    );
+    continueToVerification(values.email);
+  }
+
+  function handleRegistrationError(
+    error: unknown,
+    values: BuyerRegisterValues | VendorRegisterValues,
+  ) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const requestOutcomeIsUncertain =
+        error.code === "ECONNABORTED" ||
+        !error.response ||
+        (status !== undefined && RECOVERABLE_REGISTRATION_STATUSES.has(status));
+
+      if (requestOutcomeIsUncertain) {
+        saveRegistrationProfile(values);
+        toast.info(
+          "Your account may already have been created. Continue to verification to receive your code.",
+        );
+        continueToVerification(values.email);
+        return;
+      }
+    }
+
     toast.error(getApiErrorMessage(error, "Unable to create your account."));
   }
 
@@ -135,7 +171,7 @@ export function RegisterForm() {
           onSubmit={buyerForm.handleSubmit((values) =>
             registerBuyer.mutate(values, {
               onSuccess: () => handleRegistrationSuccess(values),
-              onError: handleRegistrationError,
+              onError: (error) => handleRegistrationError(error, values),
             }),
           )}
           className="mt-6 flex flex-col gap-5"
@@ -193,7 +229,7 @@ export function RegisterForm() {
           onSubmit={vendorForm.handleSubmit((values) =>
             registerVendor.mutate(values, {
               onSuccess: () => handleRegistrationSuccess(values),
-              onError: handleRegistrationError,
+              onError: (error) => handleRegistrationError(error, values),
             }),
           )}
           className="mt-6 flex flex-col gap-5"

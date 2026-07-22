@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
 
-const ACCEPTED = ".jpg,.jpeg,.png,.pdf,.mp4";
+const ACCEPTED = ".jpg,.jpeg,.png,.pdf";
 
 interface KycUploadFieldProps<T extends FieldValues> {
   control: Control<T>;
@@ -62,7 +62,7 @@ export function KycUploadField<T extends FieldValues>({
                   {file ? file.name : "Choose a file or drag & drop it here."}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  JPEG, PNG, PDF, and MP4 formats, up to 50 MB.
+                  JPEG, PNG, and PDF formats, up to 50 MB.
                 </p>
               </div>
               <Button

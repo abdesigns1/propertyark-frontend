@@ -1,12 +1,7 @@
 import { z } from "zod";
 
 const MAX_FILE_SIZE_MB = 50;
-const ACCEPTED_KYC_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "application/pdf",
-  "video/mp4",
-];
+const ACCEPTED_KYC_TYPES = ["image/jpeg", "image/png", "application/pdf"];
 
 const baseFields = {
   firstName: z
@@ -44,7 +39,7 @@ export const vendorRegisterSchema = z
         message: `File must be under ${MAX_FILE_SIZE_MB}MB`,
       })
       .refine((f) => ACCEPTED_KYC_TYPES.includes(f.type), {
-        message: "File must be JPEG, PNG, PDF, or MP4",
+        message: "File must be JPEG, PNG, or PDF",
       }),
   })
   .refine((data) => data.password === data.confirmPassword, {

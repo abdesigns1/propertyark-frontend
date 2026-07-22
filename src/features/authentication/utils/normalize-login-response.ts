@@ -13,11 +13,21 @@ export function normalizeLoginResponse(response: LoginResponse) {
     response.data?.data,
     response.data?.result,
   ].filter((item): item is LoginResponse => Boolean(item));
-  const data = candidates.find((item) => item.accessToken || item.token) ?? response;
-  const backendUser = candidates.map((item) => item.user ?? item.profile).find(Boolean)
-    ?? candidates.find((item) => item.fullName || item.name || item.email);
-  const role = (backendUser?.role ?? candidates.find((item) => item.role)?.role ?? "user").toLowerCase() as Role;
-  const userId = candidates.find((item) => item.userId)?.userId ?? backendUser?.id ?? backendUser?._id ?? null;
+  const data =
+    candidates.find((item) => item.accessToken || item.token) ?? response;
+  const backendUser =
+    candidates.map((item) => item.user ?? item.profile).find(Boolean) ??
+    candidates.find((item) => item.fullName || item.name || item.email);
+  const role = (
+    backendUser?.role ??
+    candidates.find((item) => item.role)?.role ??
+    "user"
+  ).toLowerCase() as Role;
+  const userId =
+    candidates.find((item) => item.userId)?.userId ??
+    backendUser?.id ??
+    backendUser?._id ??
+    null;
   const composedName = [
     clean(backendUser?.firstName),
     clean(backendUser?.lastName),
@@ -26,7 +36,8 @@ export function normalizeLoginResponse(response: LoginResponse) {
     .join(" ");
 
   const hasProfile = Boolean(
-    backendUser || candidates.some((item) => item.fullName || item.name || item.email),
+    backendUser ||
+      candidates.some((item) => item.fullName || item.name || item.email),
   );
   const user: AuthUser | null = hasProfile
     ? {
@@ -39,12 +50,17 @@ export function normalizeLoginResponse(response: LoginResponse) {
           clean(candidates.find((item) => item.name)?.name) ??
           clean(composedName) ??
           "PropertyArk User",
-        email: clean(backendUser?.email) ?? clean(candidates.find((item) => item.email)?.email) ?? null,
+        email:
+          clean(backendUser?.email) ??
+          clean(candidates.find((item) => item.email)?.email) ??
+          null,
         avatarUrl:
           clean(backendUser?.avatar) ??
           clean(backendUser?.profilePicture) ??
           clean(candidates.find((item) => item.avatar)?.avatar) ??
-          clean(candidates.find((item) => item.profilePicture)?.profilePicture) ??
+          clean(
+            candidates.find((item) => item.profilePicture)?.profilePicture,
+          ) ??
           null,
         phone: clean(backendUser?.phone) ?? null,
         location: clean(backendUser?.location) ?? null,

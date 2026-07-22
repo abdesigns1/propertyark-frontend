@@ -1,10 +1,6 @@
 import { Star } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  AnimatedContainer,
-  AnimatedItem,
-  SlideInTop,
-} from "@/components/motion";
+import { AnimatedItem, SlideInTop } from "@/components/motion";
 
 const TESTIMONIALS = [
   {

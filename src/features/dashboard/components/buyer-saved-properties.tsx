@@ -36,12 +36,19 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAvailableProperties } from "@/features/properties/hooks/use-available-properties";
-import { useAuthStore } from "@/store/auth.store";
-import { useSavedPropertiesStore } from "@/store/saved-properties.store";
+import { useFavorites } from "@/features/properties/hooks/use-favorites";
 import { RecommendedPropertyCard } from "./recommended-property-card";
 import { SavedPropertyCard } from "./saved-property-card";
 
-function SavedPropertiesEmpty() {
+const PAGE_SIZE = 5;
+
+function SavedPropertiesEmpty({
+  homeHref,
+  exploreHref,
+}: {
+  homeHref: string;
+  exploreHref: string;
+}) {
   return (
     <FadeIn duration={0.5}>
       <Empty className="min-h-[calc(100vh-118px)] rounded-[3rem] border bg-card px-5">
@@ -63,10 +70,10 @@ function SavedPropertiesEmpty() {
             className="min-w-40 border-secondary text-secondary hover:bg-secondary/10 hover:text-secondary"
             asChild
           >
-            <Link href="/buyer/dashboard">Go Home</Link>
+            <Link href={homeHref}>Go Home</Link>
           </Button>
           <Button className="min-w-40" asChild>
-            <Link href="/buyer/properties">Explore Properties</Link>
+            <Link href={exploreHref}>Explore Properties</Link>
           </Button>
         </EmptyContent>
       </Empty>
@@ -74,7 +81,7 @@ function SavedPropertiesEmpty() {
   );
 }
 
-export function BuyerSavedProperties() {
+function SavedProperties({ audience }: { audience: "buyer" | "vendor" }) {
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
@@ -82,21 +89,18 @@ export function BuyerSavedProperties() {
   const [type, setType] = useState("all");
   const [beds, setBeds] = useState("all");
   const [baths, setBaths] = useState("all");
-  const user = useAuthStore((state) => state.user);
-  const userKey = user?.id ?? user?.email ?? "authenticated-user";
-  const savedIds = useSavedPropertiesStore(
-    (state) => state.savedByUser[userKey] ?? [],
-  );
+  const favorites = useFavorites();
   const availableProperties = useAvailableProperties(1, 100);
+  const savedIds = favorites.data?.propertyIds ?? [];
   const allProperties = useMemo(
     () => availableProperties.data?.properties ?? [],
     [availableProperties.data?.properties],
   );
   const savedProperties = useMemo(
-    () => allProperties.filter((property) => savedIds.includes(property.id)),
-    [allProperties, savedIds],
+    () => favorites.data?.properties ?? [],
+    [favorites.data?.properties],
   );
-  const properties = useMemo(
+  const filteredProperties = useMemo(
     () =>
       savedProperties.filter((property) => {
         if (
@@ -114,6 +118,14 @@ export function BuyerSavedProperties() {
       }),
     [baths, beds, query, savedProperties, status, type],
   );
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredProperties.length / PAGE_SIZE),
+  );
+  const properties = filteredProperties.slice(
+    (page - 1) * PAGE_SIZE,
+    page * PAGE_SIZE,
+  );
   const recommendations = allProperties
     .filter((property) => !savedIds.includes(property.id))
     .slice(0, 3);
@@ -128,9 +140,9 @@ export function BuyerSavedProperties() {
     setPage(1);
   }
 
-  if (savedIds.length > 0 && availableProperties.isLoading) {
+  if (favorites.isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="flex flex-col gap-6">
         <Skeleton className="h-12 w-72" />
         {Array.from({ length: 3 }, (_, index) => (
           <Skeleton key={index} className="h-64 rounded-xl" />
@@ -139,7 +151,7 @@ export function BuyerSavedProperties() {
     );
   }
 
-  if (savedIds.length > 0 && availableProperties.isError) {
+  if (favorites.isError) {
     return (
       <Empty className="min-h-[calc(100vh-118px)] rounded-[3rem] border">
         <EmptyHeader>
@@ -152,7 +164,14 @@ export function BuyerSavedProperties() {
     );
   }
 
-  if (!savedProperties.length) return <SavedPropertiesEmpty />;
+  if (!savedProperties.length) {
+    return (
+      <SavedPropertiesEmpty
+        homeHref={`/${audience}/dashboard`}
+        exploreHref={audience === "buyer" ? "/buyer/properties" : "/properties"}
+      />
+    );
+  }
 
   return (
     <>
@@ -185,7 +204,10 @@ export function BuyerSavedProperties() {
           </InputGroup>
           <FilterSelect
             value={status}
-            onChange={setStatus}
+            onChange={(value) => {
+              setStatus(value);
+              setPage(1);
+            }}
             placeholder="Status"
             options={[
               { value: "available", label: "Available" },
@@ -195,7 +217,10 @@ export function BuyerSavedProperties() {
           />
           <FilterSelect
             value={type}
-            onChange={setType}
+            onChange={(value) => {
+              setType(value);
+              setPage(1);
+            }}
             placeholder="Type"
             options={[
               { value: "duplex", label: "Duplex" },
@@ -205,7 +230,10 @@ export function BuyerSavedProperties() {
           />
           <FilterSelect
             value={beds}
-            onChange={setBeds}
+            onChange={(value) => {
+              setBeds(value);
+              setPage(1);
+            }}
             placeholder="Beds"
             options={[
               { value: "1", label: "1+ beds" },
@@ -215,7 +243,10 @@ export function BuyerSavedProperties() {
           />
           <FilterSelect
             value={baths}
-            onChange={setBaths}
+            onChange={(value) => {
+              setBaths(value);
+              setPage(1);
+            }}
             placeholder="Baths"
             options={[
               { value: "1", label: "1+ baths" },
@@ -245,7 +276,7 @@ export function BuyerSavedProperties() {
         </div>
       </FadeIn>
 
-      {properties.length ? (
+      {filteredProperties.length ? (
         <AnimatedContainer className="flex flex-col gap-6">
           {properties.map((property) => (
             <AnimatedItem key={property.id}>
@@ -267,11 +298,11 @@ export function BuyerSavedProperties() {
         </Empty>
       )}
 
-      {properties.length > 0 && (
+      {filteredProperties.length > PAGE_SIZE && (
         <div className="my-10">
           <PaginationControls
             currentPage={page}
-            totalPages={1}
+            totalPages={totalPages}
             onPageChange={setPage}
           />
         </div>
@@ -283,7 +314,9 @@ export function BuyerSavedProperties() {
             Recommended Properties
           </h2>
           <Button variant="link" asChild>
-            <Link href="/buyer/properties">
+            <Link
+              href={audience === "buyer" ? "/buyer/properties" : "/properties"}
+            >
               View all recommendations <ArrowRight data-icon="inline-end" />
             </Link>
           </Button>
@@ -297,11 +330,21 @@ export function BuyerSavedProperties() {
         </AnimatedContainer>
       </section>
 
-      <div className="mt-16 -mx-6 [&>section]:pb-8">
-        <BecomeVendorBanner />
-      </div>
+      {audience === "buyer" && (
+        <div className="mt-16 -mx-6 [&>section]:pb-8">
+          <BecomeVendorBanner />
+        </div>
+      )}
     </>
   );
+}
+
+export function BuyerSavedProperties() {
+  return <SavedProperties audience="buyer" />;
+}
+
+export function VendorSavedProperties() {
+  return <SavedProperties audience="vendor" />;
 }
 
 function FilterSelect({

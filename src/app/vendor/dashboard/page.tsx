@@ -1,10 +1,5 @@
-import { DashboardPlaceholder } from "@/features/dashboard/components/dashboard-placeholder";
+import { VendorDashboard } from "@/features/vendor/components/vendor-dashboard";
 
 export default function VendorDashboardPage() {
-  return (
-    <DashboardPlaceholder
-      accountType="Vendor"
-      description="Your property listings, enquiries, transactions, and account activity will appear here."
-    />
-  );
+  return <VendorDashboard />;
 }

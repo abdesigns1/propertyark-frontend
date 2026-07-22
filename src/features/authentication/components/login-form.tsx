@@ -58,10 +58,13 @@ export function LoginForm() {
           login.mutate(values, {
             onSuccess: (response) => {
               const auth = normalizeLoginResponse(response);
-              const registeredProfile = getLocalRegistrationProfile(values.email);
-              const user = auth.user?.fullName && auth.user.fullName !== "PropertyArk User"
-                ? auth.user
-                : registeredProfile ?? auth.user;
+              const registeredProfile = getLocalRegistrationProfile(
+                values.email,
+              );
+              const user =
+                auth.user?.fullName && auth.user.fullName !== "PropertyArk User"
+                  ? auth.user
+                  : (registeredProfile ?? auth.user);
 
               setAuth({
                 accessToken: auth.accessToken,
@@ -71,15 +74,22 @@ export function LoginForm() {
               });
 
               toast.success("Welcome back");
-              const requestedRedirect = new URLSearchParams(window.location.search).get("redirect");
-              const safeRedirect = requestedRedirect?.startsWith("/") && !requestedRedirect.startsWith("//")
-                ? requestedRedirect
-                : getDashboardPath(auth.role);
+              const requestedRedirect = new URLSearchParams(
+                window.location.search,
+              ).get("redirect");
+              const safeRedirect =
+                requestedRedirect?.startsWith("/") &&
+                !requestedRedirect.startsWith("//")
+                  ? requestedRedirect
+                  : getDashboardPath(auth.role);
               router.replace(safeRedirect);
             },
             onError: (error) => {
               toast.error(
-                getApiErrorMessage(error, "Unable to log in with those details."),
+                getApiErrorMessage(
+                  error,
+                  "Unable to log in with those details.",
+                ),
               );
             },
           }),

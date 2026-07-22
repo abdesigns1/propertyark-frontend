@@ -36,15 +36,27 @@ export function FeaturedProperties() {
       </SlideInTop>
 
       {availableProperties.isLoading ? (
-        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <Skeleton key={index} className="h-[420px] rounded-xl" />)}</div>
+        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="h-[420px] rounded-xl" />
+          ))}
+        </div>
       ) : availableProperties.isError ? (
-        <p className="mt-8 rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Properties are temporarily unavailable.</p>
+        <p className="mt-8 rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+          Properties are temporarily unavailable.
+        </p>
       ) : featured.length ? (
         <AnimatedContainer className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-          {featured.map((property) => <AnimatedItem key={property.id}><PropertyCard property={property} /></AnimatedItem>)}
+          {featured.map((property) => (
+            <AnimatedItem key={property.id}>
+              <PropertyCard property={property} />
+            </AnimatedItem>
+          ))}
         </AnimatedContainer>
       ) : (
-        <p className="mt-8 rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">No available properties have been published yet.</p>
+        <p className="mt-8 rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+          No available properties have been published yet.
+        </p>
       )}
 
       <Link

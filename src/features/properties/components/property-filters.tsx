@@ -71,7 +71,12 @@ export function PropertyFilters({ onChange, className }: PropertyFiltersProps) {
   }
 
   return (
-    <aside className={cn("h-fit rounded-2xl border border-border bg-card p-6", className)}>
+    <aside
+      className={cn(
+        "h-fit rounded-2xl border border-border bg-card p-6",
+        className,
+      )}
+    >
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-foreground">Filters</h3>
         <button

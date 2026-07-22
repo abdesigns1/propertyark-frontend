@@ -117,13 +117,21 @@ export function ProfessionalServiceForm({
               <FieldLabel htmlFor="consultation-date">
                 Preferred Consultation Date
               </FieldLabel>
-              <Input id="consultation-date" name="consultationDate" type="date" required />
+              <Input
+                id="consultation-date"
+                name="consultationDate"
+                type="date"
+                required
+              />
             </Field>
           </div>
 
           <Field>
             <FieldLabel htmlFor="property-reference">
-              Property Reference <span className="font-normal text-muted-foreground">(Optional)</span>
+              Property Reference{" "}
+              <span className="font-normal text-muted-foreground">
+                (Optional)
+              </span>
             </FieldLabel>
             <InputGroup>
               <InputGroupAddon>
@@ -138,7 +146,9 @@ export function ProfessionalServiceForm({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="service-brief">Professional Service Brief</FieldLabel>
+            <FieldLabel htmlFor="service-brief">
+              Professional Service Brief
+            </FieldLabel>
             <Textarea
               id="service-brief"
               name="serviceBrief"
@@ -152,7 +162,9 @@ export function ProfessionalServiceForm({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="relevant-documents">Relevant Documents</FieldLabel>
+            <FieldLabel htmlFor="relevant-documents">
+              Relevant Documents
+            </FieldLabel>
             <label
               htmlFor="relevant-documents"
               className="flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-input bg-background px-6 py-8 text-center transition-colors hover:bg-accent/50"
@@ -184,7 +196,10 @@ export function ProfessionalServiceForm({
             />
 
             {files.length > 0 && (
-              <ul className="flex flex-col gap-2" aria-label="Selected documents">
+              <ul
+                className="flex flex-col gap-2"
+                aria-label="Selected documents"
+              >
                 {files.map((file, index) => (
                   <li
                     key={`${file.name}-${file.lastModified}`}
@@ -197,7 +212,11 @@ export function ProfessionalServiceForm({
                       variant="ghost"
                       size="icon-sm"
                       aria-label={`Remove ${file.name}`}
-                      onClick={() => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                      onClick={() =>
+                        setFiles((current) =>
+                          current.filter((_, itemIndex) => itemIndex !== index),
+                        )
+                      }
                     >
                       <X />
                     </Button>

@@ -1,4 +1,9 @@
-import type { Property, PropertyListingPurpose, PropertyStatus, PropertyType } from "@/features/properties/types";
+import type {
+  Property,
+  PropertyListingPurpose,
+  PropertyStatus,
+  PropertyType,
+} from "@/features/properties/types";
 import type { PropertyApiItem } from "@/features/properties/types/api";
 
 const TYPE_MAP: Record<string, PropertyType> = {
@@ -31,8 +36,12 @@ function getPrice(property: PropertyApiItem) {
 }
 
 export function normalizePropertyResponse(property: PropertyApiItem): Property {
-  const media = [...(property.media ?? [])].sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary));
-  const images = media.filter((item) => item.type === "IMAGE").map((item) => item.url);
+  const media = [...(property.media ?? [])].sort(
+    (a, b) => Number(b.isPrimary) - Number(a.isPrimary),
+  );
+  const images = media
+    .filter((item) => item.type === "IMAGE")
+    .map((item) => item.url);
   return {
     id: property.id,
     title: property.name,

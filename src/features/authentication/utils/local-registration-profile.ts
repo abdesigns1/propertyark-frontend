@@ -5,7 +5,10 @@ const KEY = "propertyark-registration-profiles";
 function readProfiles(): Record<string, AuthUser> {
   if (typeof window === "undefined") return {};
   try {
-    return JSON.parse(window.localStorage.getItem(KEY) ?? "{}") as Record<string, AuthUser>;
+    return JSON.parse(window.localStorage.getItem(KEY) ?? "{}") as Record<
+      string,
+      AuthUser
+    >;
   } catch {
     return {};
   }

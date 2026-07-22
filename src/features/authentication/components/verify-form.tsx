@@ -32,7 +32,9 @@ export function VerifyForm() {
   return (
     <div className="flex w-full max-w-md flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold sm:text-3xl">Verify your account</h1>
+        <h1 className="text-2xl font-semibold sm:text-3xl">
+          Verify your account
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Enter the code sent to your email address.
         </p>
@@ -51,7 +53,12 @@ export function VerifyForm() {
           }),
         )}
       >
-        <TextField control={control} name="email" label="Email address" type="email" />
+        <TextField
+          control={control}
+          name="email"
+          label="Email address"
+          type="email"
+        />
         <TextField
           control={control}
           name="verificationCode"
@@ -77,7 +84,9 @@ export function VerifyForm() {
           resend.mutate(email, {
             onSuccess: () => toast.success("A new verification code was sent."),
             onError: (error) =>
-              toast.error(getApiErrorMessage(error, "Could not resend the code.")),
+              toast.error(
+                getApiErrorMessage(error, "Could not resend the code."),
+              ),
           });
         }}
       >

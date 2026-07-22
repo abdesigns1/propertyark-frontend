@@ -27,9 +27,10 @@ export default function PrivacyPolicyPage() {
 
           <div className="mt-8 space-y-8 text-muted-foreground">
             <p className="text-base leading-8 text-muted-foreground">
-              PropertyArk ("PropertyArk", "we", "our", or "us") is committed to
-              protecting the privacy and personal information of all users of
-              our website, mobile applications, and related services.
+              PropertyArk (&ldquo;PropertyArk&rdquo;, &ldquo;we&rdquo;,
+              &ldquo;our&rdquo;, or &ldquo;us&rdquo;) is committed to protecting
+              the privacy and personal information of all users of our website,
+              mobile applications, and related services.
             </p>
 
             <div>

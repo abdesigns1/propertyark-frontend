@@ -8,6 +8,8 @@ interface RecommendedPropertyCardProps {
   index?: number;
 }
 
-export function RecommendedPropertyCard({ property }: RecommendedPropertyCardProps) {
+export function RecommendedPropertyCard({
+  property,
+}: RecommendedPropertyCardProps) {
   return <PropertyCard property={property} />;
 }

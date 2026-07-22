@@ -1,7 +1,11 @@
 import { DashboardSidebar } from "@/features/dashboard/components/dashboard-sidebar";
 import { DashboardTopbar } from "@/features/dashboard/components/dashboard-topbar";
 
-export default function BuyerLayout({ children }: { children: React.ReactNode }) {
+export default function BuyerLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <div className="min-h-screen bg-background">
       <DashboardSidebar />

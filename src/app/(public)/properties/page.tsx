@@ -45,13 +45,18 @@ function PropertiesContent() {
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<PropertyFilterState>(DEFAULT_FILTERS);
   const deferredFilters = useDeferredValue(filters);
-  const backendFilters = useMemo(() => ({
-    listingTypes: deferredFilters.types.map((type) => LISTING_TYPE_MAP[type]).filter(Boolean),
-    city: deferredFilters.location.trim() || undefined,
-    minPrice: deferredFilters.priceRange[0],
-    maxPrice: deferredFilters.priceRange[1],
-    search: searchParams.get("search")?.trim() || undefined,
-  }), [deferredFilters, searchParams]);
+  const backendFilters = useMemo(
+    () => ({
+      listingTypes: deferredFilters.types
+        .map((type) => LISTING_TYPE_MAP[type])
+        .filter(Boolean),
+      city: deferredFilters.location.trim() || undefined,
+      minPrice: deferredFilters.priceRange[0],
+      maxPrice: deferredFilters.priceRange[1],
+      search: searchParams.get("search")?.trim() || undefined,
+    }),
+    [deferredFilters, searchParams],
+  );
   const availableProperties = useAllAvailableProperties(backendFilters);
 
   // Sync filters whenever the URL's query params change (e.g. after a search from the Hero)
@@ -77,7 +82,10 @@ function PropertiesContent() {
 
   const filteredProperties = availableProperties.data ?? [];
 
-  const totalPages = Math.max(1, Math.ceil(filteredProperties.length / PROPERTIES_PER_PAGE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredProperties.length / PROPERTIES_PER_PAGE),
+  );
   const currentPage = Math.min(page, totalPages);
   const paginatedProperties = filteredProperties.slice(
     (currentPage - 1) * PROPERTIES_PER_PAGE,
@@ -109,9 +117,18 @@ function PropertiesContent() {
 
         <div>
           {availableProperties.isLoading ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 6 }, (_, index) => <Skeleton key={index} className="aspect-[3/4] rounded-2xl" />)}</div>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }, (_, index) => (
+                <Skeleton key={index} className="aspect-[3/4] rounded-2xl" />
+              ))}
+            </div>
           ) : availableProperties.isError ? (
-            <div className="rounded-2xl border border-dashed border-border py-20 text-center"><p className="font-medium">Unable to load properties</p><p className="mt-1 text-sm text-muted-foreground">Please try again shortly.</p></div>
+            <div className="rounded-2xl border border-dashed border-border py-20 text-center">
+              <p className="font-medium">Unable to load properties</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Please try again shortly.
+              </p>
+            </div>
           ) : filteredProperties.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-20 text-center">
               <p className="text-sm font-medium text-foreground">

@@ -15,8 +15,12 @@ import {
 export function FeaturedListings() {
   const availableProperties = useAvailableProperties(1, 8);
   const properties = availableProperties.data?.properties ?? [];
-  const rentProperties = properties.filter((property) => property.purpose === "rent");
-  const rentals = (rentProperties.length ? rentProperties : properties.slice(4)).slice(0, 4);
+  const rentProperties = properties.filter(
+    (property) => property.purpose === "rent",
+  );
+  const rentals = (
+    rentProperties.length ? rentProperties : properties.slice(4)
+  ).slice(0, 4);
 
   return (
     <section className={cn(CONTAINER, "py-20")}>
@@ -39,15 +43,27 @@ export function FeaturedListings() {
       </SlideInTop>
 
       {availableProperties.isLoading ? (
-        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <Skeleton key={index} className="h-[420px] rounded-xl" />)}</div>
+        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="h-[420px] rounded-xl" />
+          ))}
+        </div>
       ) : availableProperties.isError ? (
-        <p className="mt-8 rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">Featured listings are temporarily unavailable.</p>
+        <p className="mt-8 rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+          Featured listings are temporarily unavailable.
+        </p>
       ) : rentals.length ? (
         <AnimatedContainer className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-          {rentals.map((property) => <AnimatedItem key={property.id}><PropertyCard property={property} /></AnimatedItem>)}
+          {rentals.map((property) => (
+            <AnimatedItem key={property.id}>
+              <PropertyCard property={property} />
+            </AnimatedItem>
+          ))}
         </AnimatedContainer>
       ) : (
-        <p className="mt-8 rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">More featured properties will appear here soon.</p>
+        <p className="mt-8 rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+          More featured properties will appear here soon.
+        </p>
       )}
 
       <Link

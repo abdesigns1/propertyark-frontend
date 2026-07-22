@@ -1,0 +1,1283 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  ChangeEvent,
+  DragEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BedDouble,
+  Check,
+  FileCheck2,
+  FileText,
+  ImagePlus,
+  Info,
+  Lightbulb,
+  LoaderCircle,
+  MapPin,
+  ShieldCheck,
+  Trash2,
+  UploadCloud,
+  Video,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { getApiErrorMessage } from "@/services/api-error";
+import { propertyService } from "@/services/property.service";
+import { cn } from "@/lib/utils";
+import {
+  deletePropertyDraft,
+  getDraftMedia,
+  getPropertyDraft,
+  PROPERTY_DRAFT_TTL_MS,
+  saveDraftMedia,
+  savePropertyDraft,
+} from "@/features/vendor/lib/property-drafts";
+
+type ListingType = "FOR_SALE" | "FOR_RENT" | "FOR_LAND" | "FOR_SHORTLET";
+type PropertyType =
+  | "RESIDENTIAL"
+  | "COMMERCIAL"
+  | "INDUSTRIAL"
+  | "LAND"
+  | "MIXED_USE";
+type FormValues = {
+  name: string;
+  description: string;
+  type: PropertyType;
+  listingType: ListingType;
+  price: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  zipCode: string;
+  size: string;
+  sizeUnit: string;
+  bedrooms: string;
+  bathrooms: string;
+  amenities: string[];
+};
+type LegalFiles = { ownership: File[]; identification: File[]; tax: File[] };
+
+const initialValues: FormValues = {
+  name: "",
+  description: "",
+  type: "RESIDENTIAL",
+  listingType: "FOR_SALE",
+  price: "",
+  address: "",
+  city: "",
+  state: "",
+  country: "Nigeria",
+  zipCode: "",
+  size: "",
+  sizeUnit: "sqm",
+  bedrooms: "",
+  bathrooms: "",
+  amenities: [],
+};
+const steps = ["Basic Info", "Details", "Images", "Legal documents", "Review"];
+const priceFields: Record<ListingType, string> = {
+  FOR_SALE: "salePrice",
+  FOR_RENT: "rentAmount",
+  FOR_LAND: "landFee",
+  FOR_SHORTLET: "shortletAmount",
+};
+const priceLabels: Record<ListingType, string> = {
+  FOR_SALE: "Asking Price",
+  FOR_RENT: "Monthly Rent",
+  FOR_LAND: "Land Fee",
+  FOR_SHORTLET: "Shortlet Amount",
+};
+
+function readable(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+function formatMoney(value: string) {
+  const number = Number(value);
+  return number
+    ? new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+        maximumFractionDigits: 0,
+      }).format(number)
+    : "Price not set";
+}
+
+function Stepper({ current }: { current: number }) {
+  return (
+    <ol className="grid grid-cols-5" aria-label="Property creation progress">
+      {steps.map((label, index) => (
+        <li
+          key={label}
+          className="relative flex flex-col items-center gap-2 text-center"
+        >
+          {index > 0 && (
+            <span
+              className={cn(
+                "absolute right-1/2 top-5 h-px w-full bg-border",
+                index <= current && "bg-primary",
+              )}
+            />
+          )}
+          <span
+            className={cn(
+              "relative flex size-10 items-center justify-center rounded-full bg-muted font-semibold text-muted-foreground ring-4 ring-background",
+              index < current && "bg-primary text-primary-foreground",
+              index === current &&
+                "bg-primary text-primary-foreground ring-primary/20",
+            )}
+          >
+            {index < current ? <Check aria-hidden="true" /> : index + 1}
+          </span>
+          <span
+            className={cn(
+              "hidden text-xs font-medium sm:block",
+              index === current && "text-primary",
+            )}
+          >
+            {label}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function TipCard({
+  title = "Expert Tip",
+  children,
+}: {
+  title?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="bg-primary/5">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-primary">
+          <Lightbulb className="size-5" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="leading-6 text-muted-foreground">
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+function UploadBox({
+  title,
+  description,
+  accept,
+  multiple = true,
+  icon: Icon,
+  onFiles,
+}: {
+  title: string;
+  description: string;
+  accept: string;
+  multiple?: boolean;
+  icon: typeof UploadCloud;
+  onFiles: (files: File[]) => void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const handle = (files: FileList | null) =>
+    files && onFiles(Array.from(files));
+  return (
+    <button
+      type="button"
+      onClick={() => input.current?.click()}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event: DragEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        handle(event.dataTransfer.files);
+      }}
+      className="flex min-h-56 w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-8 text-center transition-colors hover:bg-primary/10"
+    >
+      <span className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <Icon className="size-7" />
+      </span>
+      <span className="text-lg font-semibold">{title}</span>
+      <span className="max-w-md text-sm text-muted-foreground">
+        {description}
+      </span>
+      <Badge variant="secondary">Click or drag and drop</Badge>
+      <input
+        ref={input}
+        type="file"
+        accept={accept}
+        multiple={multiple}
+        className="hidden"
+        onChange={(event: ChangeEvent<HTMLInputElement>) => {
+          handle(event.target.files);
+          event.target.value = "";
+        }}
+      />
+    </button>
+  );
+}
+
+function FileList({
+  files,
+  onRemove,
+}: {
+  files: File[];
+  onRemove?: (index: number) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      {files.map((file, index) => (
+        <div
+          key={`${file.name}-${file.lastModified}`}
+          className="flex items-center gap-3 rounded-lg border p-3"
+        >
+          <FileText className="size-5 text-primary" />
+          <span className="min-w-0 flex-1 truncate text-sm">{file.name}</span>
+          <Badge variant="outline">
+            {(file.size / 1024 / 1024).toFixed(1)} MB
+          </Badge>
+          {onRemove && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Remove ${file.name}`}
+              onClick={() => onRemove(index)}
+            >
+              <Trash2 />
+            </Button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function AddPropertyWizard({
+  initialDraftId,
+}: {
+  initialDraftId: string | null;
+}) {
+  const router = useRouter();
+  const [step, setStep] = useState(0);
+  const [values, setValues] = useState<FormValues>(initialValues);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const expiryTimer = useRef<number | null>(null);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [videos, setVideos] = useState<File[]>([]);
+  const [amenityInput, setAmenityInput] = useState("");
+  const [documents, setDocuments] = useState<LegalFiles>({
+    ownership: [],
+    identification: [],
+    tax: [],
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [terms, setTerms] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [createdId, setCreatedId] = useState<string | null>(null);
+  const photoUrls = useMemo(
+    () => photos.map((file) => ({ file, url: URL.createObjectURL(file) })),
+    [photos],
+  );
+  useEffect(
+    () => () => photoUrls.forEach(({ url }) => URL.revokeObjectURL(url)),
+    [photoUrls],
+  );
+  useEffect(() => {
+    if (!initialDraftId) return;
+    void (async () => {
+      const draft = await getPropertyDraft<FormValues>(initialDraftId);
+      if (!draft) {
+        toast.error("This draft expired or no longer exists.");
+        router.replace("/vendor/properties/new");
+        return;
+      }
+      const media = await getDraftMedia(initialDraftId);
+      queueMicrotask(() => {
+        setValues({ ...initialValues, ...draft.values });
+        setStep(draft.step);
+        setPhotos(media?.photos ?? []);
+        setVideos(media?.videos ?? []);
+        setDocuments(
+          media?.documents ?? { ownership: [], identification: [], tax: [] },
+        );
+        setDraftId(initialDraftId);
+      });
+    })();
+  }, [initialDraftId, router]);
+  useEffect(() => {
+    if (!draftId) return;
+    const timeout = window.setTimeout(() => {
+      savePropertyDraft(values, step, draftId);
+      void saveDraftMedia(draftId, { photos, videos, documents });
+      if (expiryTimer.current) window.clearTimeout(expiryTimer.current);
+      expiryTimer.current = window.setTimeout(() => {
+        void deletePropertyDraft<FormValues>(draftId);
+        setDraftId(null);
+        setStep(0);
+        setValues(initialValues);
+        setPhotos([]);
+        setVideos([]);
+        setDocuments({ ownership: [], identification: [], tax: [] });
+        router.replace("/vendor/properties/new");
+        toast.info("The inactive draft expired after one hour.");
+      }, PROPERTY_DRAFT_TTL_MS);
+    }, 500);
+    return () => window.clearTimeout(timeout);
+  }, [documents, draftId, photos, router, step, values, videos]);
+  useEffect(
+    () => () => {
+      if (expiryTimer.current) window.clearTimeout(expiryTimer.current);
+    },
+    [],
+  );
+  const update = (key: keyof FormValues, value: string | string[]) => {
+    setValues((current) => ({ ...current, [key]: value }));
+    setErrors((current) => ({ ...current, [key]: "" }));
+  };
+  const addAmenities = (entries: string[]) => {
+    const cleaned = entries.map((entry) => entry.trim()).filter(Boolean);
+    if (!cleaned.length) return;
+    setValues((current) => {
+      const existing = new Set(
+        current.amenities.map((entry) => entry.toLocaleLowerCase()),
+      );
+      const additions = cleaned.filter((entry) => {
+        const key = entry.toLocaleLowerCase();
+        if (existing.has(key)) return false;
+        existing.add(key);
+        return true;
+      });
+      return { ...current, amenities: [...current.amenities, ...additions] };
+    });
+  };
+  const handleAmenityInput = (value: string) => {
+    const entries = value.split(",");
+    const remainder = entries.pop() ?? "";
+    if (entries.length) addAmenities(entries);
+    setAmenityInput(remainder.replace(/^\s+/, ""));
+  };
+  const commitAmenityInput = () => {
+    addAmenities([amenityInput]);
+    setAmenityInput("");
+  };
+
+  const validateStep = (index: number) => {
+    const next: Record<string, string> = {};
+    if (index === 0) {
+      if (!values.name.trim()) next.name = "Enter a property title.";
+      if (!values.price || Number(values.price) <= 0)
+        next.price = "Enter a valid amount.";
+      if (!values.address.trim()) next.address = "Enter the property address.";
+      if (!values.city.trim()) next.city = "Enter a city.";
+      if (!values.state.trim()) next.state = "Enter a state.";
+      if (!values.country.trim()) next.country = "Enter a country.";
+      if (values.description.trim().length < 20)
+        next.description =
+          "Add at least 20 characters describing the property.";
+    }
+    if (index === 1) {
+      if (!values.size || Number(values.size) <= 0)
+        next.size = "Enter a valid property size.";
+      if (
+        values.type === "RESIDENTIAL" &&
+        (!values.bedrooms || Number(values.bedrooms) < 0)
+      )
+        next.bedrooms = "Enter the number of bedrooms.";
+      if (
+        values.type === "RESIDENTIAL" &&
+        (!values.bathrooms || Number(values.bathrooms) < 0)
+      )
+        next.bathrooms = "Enter the number of bathrooms.";
+    }
+    if (index === 2 && photos.length === 0)
+      next.photos = "Upload at least one property photo.";
+    if (index === 3 && documents.ownership.length === 0)
+      next.ownership = "Upload proof of ownership.";
+    setErrors(next);
+    if (Object.keys(next).length) {
+      toast.error("Please complete the highlighted fields.");
+      return false;
+    }
+    return true;
+  };
+  const next = () => {
+    if (validateStep(step)) {
+      setStep((current) => Math.min(current + 1, 4));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+  const addMedia = (kind: "photos" | "videos", incoming: File[]) => {
+    const image = kind === "photos";
+    const valid = incoming.filter((file) =>
+      image
+        ? ["image/jpeg", "image/png"].includes(file.type) &&
+          file.size <= 3 * 1024 * 1024
+        : file.type === "video/mp4" && file.size <= 10 * 1024 * 1024,
+    );
+    if (valid.length !== incoming.length)
+      toast.error(
+        image
+          ? "Photos must be JPG/PNG and 3 MB or less."
+          : "Videos must be MP4 and 10 MB or less.",
+      );
+    if (image) setPhotos((current) => [...current, ...valid].slice(0, 20));
+    else setVideos((current) => [...current, ...valid].slice(0, 5));
+  };
+  const addDocuments = (kind: keyof LegalFiles, incoming: File[]) => {
+    const valid = incoming.filter(
+      (file) =>
+        ["application/pdf", "image/jpeg", "image/png"].includes(file.type) &&
+        file.size <= 10 * 1024 * 1024,
+    );
+    if (valid.length !== incoming.length)
+      toast.error("Documents must be PDF, JPG, or PNG and 10 MB or less.");
+    setDocuments((current) => ({
+      ...current,
+      [kind]: [...current[kind], ...valid],
+    }));
+    setErrors((current) => ({ ...current, [kind]: "" }));
+  };
+  const saveDraft = async () => {
+    const draft = savePropertyDraft(values, step, draftId);
+    setDraftId(draft.id);
+    await saveDraftMedia(draft.id, { photos, videos, documents });
+    router.replace(`/vendor/properties/new?draft=${draft.id}`, {
+      scroll: false,
+    });
+    toast.success(
+      "Draft saved for one hour. Editing it resets the expiry time.",
+    );
+  };
+  const submit = async () => {
+    if (!validateStep(3)) {
+      setStep(3);
+      return;
+    }
+    if (!terms) {
+      setErrors((current) => ({ ...current, terms: "Required" }));
+      toast.error("Accept the listing declaration before submitting.");
+      return;
+    }
+    const form = new FormData();
+    Object.entries({
+      name: values.name.trim(),
+      description: values.description.trim(),
+      type: values.type,
+      listingType: values.listingType,
+      status: "AVAILABLE",
+      address: values.address.trim(),
+      city: values.city.trim(),
+      state: values.state.trim(),
+      country: values.country.trim(),
+      zipCode: values.zipCode.trim(),
+      size: values.size,
+      bedrooms: values.bedrooms || "0",
+      bathrooms: values.bathrooms || "0",
+      [priceFields[values.listingType]]: values.price,
+      amenities: JSON.stringify(values.amenities),
+    }).forEach(([key, value]) => form.append(key, value));
+    photos.forEach((file) => form.append("photos", file));
+    videos.forEach((file) => form.append("videos", file));
+    Object.values(documents)
+      .flat()
+      .forEach((file) => form.append("documents", file));
+    setSubmitting(true);
+    try {
+      const property = await propertyService.create(form);
+      if (draftId) await deletePropertyDraft<FormValues>(draftId);
+      setCreatedId(property.id);
+      toast.success("Property saved successfully.");
+    } catch (error) {
+      toast.error(
+        getApiErrorMessage(
+          error,
+          "The property could not be saved. Please review the form and try again.",
+        ),
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (createdId)
+    return (
+      <section className="flex min-h-[70vh] flex-col items-center justify-center gap-6 text-center">
+        <span className="flex size-28 items-center justify-center rounded-full border-8 border-success text-success">
+          <Check className="size-14" />
+        </span>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-semibold tracking-tight">
+            Property Listed Successfully
+          </h1>
+          <p className="max-w-xl text-muted-foreground">
+            Your property was saved and submitted for review. Our team will
+            verify the listing before it appears publicly.
+          </p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Button variant="outline" asChild>
+            <Link href="/vendor/dashboard">Go Home</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/vendor/dashboard#properties">View My Properties</Link>
+          </Button>
+        </div>
+      </section>
+    );
+
+  return (
+    <form
+      onSubmit={(event) => event.preventDefault()}
+      className="mx-auto flex w-full max-w-[1220px] flex-col gap-8 pb-10"
+    >
+      <header className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            Add New Property
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create a complete listing for marketplace review.
+          </p>
+        </div>
+        <Badge variant="outline">Step {step + 1} of 5</Badge>
+      </header>
+      <Stepper current={step} />
+      {step === 0 && (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl">Basic Information</CardTitle>
+              <CardDescription>
+                Start with the information buyers use to identify and find your
+                property.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FieldGroup>
+                <Field data-invalid={Boolean(errors.name)}>
+                  <FieldLabel htmlFor="property-name">
+                    Property Title
+                  </FieldLabel>
+                  <Input
+                    id="property-name"
+                    value={values.name}
+                    onChange={(e) => update("name", e.target.value)}
+                    placeholder="e.g. Modern minimalist villa in Lekki"
+                    aria-invalid={Boolean(errors.name)}
+                  />
+                  <FieldError>{errors.name}</FieldError>
+                </Field>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field>
+                    <FieldLabel>Property Type</FieldLabel>
+                    <Select
+                      value={values.type}
+                      onValueChange={(value) => update("type", value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {[
+                            "RESIDENTIAL",
+                            "COMMERCIAL",
+                            "INDUSTRIAL",
+                            "LAND",
+                            "MIXED_USE",
+                          ].map((item) => (
+                            <SelectItem key={item} value={item}>
+                              {readable(item)}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field>
+                    <FieldLabel>Listing Type</FieldLabel>
+                    <Select
+                      value={values.listingType}
+                      onValueChange={(value) => update("listingType", value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {[
+                            "FOR_SALE",
+                            "FOR_RENT",
+                            "FOR_LAND",
+                            "FOR_SHORTLET",
+                          ].map((item) => (
+                            <SelectItem key={item} value={item}>
+                              {readable(item)}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
+                <Field data-invalid={Boolean(errors.price)}>
+                  <FieldLabel htmlFor="property-price">
+                    {priceLabels[values.listingType]}
+                  </FieldLabel>
+                  <Input
+                    id="property-price"
+                    type="number"
+                    min="0"
+                    inputMode="decimal"
+                    value={values.price}
+                    onChange={(e) => update("price", e.target.value)}
+                    placeholder="₦ 0.00"
+                    aria-invalid={Boolean(errors.price)}
+                  />
+                  <FieldError>{errors.price}</FieldError>
+                </Field>
+                <Field data-invalid={Boolean(errors.address)}>
+                  <FieldLabel htmlFor="property-address">
+                    Full Address
+                  </FieldLabel>
+                  <Textarea
+                    id="property-address"
+                    value={values.address}
+                    onChange={(e) => update("address", e.target.value)}
+                    placeholder="Enter the complete property address"
+                    aria-invalid={Boolean(errors.address)}
+                  />
+                  <FieldError>{errors.address}</FieldError>
+                </Field>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field data-invalid={Boolean(errors.city)}>
+                    <FieldLabel htmlFor="property-city">City</FieldLabel>
+                    <Input
+                      id="property-city"
+                      value={values.city}
+                      onChange={(e) => update("city", e.target.value)}
+                      aria-invalid={Boolean(errors.city)}
+                    />
+                    <FieldError>{errors.city}</FieldError>
+                  </Field>
+                  <Field data-invalid={Boolean(errors.state)}>
+                    <FieldLabel htmlFor="property-state">State</FieldLabel>
+                    <Input
+                      id="property-state"
+                      value={values.state}
+                      onChange={(e) => update("state", e.target.value)}
+                      aria-invalid={Boolean(errors.state)}
+                    />
+                    <FieldError>{errors.state}</FieldError>
+                  </Field>
+                  <Field data-invalid={Boolean(errors.country)}>
+                    <FieldLabel htmlFor="property-country">Country</FieldLabel>
+                    <Input
+                      id="property-country"
+                      value={values.country}
+                      onChange={(e) => update("country", e.target.value)}
+                      aria-invalid={Boolean(errors.country)}
+                    />
+                    <FieldError>{errors.country}</FieldError>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="property-zip">Postal code</FieldLabel>
+                    <Input
+                      id="property-zip"
+                      value={values.zipCode}
+                      onChange={(e) => update("zipCode", e.target.value)}
+                    />
+                  </Field>
+                </div>
+                <Field data-invalid={Boolean(errors.description)}>
+                  <FieldLabel htmlFor="property-description">
+                    Brief Description
+                  </FieldLabel>
+                  <Textarea
+                    id="property-description"
+                    className="min-h-32"
+                    maxLength={500}
+                    value={values.description}
+                    onChange={(e) => update("description", e.target.value)}
+                    placeholder="Highlight the key features and selling points of the property"
+                    aria-invalid={Boolean(errors.description)}
+                  />
+                  <FieldDescription>
+                    {values.description.length} / 500 characters
+                  </FieldDescription>
+                  <FieldError>{errors.description}</FieldError>
+                </Field>
+              </FieldGroup>
+            </CardContent>
+          </Card>
+          <aside className="flex flex-col gap-6">
+            <TipCard>
+              Detailed descriptions and accurate addresses receive more
+              qualified inquiries. Highlight what makes this listing unique.
+            </TipCard>
+            <Card>
+              <CardHeader>
+                <CardTitle>Location Preview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex min-h-48 items-center justify-center rounded-xl bg-muted text-primary">
+                  <MapPin className="size-10" />
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {values.address ||
+                    "The property location will appear here as the address is entered."}
+                </p>
+              </CardContent>
+            </Card>
+          </aside>
+        </div>
+      )}
+      {step === 1 && (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl">Property Details</CardTitle>
+              <CardDescription>
+                Specify the core physical characteristics and amenities.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FieldGroup>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field data-invalid={Boolean(errors.bedrooms)}>
+                    <FieldLabel htmlFor="bedrooms">Bedrooms</FieldLabel>
+                    <Input
+                      id="bedrooms"
+                      type="number"
+                      min="0"
+                      value={values.bedrooms}
+                      onChange={(e) => update("bedrooms", e.target.value)}
+                      placeholder="e.g. 4"
+                      aria-invalid={Boolean(errors.bedrooms)}
+                    />
+                    <FieldError>{errors.bedrooms}</FieldError>
+                  </Field>
+                  <Field data-invalid={Boolean(errors.bathrooms)}>
+                    <FieldLabel htmlFor="bathrooms">Bathrooms</FieldLabel>
+                    <Input
+                      id="bathrooms"
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={values.bathrooms}
+                      onChange={(e) => update("bathrooms", e.target.value)}
+                      placeholder="e.g. 2.5"
+                      aria-invalid={Boolean(errors.bathrooms)}
+                    />
+                    <FieldError>{errors.bathrooms}</FieldError>
+                  </Field>
+                  <Field data-invalid={Boolean(errors.size)}>
+                    <FieldLabel htmlFor="size">Property Size</FieldLabel>
+                    <Input
+                      id="size"
+                      type="number"
+                      min="0"
+                      value={values.size}
+                      onChange={(e) => update("size", e.target.value)}
+                      placeholder="e.g. 2400"
+                      aria-invalid={Boolean(errors.size)}
+                    />
+                    <FieldError>{errors.size}</FieldError>
+                  </Field>
+                  <Field>
+                    <FieldLabel>Unit</FieldLabel>
+                    <Select
+                      value={values.sizeUnit}
+                      onValueChange={(value) => update("sizeUnit", value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="sqm">Square metres</SelectItem>
+                          <SelectItem value="sqft">Square feet</SelectItem>
+                          <SelectItem value="acres">Acres</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
+                <Field>
+                  <FieldLabel htmlFor="property-amenities">
+                    Property Amenities
+                  </FieldLabel>
+                  <Input
+                    id="property-amenities"
+                    value={amenityInput}
+                    onChange={(event) => handleAmenityInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        commitAmenityInput();
+                      }
+                    }}
+                    onBlur={commitAmenityInput}
+                    placeholder="e.g. Parking, Pool, Gym"
+                    autoComplete="off"
+                  />
+                  <FieldDescription>
+                    Separate each amenity with a comma. Press Enter to add the
+                    final entry.
+                  </FieldDescription>
+                  {values.amenities.length > 0 && (
+                    <div
+                      className="flex flex-wrap gap-2"
+                      aria-label="Added property amenities"
+                    >
+                      {values.amenities.map((item) => (
+                        <Badge
+                          key={item}
+                          variant="outline"
+                          className="gap-2 px-3 py-1.5 text-sm"
+                        >
+                          <span>{item}</span>
+                          <button
+                            type="button"
+                            className="rounded-full text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label={`Remove ${item}`}
+                            onClick={() =>
+                              update(
+                                "amenities",
+                                values.amenities.filter(
+                                  (entry) => entry !== item,
+                                ),
+                              )
+                            }
+                          >
+                            <X className="size-3.5" aria-hidden="true" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </Field>
+              </FieldGroup>
+            </CardContent>
+          </Card>
+          <TipCard>
+            Accurate measurements and amenities help buyers compare listings and
+            reduce unnecessary questions.
+          </TipCard>
+        </div>
+      )}
+      {step === 2 && (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
+          <div className="flex flex-col gap-6">
+            <UploadBox
+              title="Upload Property Images"
+              description="High-resolution JPG or PNG photos, up to 3 MB each. The first photo becomes the cover."
+              accept="image/jpeg,image/png"
+              icon={ImagePlus}
+              onFiles={(files) => addMedia("photos", files)}
+            />
+            {errors.photos && (
+              <p className="text-sm text-destructive">{errors.photos}</p>
+            )}
+            <UploadBox
+              title="Upload Property Video"
+              description="Optional MP4 walkthrough videos, up to 10 MB each."
+              accept="video/mp4"
+              icon={Video}
+              onFiles={(files) => addMedia("videos", files)}
+            />
+            <TipCard title="Tips for better listings">
+              Bright, wide-angle photos usually attract more inquiries. Use a
+              clear exterior or living-room image as your cover.
+            </TipCard>
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Uploaded Media</CardTitle>
+              <CardAction>
+                <Badge variant="outline">{photos.length} / 20 photos</Badge>
+              </CardAction>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              {photoUrls.length ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {photoUrls.map(({ file, url }, index) => (
+                    <figure
+                      key={url}
+                      className={cn(
+                        "group relative aspect-square overflow-hidden rounded-lg border",
+                        index === 0 &&
+                          "col-span-2 aspect-video ring-2 ring-primary",
+                      )}
+                    >
+                      <Image
+                        src={url}
+                        alt={file.name}
+                        fill
+                        unoptimized
+                        className="object-cover"
+                      />
+                      {index === 0 && (
+                        <Badge className="absolute left-2 top-2">
+                          Cover photo
+                        </Badge>
+                      )}
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="destructive"
+                        className="absolute right-2 top-2"
+                        aria-label={`Remove ${file.name}`}
+                        onClick={() =>
+                          setPhotos((current) =>
+                            current.filter(
+                              (_, photoIndex) => photoIndex !== index,
+                            ),
+                          )
+                        }
+                      >
+                        <Trash2 />
+                      </Button>
+                    </figure>
+                  ))}
+                </div>
+              ) : (
+                <p className="py-16 text-center text-sm text-muted-foreground">
+                  Uploaded photos will appear here.
+                </p>
+              )}
+              {videos.length > 0 && (
+                <>
+                  <Separator />
+                  <FileList
+                    files={videos}
+                    onRemove={(index) =>
+                      setVideos((current) =>
+                        current.filter(
+                          (_, currentIndex) => currentIndex !== index,
+                        ),
+                      )
+                    }
+                  />
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+      {step === 3 && (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="flex flex-col gap-6">
+            {(
+              [
+                {
+                  key: "ownership",
+                  title: "Proof of Ownership",
+                  copy: "Grant deed, warranty deed, or valid title record.",
+                  icon: FileCheck2,
+                },
+                {
+                  key: "identification",
+                  title: "Identification",
+                  copy: "Government-issued ID or passport for the primary owner.",
+                  icon: ShieldCheck,
+                },
+                {
+                  key: "tax",
+                  title: "Tax Records",
+                  copy: "Most recent property tax assessment or certificate.",
+                  icon: FileText,
+                },
+              ] as const
+            ).map(({ key, title, copy, icon }) => (
+              <Card key={key}>
+                <CardHeader>
+                  <CardTitle>{title}</CardTitle>
+                  <CardDescription>{copy}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                  <UploadBox
+                    title={`Upload ${title}`}
+                    description="PDF, JPG, or PNG, up to 10 MB per file."
+                    accept="application/pdf,image/jpeg,image/png"
+                    icon={icon}
+                    onFiles={(files) => addDocuments(key, files)}
+                  />
+                  {errors[key] && (
+                    <p className="text-sm text-destructive">{errors[key]}</p>
+                  )}
+                  <FileList
+                    files={documents[key]}
+                    onRemove={(index) =>
+                      setDocuments((current) => ({
+                        ...current,
+                        [key]: current[key].filter(
+                          (_, currentIndex) => currentIndex !== index,
+                        ),
+                      }))
+                    }
+                  />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <aside className="flex flex-col gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Uploaded Files</CardTitle>
+                <CardDescription>
+                  {Object.values(documents).flat().length} document(s) ready
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FileList
+                  files={Object.values(documents).flat()}
+                  onRemove={() => {}}
+                />
+              </CardContent>
+            </Card>
+            <TipCard title="Secure upload">
+              Documents are sent through the authenticated endpoint and are only
+              listed as complete after the server accepts the property.
+            </TipCard>
+          </aside>
+        </div>
+      )}
+      {step === 4 && (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="flex flex-col gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Info className="size-5 text-primary" />
+                  Property Essentials
+                </CardTitle>
+                <CardDescription>
+                  Review the information that will be stored with this listing.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-6 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">
+                    Listing title
+                  </p>
+                  <p className="mt-1 text-lg font-semibold">{values.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">
+                    Property type
+                  </p>
+                  <p className="mt-1">{readable(values.type)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">
+                    Listing type
+                  </p>
+                  <p className="mt-1">{readable(values.listingType)}</p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">
+                    Description
+                  </p>
+                  <p className="mt-1 leading-6">{values.description}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Pricing & Details</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Price</p>
+                  <p className="mt-1 font-semibold text-primary">
+                    {formatMoney(values.price)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Size</p>
+                  <p className="mt-1 font-semibold">
+                    {values.size} {values.sizeUnit}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Rooms</p>
+                  <p className="mt-1 font-semibold">
+                    {values.bedrooms || 0} bed · {values.bathrooms || 0} bath
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Uploaded Files</CardTitle>
+                <CardDescription>
+                  {photos.length} photo(s), {videos.length} video(s), and{" "}
+                  {Object.values(documents).flat().length} document(s).
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FileList
+                  files={[
+                    ...photos,
+                    ...videos,
+                    ...Object.values(documents).flat(),
+                  ]}
+                />
+              </CardContent>
+            </Card>
+          </div>
+          <aside className="flex flex-col gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Marketplace Preview</CardTitle>
+              </CardHeader>
+              {photoUrls[0] && (
+                <div className="relative aspect-video">
+                  <Image
+                    src={photoUrls[0].url}
+                    alt="Property cover preview"
+                    fill
+                    unoptimized
+                    className="object-cover"
+                  />
+                </div>
+              )}
+              <CardContent className="flex flex-col gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold">{values.name}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    <MapPin className="mr-1 inline size-4" />
+                    {values.city}, {values.state}, {values.country}
+                  </p>
+                </div>
+                <p className="text-xl font-semibold text-primary">
+                  {formatMoney(values.price)}
+                </p>
+                <Separator />
+                <p className="flex items-center gap-2 text-sm">
+                  <BedDouble className="size-4" />
+                  {values.bedrooms || 0} bedrooms · {values.bathrooms || 0}{" "}
+                  bathrooms · {values.size} {values.sizeUnit}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-primary/5">
+              <CardHeader>
+                <CardTitle>Listing Declaration</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Field
+                  orientation="horizontal"
+                  data-invalid={!terms && Boolean(errors.terms)}
+                >
+                  <Checkbox
+                    id="listing-terms"
+                    checked={terms}
+                    aria-invalid={!terms && Boolean(errors.terms)}
+                    onCheckedChange={(checked) => {
+                      setTerms(Boolean(checked));
+                      setErrors((current) => ({ ...current, terms: "" }));
+                    }}
+                  />
+                  <FieldLabel htmlFor="listing-terms" className="font-normal">
+                    I confirm this information is accurate and I have the legal
+                    right to list this property.
+                  </FieldLabel>
+                </Field>
+              </CardContent>
+            </Card>
+          </aside>
+        </div>
+      )}
+      <Separator />
+      <footer className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+        <Button variant="ghost" asChild>
+          <Link href="/vendor/dashboard">Cancel</Link>
+        </Button>
+        <div className="flex flex-1 justify-end gap-3">
+          {step > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setStep((current) => current - 1)}
+            >
+              <ArrowLeft data-icon="inline-start" />
+              Previous
+            </Button>
+          )}
+          <Button type="button" variant="outline" onClick={saveDraft}>
+            Save Draft
+          </Button>
+          {step < 4 ? (
+            <Button type="button" onClick={next}>
+              Next Step
+              <ArrowRight data-icon="inline-end" />
+            </Button>
+          ) : (
+            <Button type="button" disabled={submitting} onClick={submit}>
+              {submitting ? (
+                <>
+                  <LoaderCircle
+                    data-icon="inline-start"
+                    className="animate-spin"
+                  />
+                  Saving property...
+                </>
+              ) : (
+                <>
+                  Submit Property
+                  <ArrowRight data-icon="inline-end" />
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </footer>
+    </form>
+  );
+}

@@ -2,32 +2,116 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, Gauge, Heart, House, Mail, Settings, WalletCards } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  BadgePercent,
+  Building2,
+  CalendarCheck2,
+  FilePlus2,
+  FileText,
+  Gauge,
+  Heart,
+  House,
+  Landmark,
+  Mail,
+  MessageSquareText,
+  Settings,
+  WalletCards,
+} from "lucide-react";
 import { DashboardBrand } from "./dashboard-brand";
 import { DashboardUserAvatar } from "./dashboard-user-avatar";
 import { useDashboardUser } from "@/features/dashboard/hooks/use-dashboard-user";
 import { SheetClose } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/auth.store";
 
-const navigation = [
-  { label: "Dashboard", icon: Gauge, href: "/buyer/dashboard" }, { label: "Properties", icon: House, href: "/buyer/properties" },
-  { label: "Saved Properties", icon: Heart, href: "/buyer/saved-properties" }, { label: "Inspection", icon: FileText, href: "#" },
-  { label: "Mortgage", icon: FileText, href: "/buyer/mortgage" }, { label: "Investments", icon: WalletCards, href: "/buyer/investments" },
-  { label: "Messages", icon: Mail, href: "#" }, { label: "Settings", icon: Settings, href: "/buyer/settings" },
+const buyerNavigation = [
+  { label: "Dashboard", icon: Gauge, href: "/buyer/dashboard" },
+  { label: "Properties", icon: House, href: "/buyer/properties" },
+  { label: "Saved Properties", icon: Heart, href: "/buyer/saved-properties" },
+  { label: "Inspection", icon: FileText, href: "#" },
+  { label: "Mortgage", icon: FileText, href: "/buyer/mortgage" },
+  { label: "Investments", icon: WalletCards, href: "/buyer/investments" },
+  { label: "Messages", icon: Mail, href: "#" },
+  { label: "Settings", icon: Settings, href: "/buyer/settings" },
 ];
 
-export function DashboardNavigation({ closeOnSelect = false }: { closeOnSelect?: boolean }) {
+const vendorNavigation = [
+  { label: "Dashboard", icon: Gauge, href: "/vendor/dashboard" },
+  { label: "My Properties", icon: Building2, href: "/vendor/properties" },
+  { label: "Saved Properties", icon: Heart, href: "/vendor/saved-properties" },
+  { label: "Add Property", icon: FilePlus2, href: "/vendor/properties/new" },
+  {
+    label: "Short let Bookings",
+    icon: CalendarCheck2,
+    href: "/vendor/dashboard#short-let-bookings",
+  },
+  { label: "Inspections", icon: FileText, href: "/vendor/dashboard#inquiries" },
+  { label: "Mortgage", icon: Landmark, href: "/vendor/dashboard#mortgage" },
+  {
+    label: "Investments",
+    icon: WalletCards,
+    href: "/vendor/dashboard#investments",
+  },
+  {
+    label: "Subscription & Rewards",
+    icon: BadgePercent,
+    href: "/vendor/dashboard#subscription-rewards",
+  },
+  {
+    label: "Messages",
+    icon: MessageSquareText,
+    href: "/vendor/dashboard#messages",
+  },
+  { label: "Settings", icon: Settings, href: "/vendor/settings" },
+];
+
+export function DashboardNavigation({
+  closeOnSelect = false,
+}: {
+  closeOnSelect?: boolean;
+}) {
   const pathname = usePathname();
+  const [hash, setHash] = useState("");
+  const role = useAuthStore((state) => state.role);
+  const navigation = role === "vendor" ? vendorNavigation : buyerNavigation;
+
+  useEffect(() => {
+    const updateHash = () => setHash(window.location.hash);
+
+    updateHash();
+    window.addEventListener("hashchange", updateHash);
+    return () => window.removeEventListener("hashchange", updateHash);
+  }, [pathname]);
+
   return (
-    <nav aria-label="Dashboard navigation" className="flex flex-col gap-1.5">
+    <nav aria-label="Dashboard navigation" className="flex flex-col gap-1">
       {navigation.map(({ label, icon: Icon, href }) => {
-        const active = pathname === href;
+        const [itemPathname, itemHash = ""] = href.split("#");
+        const active =
+          pathname === itemPathname &&
+          (itemHash ? hash === `#${itemHash}` : !hash);
         const item = (
-          <Link key={label} href={href} aria-current={active ? "page" : undefined} className={cn("flex h-12 items-center gap-4 rounded-xl px-4 text-[15px] font-medium text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary", active && "bg-primary/10 font-semibold text-primary")}>
-            <Icon className="size-5" aria-hidden="true" />{label}
+          <Link
+            key={label}
+            href={href}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "flex min-h-12 items-center gap-4 rounded-xl px-4 py-2.5 text-[15px] font-medium leading-6 text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary",
+              active && "bg-primary/10 font-semibold text-primary",
+            )}
+          >
+            <Icon className="size-5 shrink-0" aria-hidden="true" />
+            <span>{label}</span>
           </Link>
         );
-        return closeOnSelect ? <SheetClose key={label} asChild>{item}</SheetClose> : item;
+        return closeOnSelect ? (
+          <SheetClose key={label} asChild>
+            {item}
+          </SheetClose>
+        ) : (
+          item
+        );
       })}
     </nav>
   );
@@ -35,10 +119,16 @@ export function DashboardNavigation({ closeOnSelect = false }: { closeOnSelect?:
 
 export function DashboardUserSummary() {
   const user = useDashboardUser();
+  const role = useAuthStore((state) => state.role);
   return (
     <div className="flex items-center gap-3">
       <DashboardUserAvatar />
-      <div className="min-w-0"><p className="truncate text-sm font-semibold">{user.fullName}</p><p className="text-sm text-muted-foreground">User</p></div>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold">{user.fullName}</p>
+        <p className="text-sm text-muted-foreground">
+          {role === "vendor" ? "Vendor" : "User"}
+        </p>
+      </div>
     </div>
   );
 }
@@ -47,8 +137,12 @@ export function DashboardSidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-surface px-6 py-8 lg:flex">
       <DashboardBrand />
-      <div className="mt-12"><DashboardNavigation /></div>
-      <div className="mt-auto"><DashboardUserSummary /></div>
+      <div className="mt-10 min-h-0 flex-1 overflow-y-auto">
+        <DashboardNavigation />
+      </div>
+      <div className="mt-6 shrink-0">
+        <DashboardUserSummary />
+      </div>
     </aside>
   );
 }

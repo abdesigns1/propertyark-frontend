@@ -20,6 +20,7 @@ export interface PropertyApiItem {
   city: string;
   state: string;
   country: string;
+  zipCode?: string;
   size: number;
   sizeUnit?: string;
   bedrooms: number;
@@ -30,6 +31,11 @@ export interface PropertyApiItem {
   updatedAt?: string;
   media?: PropertyMediaResponse[];
   priceDisplay?: string;
+  approvalStatus?: string;
+  viewCount?: number;
+  views?: number;
+  inquiryCount?: number;
+  leads?: number;
   vendor?: {
     id: string;
     fullName: string;

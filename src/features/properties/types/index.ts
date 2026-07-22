@@ -18,11 +18,7 @@ export type PropertyStatus =
   | "rejected"
   | "delisted";
 
-export type PropertyListingPurpose =
-  | "sale"
-  | "rent"
-  | "shortlet"
-  | "land";
+export type PropertyListingPurpose = "sale" | "rent" | "shortlet" | "land";
 
 export interface PropertyLocation {
   address: string;

@@ -273,6 +273,18 @@ export function BuyerAccountSettings() {
       phone: storedUser?.phone ?? "",
       location: storedUser?.location ?? "",
       avatarUrl: storedUser?.avatarUrl ?? null,
+      businessName: "",
+      businessDescription: "",
+      cacRegistrationNumber: "",
+      taxId: "",
+      createdAt: null,
+      identityVerificationStatus: "PENDING",
+      businessLicenseStatus: "UNAVAILABLE",
+      taxCertificationStatus: "UNAVAILABLE",
+      twoFactorEnabled: null,
+      emailAlerts: null,
+      smsNotifications: null,
+      pushNotifications: null,
     } satisfies VendorSettingsProfile);
 
   return (

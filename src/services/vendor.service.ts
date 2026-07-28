@@ -18,6 +18,9 @@ const EMPTY_STATS: VendorDashboardStats = {
   acceptedInquiries: 0,
   pendingInquiries: 0,
   declinedInquiries: 0,
+  totalSales: 0,
+  rating: 0,
+  reviewCount: 0,
 };
 
 function asRecord(value: unknown): UnknownRecord {
@@ -95,6 +98,14 @@ function normalizeStats(statsResponse: unknown, inquiryStatsResponse: unknown) {
       "declinedInquiries",
       "DECLINED",
     ]),
+    totalSales: numberFrom(stats, [
+      "totalSales",
+      "salesValue",
+      "totalSalesValue",
+      "revenue",
+    ]),
+    rating: numberFrom(stats, ["rating", "averageRating", "vendorRating"]),
+    reviewCount: numberFrom(stats, ["reviewCount", "reviews", "totalReviews"]),
   } satisfies VendorDashboardStats;
 }
 

@@ -7,6 +7,18 @@ export interface VendorSettingsProfile {
   phone: string;
   location: string;
   avatarUrl: string | null;
+  businessName: string;
+  businessDescription: string;
+  cacRegistrationNumber: string;
+  taxId: string;
+  createdAt: string | null;
+  identityVerificationStatus: string;
+  businessLicenseStatus: string;
+  taxCertificationStatus: string;
+  twoFactorEnabled: boolean | null;
+  emailAlerts: boolean | null;
+  smsNotifications: boolean | null;
+  pushNotifications: boolean | null;
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -28,6 +40,10 @@ function normalizeProfile(value: unknown): VendorSettingsProfile {
     keys.map((key) => source[key]).find((item) => typeof item === "string") as
       | string
       | undefined;
+  const boolean = (...keys: string[]) => {
+    const candidate = keys.map((key) => source[key]).find((item) => typeof item === "boolean");
+    return typeof candidate === "boolean" ? candidate : null;
+  };
   return {
     id: text("id", "_id", "userId") ?? null,
     fullName: text("fullName", "name") ?? "",
@@ -35,6 +51,18 @@ function normalizeProfile(value: unknown): VendorSettingsProfile {
     phone: text("phone") ?? "",
     location: text("location", "address") ?? "",
     avatarUrl: text("avatarUrl", "avatar", "profilePicture") ?? null,
+    businessName: text("businessName", "companyName", "agencyName") ?? "",
+    businessDescription: text("businessDescription", "companyDescription", "bio", "about") ?? "",
+    cacRegistrationNumber: text("cacRegistrationNumber", "cacNumber", "registrationNumber") ?? "",
+    taxId: text("taxId", "tin", "taxIdentificationNumber") ?? "",
+    createdAt: text("createdAt", "joinedAt") ?? null,
+    identityVerificationStatus: text("ninStatus", "identityVerificationStatus", "verificationStatus") ?? "PENDING",
+    businessLicenseStatus: text("businessLicenseStatus", "licenseStatus") ?? "UNAVAILABLE",
+    taxCertificationStatus: text("taxCertificationStatus", "taxStatus") ?? "UNAVAILABLE",
+    twoFactorEnabled: boolean("twoFactorEnabled", "isTwoFactorEnabled", "twoFAEnabled"),
+    emailAlerts: boolean("emailAlerts", "emailNotifications"),
+    smsNotifications: boolean("smsNotifications", "smsAlerts"),
+    pushNotifications: boolean("pushNotifications", "mobilePushNotifications"),
   };
 }
 

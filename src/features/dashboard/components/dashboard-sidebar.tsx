@@ -46,13 +46,9 @@ const vendorNavigation = [
     icon: CalendarCheck2,
     href: "/vendor/shortlet-bookings",
   },
-  { label: "Inspections", icon: FileText, href: "/vendor/dashboard#inquiries" },
+  { label: "Inspections", icon: FileText, href: "/vendor/inspections" },
   { label: "Mortgage", icon: Landmark, href: "/vendor/mortgage" },
-  {
-    label: "Investments",
-    icon: WalletCards,
-    href: "/vendor/investments",
-  },
+
   {
     label: "Subscription & Rewards",
     icon: BadgePercent,
@@ -90,7 +86,7 @@ export function DashboardNavigation({
       aria-label="Dashboard navigation"
       className={cn(
         "flex flex-col gap-1",
-        compactVendorNavigation && "h-full gap-0.5",
+        compactVendorNavigation && "gap-2",
       )}
     >
       {navigation.map(({ label, icon: Icon, href }) => {
@@ -106,7 +102,7 @@ export function DashboardNavigation({
             className={cn(
               "flex min-h-12 items-center gap-4 rounded-xl px-4 py-2.5 text-[15px] font-medium leading-6 text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary",
               compactVendorNavigation &&
-                "min-h-0 flex-1 gap-3 px-3 py-1.5 text-sm leading-5",
+                "min-h-11 flex-none gap-3 px-3 py-2 text-sm leading-5",
               active && "bg-primary/10 font-semibold text-primary",
             )}
           >
@@ -129,7 +125,7 @@ export function DashboardNavigation({
 export function DashboardUserSummary() {
   const user = useDashboardUser();
   const role = useAuthStore((state) => state.role);
-  return (
+  const summary = (
     <div className="flex items-center gap-3">
       <DashboardUserAvatar />
       <div className="min-w-0">
@@ -140,13 +136,23 @@ export function DashboardUserSummary() {
       </div>
     </div>
   );
+  return role === "vendor" ? (
+    <Link
+      href="/vendor/profile"
+      className="block rounded-xl p-1 transition-colors hover:bg-primary/5"
+    >
+      {summary}
+    </Link>
+  ) : (
+    summary
+  );
 }
 
 export function DashboardSidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col overflow-hidden bg-surface px-5 py-5 lg:flex">
       <DashboardBrand />
-      <div className="mt-6 min-h-0 flex-1">
+      <div className="mt-6 min-h-0 flex-1 overflow-y-auto pr-1">
         <DashboardNavigation />
       </div>
       <div className="mt-6 shrink-0">

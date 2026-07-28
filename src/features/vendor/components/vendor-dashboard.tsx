@@ -57,6 +57,9 @@ const ZERO_STATS: VendorDashboardStats = {
   acceptedInquiries: 0,
   pendingInquiries: 0,
   declinedInquiries: 0,
+  totalSales: 0,
+  rating: 0,
+  reviewCount: 0,
 };
 
 function formatDate(value: string) {

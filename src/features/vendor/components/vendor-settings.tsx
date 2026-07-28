@@ -627,6 +627,16 @@ function UnavailableSettings({ section }: { section: Section }) {
 
 export function VendorSettings() {
   const [active, setActive] = useState<Section>("profile");
+  useEffect(() => {
+    const syncSection = () => {
+      const section = window.location.hash.slice(1) as Section;
+      if (sections.some((item) => item.id === section)) setActive(section);
+    };
+
+    syncSection();
+    window.addEventListener("hashchange", syncSection);
+    return () => window.removeEventListener("hashchange", syncSection);
+  }, []);
   return (
     <div className="mx-auto grid w-full max-w-[1500px] gap-8 lg:grid-cols-[250px_minmax(0,1fr)]">
       <aside className="border-b pb-5 lg:min-h-[calc(100vh-7rem)] lg:border-b-0 lg:border-r lg:pr-6">

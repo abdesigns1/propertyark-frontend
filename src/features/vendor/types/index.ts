@@ -6,6 +6,9 @@ export interface VendorDashboardStats {
   acceptedInquiries: number;
   pendingInquiries: number;
   declinedInquiries: number;
+  totalSales: number;
+  rating: number;
+  reviewCount: number;
 }
 
 export interface VendorPerformancePoint {

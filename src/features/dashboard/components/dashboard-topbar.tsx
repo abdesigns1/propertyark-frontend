@@ -13,6 +13,7 @@ import {
   LogOut,
   Search,
   Settings,
+  UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +47,8 @@ export function DashboardTopbar() {
   const propertiesPath =
     role === "vendor" ? "/vendor/dashboard#properties" : "/buyer/properties";
   const settingsPath =
-    role === "vendor" ? "/vendor/dashboard#settings" : "/buyer/settings";
+    role === "vendor" ? "/vendor/settings" : "/buyer/settings";
+  const profilePath = role === "vendor" ? "/vendor/profile" : "/buyer/settings";
 
   async function handleLogout() {
     try {
@@ -108,7 +110,13 @@ export function DashboardTopbar() {
             aria-label="Notifications"
             asChild
           >
-            <Link href={`${settingsPath}?tab=notifications`}>
+            <Link
+              href={
+                role === "vendor"
+                  ? `${settingsPath}#notifications`
+                  : `${settingsPath}?tab=notifications`
+              }
+            >
               <Bell />
             </Link>
           </Button>
@@ -142,6 +150,12 @@ export function DashboardTopbar() {
               className="min-w-52 p-2"
             >
               <DropdownMenuGroup>
+                <DropdownMenuItem asChild className="py-2">
+                  <Link href={profilePath}>
+                    <UserRound />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild className="py-2">
                   <Link href="/">
                     <House />

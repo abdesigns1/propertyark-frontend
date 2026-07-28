@@ -1,5 +1,5 @@
-import { FutureFeature } from "@/features/dashboard/components/future-feature";
+import { MortgageCalculator } from "@/features/vendor/components/vendor-mortgage";
 
 export default function BuyerMortgagePage() {
-  return <FutureFeature feature="Mortgage" />;
+  return <MortgageCalculator />;
 }

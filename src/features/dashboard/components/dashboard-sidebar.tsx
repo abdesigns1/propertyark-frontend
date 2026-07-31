@@ -52,7 +52,7 @@ const vendorNavigation = [
   {
     label: "Subscription & Rewards",
     icon: BadgePercent,
-    href: "/vendor/dashboard#subscription-rewards",
+    href: "/vendor/subscription-rewards",
   },
   {
     label: "Messages",

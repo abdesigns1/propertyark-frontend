@@ -42,6 +42,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -156,10 +165,12 @@ function StatCard({
 function BookingsTable({
   bookings,
   onConfirm,
+  onSelect,
   onExport,
 }: {
   bookings: ShortletBooking[];
   onConfirm: (bookingId: string) => void;
+  onSelect: (bookingId: string) => void;
   onExport: () => void;
 }) {
   return (
@@ -190,7 +201,19 @@ function BookingsTable({
             <TableBody>
               {bookings.length ? (
                 bookings.map((booking) => (
-                  <TableRow key={booking.id}>
+                  <TableRow
+                    key={booking.id}
+                    role="button"
+                    tabIndex={0}
+                    className="cursor-pointer"
+                    onClick={() => onSelect(booking.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onSelect(booking.id);
+                      }
+                    }}
+                  >
                     <TableCell className="font-medium text-primary">
                       #{booking.id}
                     </TableCell>
@@ -225,11 +248,10 @@ function BookingsTable({
                           variant="ghost"
                           size="icon-sm"
                           aria-label={`Message ${booking.guestName}`}
-                          onClick={() =>
-                            toast.info(
-                              `Opening conversation with ${booking.guestName}.`,
-                            )
-                          }
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toast.info(`Opening conversation with ${booking.guestName}.`);
+                          }}
                         >
                           <MessageSquareText />
                         </Button>
@@ -238,7 +260,10 @@ function BookingsTable({
                           size="icon-sm"
                           aria-label={`Confirm booking ${booking.id}`}
                           disabled={booking.status !== "PENDING"}
-                          onClick={() => onConfirm(booking.id)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onConfirm(booking.id);
+                          }}
                           className="text-primary hover:text-primary"
                         >
                           <Check />
@@ -263,6 +288,214 @@ function BookingsTable({
       </CardContent>
     </Card>
   );
+}
+
+function BookingDetailsSheet({
+  booking,
+  open,
+  onOpenChange,
+  onAccept,
+  onReject,
+}: {
+  booking: ShortletBooking | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAccept: (bookingId: string) => void;
+  onReject: (bookingId: string) => void;
+}) {
+  if (!booking) return null;
+  const nightlyRate = booking.nights ? booking.amount / booking.nights : 0;
+  const pending = booking.status === "PENDING";
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full gap-0 overflow-y-auto p-0 sm:max-w-[500px]"
+      >
+        <SheetHeader className="px-6 py-6 sm:px-8">
+          <SheetTitle className="text-lg">Booking Details</SheetTitle>
+          <SheetDescription>ID: {booking.id}</SheetDescription>
+        </SheetHeader>
+        <Separator />
+
+        <div className="flex flex-1 flex-col gap-8 px-6 py-7 sm:px-8">
+          <section className="flex items-start gap-4">
+            <Avatar className="size-20 rounded-xl">
+              <AvatarFallback className="rounded-xl bg-primary/10 text-lg font-semibold text-primary">
+                {booking.guestInitials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 pt-1">
+              <p className="font-semibold">{booking.guestName}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Guest · {booking.completedStays ?? 0} completed stays
+              </p>
+              {booking.membership ? (
+                <Badge variant="secondary" className="mt-3 text-[10px] uppercase">
+                  {booking.membership}
+                </Badge>
+              ) : null}
+            </div>
+          </section>
+
+          <section className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border bg-surface/50 p-4">
+              <p className="text-sm uppercase text-muted-foreground">Check-in</p>
+              <p className="mt-2 font-semibold">
+                {dateFormatter.format(new Date(booking.checkIn))}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                from {booking.checkInTime ?? "2:00 PM"}
+              </p>
+            </div>
+            <div className="rounded-xl border bg-surface/50 p-4">
+              <p className="text-sm uppercase text-muted-foreground">Check-out</p>
+              <p className="mt-2 font-semibold">
+                {dateFormatter.format(new Date(booking.checkOut))}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                by {booking.checkOutTime ?? "11:00 AM"}
+              </p>
+            </div>
+          </section>
+
+          <section className="flex flex-col gap-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Property &amp; Payment
+            </h3>
+            <dl className="flex flex-col gap-4">
+              <BookingDetailRow label="Property" value={booking.propertyName} />
+              <BookingDetailRow label="Rate per night" value={currency.format(nightlyRate)} />
+              <BookingDetailRow
+                label={`Subtotal (${booking.nights} ${booking.nights === 1 ? "night" : "nights"})`}
+                value={currency.format(booking.amount)}
+              />
+            </dl>
+            <Separator />
+            <BookingDetailRow
+              label="Total Amount"
+              value={currency.format(booking.amount)}
+              emphasis
+            />
+          </section>
+
+          <section className="flex flex-col gap-5">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Booking Timeline
+            </h3>
+            <div className="border-l pl-5">
+              <TimelineEntry
+                active
+                title="Booking Requested"
+                detail={formatRequestedAt(booking.requestedAt)}
+              />
+              <TimelineEntry
+                title={
+                  booking.status === "PENDING"
+                    ? "Waiting for Acceptance"
+                    : booking.status === "CANCELLED"
+                      ? "Booking Rejected"
+                      : booking.status === "CONFIRMED"
+                        ? "Booking Confirmed"
+                        : "Stay Completed"
+                }
+                detail={
+                  booking.status === "PENDING"
+                    ? "Awaiting vendor response"
+                    : "Temporary preview status"
+                }
+              />
+            </div>
+          </section>
+        </div>
+
+        <Separator />
+        <SheetFooter className="grid grid-cols-1 gap-3 px-6 py-6 sm:grid-cols-2 sm:px-8">
+          {pending ? (
+            <>
+              <Button
+                variant="outline"
+                size="lg"
+                className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => onReject(booking.id)}
+              >
+                Reject Booking
+              </Button>
+              <Button size="lg" onClick={() => onAccept(booking.id)}>
+                Accept &amp; Confirm
+              </Button>
+            </>
+          ) : (
+            <div className="col-span-full flex items-center justify-between gap-3">
+              <span className="text-sm text-muted-foreground">Current status</span>
+              <BookingStatusBadge status={booking.status} />
+            </div>
+          )}
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function BookingDetailRow({
+  label,
+  value,
+  emphasis = false,
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <dt className={cn(emphasis && "font-semibold")}>{label}</dt>
+      <dd
+        className={cn(
+          "max-w-[60%] text-right font-semibold tabular-nums",
+          emphasis && "text-primary",
+        )}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function TimelineEntry({
+  title,
+  detail,
+  active = false,
+}: {
+  title: string;
+  detail: string;
+  active?: boolean;
+}) {
+  return (
+    <div className="relative pb-7 last:pb-0">
+      <span
+        className={cn(
+          "absolute -left-[25px] top-1 size-2.5 rounded-full bg-muted-foreground/20",
+          active && "bg-primary",
+        )}
+      />
+      <p className={cn("font-medium", !active && "text-muted-foreground")}>{title}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
+function formatRequestedAt(value?: string) {
+  if (!value) return "Request time not available";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Request time not available";
+  return new Intl.DateTimeFormat("en-NG", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "Africa/Lagos",
+  }).format(date);
 }
 
 const calendarDays = [
@@ -362,6 +595,7 @@ export function ShortletBookingManagement() {
   const [availabilityProperty, setAvailabilityProperty] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [statusOverrides, setStatusOverrides] = useState<
     Record<string, ShortletBookingStatus>
   >({});
@@ -387,6 +621,8 @@ export function ShortletBookingManagement() {
         (propertyId === "ALL" || booking.propertyId === propertyId),
     );
   }, [bookings, propertyId, search, status]);
+  const selectedBooking =
+    bookings.find((booking) => booking.id === selectedBookingId) ?? null;
 
   if (dashboard.isLoading) {
     return (
@@ -425,7 +661,15 @@ export function ShortletBookingManagement() {
       ...current,
       [bookingId]: "CONFIRMED",
     }));
-    toast.success(`Booking #${bookingId} confirmed.`);
+    toast.success(`Booking #${bookingId} confirmed for this preview.`);
+  }
+
+  function rejectBooking(bookingId: string) {
+    setStatusOverrides((current) => ({
+      ...current,
+      [bookingId]: "CANCELLED",
+    }));
+    toast.success(`Booking #${bookingId} rejected for this preview.`);
   }
 
   function exportCsv() {
@@ -610,6 +854,7 @@ export function ShortletBookingManagement() {
           <BookingsTable
             bookings={filteredBookings}
             onConfirm={confirmBooking}
+            onSelect={setSelectedBookingId}
             onExport={exportCsv}
           />
 
@@ -762,6 +1007,16 @@ export function ShortletBookingManagement() {
           </Card>
         </aside>
       </div>
+
+      <BookingDetailsSheet
+        booking={selectedBooking}
+        open={Boolean(selectedBooking)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedBookingId(null);
+        }}
+        onAccept={confirmBooking}
+        onReject={rejectBooking}
+      />
     </div>
   );
 }

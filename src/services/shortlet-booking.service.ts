@@ -8,6 +8,9 @@ export interface ShortletBooking {
   id: string;
   guestName: string;
   guestInitials: string;
+  guestAvatarUrl?: string;
+  completedStays?: number;
+  membership?: string;
   propertyId: string;
   propertyName: string;
   checkIn: string;
@@ -15,6 +18,9 @@ export interface ShortletBooking {
   nights: number;
   amount: number;
   status: ShortletBookingStatus;
+  checkInTime?: string;
+  checkOutTime?: string;
+  requestedAt?: string;
 }
 
 export interface ShortletCalendarEvent {
@@ -73,6 +79,8 @@ const MOCK_SHORTLET_DASHBOARD: ShortletDashboardData = {
       id: "PA-8842",
       guestName: "David Johnson",
       guestInitials: "DJ",
+      completedStays: 5,
+      membership: "Premium Member",
       propertyId: "shortlet-ikoyi",
       propertyName: "Luxury 3 Bed, Ikoyi",
       checkIn: "2026-05-15",
@@ -80,11 +88,15 @@ const MOCK_SHORTLET_DASHBOARD: ShortletDashboardData = {
       nights: 5,
       amount: 500_000,
       status: "PENDING",
+      checkInTime: "2:00 PM",
+      checkOutTime: "11:00 AM",
+      requestedAt: "2026-05-14T09:12:00Z",
     },
     {
       id: "PA-8841",
       guestName: "Amara Okafor",
       guestInitials: "AO",
+      completedStays: 3,
       propertyId: "shortlet-lekki",
       propertyName: "Ocean View Suite, Lekki",
       checkIn: "2026-05-18",
@@ -92,11 +104,15 @@ const MOCK_SHORTLET_DASHBOARD: ShortletDashboardData = {
       nights: 4,
       amount: 680_000,
       status: "CONFIRMED",
+      checkInTime: "2:00 PM",
+      checkOutTime: "11:00 AM",
+      requestedAt: "2026-05-13T14:40:00Z",
     },
     {
       id: "PA-8839",
       guestName: "Tunde Cole",
       guestInitials: "TC",
+      completedStays: 2,
       propertyId: "shortlet-wuse",
       propertyName: "Executive Apartment, Wuse II",
       checkIn: "2026-05-21",
@@ -104,6 +120,9 @@ const MOCK_SHORTLET_DASHBOARD: ShortletDashboardData = {
       nights: 3,
       amount: 420_000,
       status: "PENDING",
+      checkInTime: "3:00 PM",
+      checkOutTime: "11:00 AM",
+      requestedAt: "2026-05-14T11:25:00Z",
     },
   ],
   pricing: {

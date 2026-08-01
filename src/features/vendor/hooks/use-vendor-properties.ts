@@ -17,6 +17,7 @@ export function useVendorProperties() {
     queryFn: () => propertyService.getVendorProperties({ page: 1, limit: 100 }),
     enabled: Boolean(accountKey),
     staleTime: 60_000,
+    refetchInterval: 30_000,
     retry: (failureCount, error) => {
       if (
         axios.isAxiosError(error) &&

@@ -11,6 +11,7 @@ import { PropertyMap } from "@/features/properties/components/property-map";
 import { PropertyReviews } from "@/features/properties/components/property-reviews";
 import { VendorContactCard } from "@/features/properties/components/vendor-contact-card";
 import { PropertyCard } from "@/features/properties/components/property-card";
+import { PropertyViewTracker } from "@/features/properties/components/property-view-tracker";
 import { Footer } from "@/components/shared/footer";
 import { getAvailablePropertiesServer } from "@/features/properties/server/get-available-properties";
 import { CONTAINER, cn } from "@/lib/utils";
@@ -36,6 +37,7 @@ export default async function PropertyDetailPage({
 
   return (
     <>
+      <PropertyViewTracker propertyId={property.id} />
       <Navbar reserveSpace />
       <Breadcrumb
         items={[

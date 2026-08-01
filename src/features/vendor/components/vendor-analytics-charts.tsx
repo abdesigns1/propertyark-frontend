@@ -51,6 +51,7 @@ const MONTH_FORMATTER = new Intl.DateTimeFormat("en-NG", { month: "short" });
 
 function derivePerformance(
   inquiries: VendorInquiry[],
+  totalViews: number,
 ): VendorPerformancePoint[] {
   const now = Date.now();
   return Array.from({ length: 4 }, (_, index) => {
@@ -64,7 +65,9 @@ function derivePerformance(
     return {
       label: `Week ${index + 1}`,
       date: null,
-      views: 0,
+      // A cumulative backend count has no historical timestamps, so show it on
+      // the latest point instead of presenting a misleading all-zero chart.
+      views: index === 3 ? totalViews : 0,
       inquiries: inquiriesInWeek,
     };
   });
@@ -105,18 +108,20 @@ function derivePropertyStatus(
 function PerformanceChart({
   performance,
   inquiries,
+  totalViews,
 }: {
   performance: VendorPerformancePoint[];
   inquiries: VendorInquiry[];
+  totalViews: number;
 }) {
   const [range, setRange] = useState("30");
   const data = useMemo(() => {
     const source = performance.length
       ? performance
-      : derivePerformance(inquiries);
+      : derivePerformance(inquiries, totalViews);
     const pointCount = range === "7" ? 2 : range === "90" ? 12 : 4;
     return source.slice(-pointCount);
-  }, [inquiries, performance, range]);
+  }, [inquiries, performance, range, totalViews]);
 
   return (
     <Card className="min-h-[520px]">
@@ -298,18 +303,24 @@ export function VendorAnalyticsCharts({
   propertyStatus,
   inquiries,
   properties,
+  totalViews,
 }: {
   performance: VendorPerformancePoint[];
   propertyStatus: VendorPropertyStatusPoint[];
   inquiries: VendorInquiry[];
   properties: Property[];
+  totalViews: number;
 }) {
   return (
     <section
       aria-label="Vendor analytics"
       className="grid gap-6 xl:grid-cols-2"
     >
-      <PerformanceChart performance={performance} inquiries={inquiries} />
+      <PerformanceChart
+        performance={performance}
+        inquiries={inquiries}
+        totalViews={totalViews}
+      />
       <PropertyStatusChart
         propertyStatus={propertyStatus}
         properties={properties}

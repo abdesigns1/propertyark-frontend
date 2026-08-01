@@ -16,6 +16,7 @@ export function useVendorDashboard() {
     queryFn: vendorService.getDashboard,
     enabled: Boolean(accountKey),
     staleTime: 30_000,
+    refetchInterval: 30_000,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });

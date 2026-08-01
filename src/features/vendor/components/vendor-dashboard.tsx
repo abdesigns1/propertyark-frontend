@@ -337,6 +337,15 @@ export function VendorDashboard() {
       ),
     [vendorPropertiesQuery.data?.properties],
   );
+  const totalPropertyViews = useMemo(
+    () =>
+      (vendorPropertiesQuery.data?.properties ?? []).reduce(
+        (total, property) =>
+          total + (property.viewCount ?? property.views ?? 0),
+        0,
+      ),
+    [vendorPropertiesQuery.data?.properties],
+  );
   // Listing totals come from the same authenticated collection as My Properties;
   // inquiry and sales metrics continue to come from the dashboard endpoint.
   const stats = vendorPropertiesQuery.data
@@ -432,6 +441,7 @@ export function VendorDashboard() {
         propertyStatus={dashboard.data?.propertyStatus ?? []}
         inquiries={dashboard.data?.inquiries ?? []}
         properties={vendorProperties}
+        totalViews={totalPropertyViews}
       />
 
       {availableProperties.isLoading ? (

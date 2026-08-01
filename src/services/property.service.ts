@@ -176,6 +176,10 @@ export const propertyService = {
     });
     return normalizeVendorPropertiesResponse(data, page, limit);
   },
+  getById: async (propertyId: string) => {
+    const { data } = await api.get<unknown>(`/properties/${propertyId}`);
+    return unwrapProperty(data);
+  },
   getAvailable: async ({
     page = 1,
     limit = 12,

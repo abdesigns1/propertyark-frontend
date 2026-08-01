@@ -35,13 +35,23 @@ function getPrice(property: PropertyApiItem) {
   return property.shortletAmount ?? 0;
 }
 
+export function normalizePropertyMediaUrl(url: string) {
+  // The hosted backend sometimes serializes its own upload URLs as HTTP even
+  // though Render serves them over HTTPS. Upgrade only this known host to avoid
+  // mixed-content failures without rewriting third-party image URLs.
+  return url.replace(
+    /^http:\/\/propertyark-backend\.onrender\.com(?=\/)/,
+    "https://propertyark-backend.onrender.com",
+  );
+}
+
 export function normalizePropertyResponse(property: PropertyApiItem): Property {
   const media = [...(property.media ?? [])].sort(
     (a, b) => Number(b.isPrimary) - Number(a.isPrimary),
   );
   const images = media
     .filter((item) => item.type === "IMAGE")
-    .map((item) => item.url);
+    .map((item) => normalizePropertyMediaUrl(item.url));
   return {
     id: property.id,
     title: property.name,

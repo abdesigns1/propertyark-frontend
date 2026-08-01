@@ -4,7 +4,10 @@ import type {
   PropertyApiItem,
   PropertyMediaResponse,
 } from "@/features/properties/types/api";
-import { normalizePropertyResponse } from "@/features/properties/utils/normalize-property-response";
+import {
+  normalizePropertyMediaUrl,
+  normalizePropertyResponse,
+} from "@/features/properties/utils/normalize-property-response";
 
 export interface AvailablePropertyFilters {
   listingTypes?: string[];
@@ -25,6 +28,76 @@ export interface VendorPropertiesResult {
   pagination: { page: number; limit: number; total: number; pages: number };
 }
 
+type UnknownRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): UnknownRecord {
+  return value && typeof value === "object" ? (value as UnknownRecord) : {};
+}
+
+function normalizeMediaItem(value: unknown): PropertyMediaResponse | null {
+  if (typeof value === "string" && value.trim()) {
+    return { id: value, url: value, type: "IMAGE", isPrimary: false };
+  }
+
+  const media = asRecord(value);
+  const id = media.id ?? media._id ?? media.mediaId;
+  const url =
+    media.url ?? media.fileUrl ?? media.secureUrl ?? media.path ?? media.location;
+  if (typeof id !== "string" || typeof url !== "string") return null;
+
+  const rawType = String(media.type ?? media.mediaType ?? media.resourceType ?? "")
+    .toUpperCase();
+  const type = rawType.includes("VIDEO") ? "VIDEO" : "IMAGE";
+
+  return {
+    id,
+    url: normalizePropertyMediaUrl(url),
+    type,
+    isPrimary: Boolean(
+      media.isPrimary ?? media.primary ?? media.isCover ?? media.cover,
+    ),
+  };
+}
+
+/** Handles both `{ data: [] }` and `{ data: { media: [] } }` API envelopes. */
+function normalizeMediaResponse(value: unknown): PropertyMediaResponse[] {
+  const root = asRecord(value);
+  const data = root.data ?? value;
+  const source = Array.isArray(data)
+    ? data
+    : [
+        asRecord(data).media,
+        asRecord(data).items,
+        asRecord(data).results,
+        root.media,
+      ].find(Array.isArray) ?? [];
+
+  return source
+    .map(normalizeMediaItem)
+    .filter((item): item is PropertyMediaResponse => Boolean(item));
+}
+
+function normalizeVendorProperty(value: unknown): PropertyApiItem {
+  const property = asRecord(value) as unknown as PropertyApiItem;
+  const source = asRecord(value);
+  const embeddedMedia =
+    [source.media, source.medias, source.photos, source.images].find(
+      Array.isArray,
+    ) ?? [];
+
+  return {
+    ...property,
+    media: normalizeMediaResponse({ data: embeddedMedia }),
+  };
+}
+
+function unwrapProperty(value: unknown): PropertyApiItem {
+  const root = asRecord(value);
+  const data = asRecord(root.data);
+  const candidate = data.property ?? root.property ?? root.data ?? value;
+  return normalizeVendorProperty(candidate);
+}
+
 function normalizeVendorPropertiesResponse(
   value: unknown,
   page: number,
@@ -35,10 +108,11 @@ function normalizeVendorPropertiesResponse(
       ? (value as Record<string, unknown>)
       : {};
   const data =
-    root.data && typeof root.data === "object"
+    root.data && typeof root.data === "object" && !Array.isArray(root.data)
       ? (root.data as Record<string, unknown>)
       : root;
   const properties = [
+    Array.isArray(root.data) ? root.data : undefined,
     data.properties,
     data.items,
     data.results,
@@ -48,7 +122,7 @@ function normalizeVendorPropertiesResponse(
     data.pagination && typeof data.pagination === "object"
       ? (data.pagination as Record<string, unknown>)
       : data;
-  const rows = properties ?? [];
+  const rows = (properties ?? []).map(normalizeVendorProperty);
   const numberValue = (key: string, fallback: number) => {
     const candidate = paginationSource[key];
     return typeof candidate === "number"
@@ -141,18 +215,15 @@ export const propertyService = {
   },
   getAllAvailable: getFilteredAvailable,
   create: async (payload: FormData) => {
-    const { data } = await api.post<{ data: PropertyApiItem }>(
-      "/properties",
-      payload,
-    );
-    return normalizePropertyResponse(data.data);
+    const { data } = await api.post<unknown>("/properties", payload);
+    return unwrapProperty(data);
   },
   update: async (propertyId: string, payload: FormData) => {
-    const { data } = await api.patch<{ data: PropertyApiItem }>(
+    const { data } = await api.patch<unknown>(
       `/properties/${propertyId}`,
       payload,
     );
-    return normalizePropertyResponse(data.data);
+    return unwrapProperty(data);
   },
   remove: async (propertyId: string) => {
     if (propertyId.startsWith("draft:")) {
@@ -166,10 +237,17 @@ export const propertyService = {
     return data;
   },
   getMedia: async (propertyId: string) => {
-    const { data } = await api.get<{ data: PropertyMediaResponse[] }>(
+    const { data } = await api.get<unknown>(
       `/properties/${propertyId}/media`,
     );
-    return data.data;
+    return normalizeMediaResponse(data);
+  },
+  uploadMedia: async (propertyId: string, payload: FormData) => {
+    const { data } = await api.post<unknown>(
+      `/properties/${propertyId}/media`,
+      payload,
+    );
+    return normalizeMediaResponse(data);
   },
   setPrimaryMedia: async (mediaId: string) => {
     const { data } = await api.patch(`/properties/media/${mediaId}/primary`);

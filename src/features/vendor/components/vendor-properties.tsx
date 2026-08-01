@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -77,107 +76,18 @@ import { getApiErrorMessage } from "@/services/api-error";
 import { propertyService } from "@/services/property.service";
 import {
   getPropertyDrafts,
-  type PropertyDraft,
 } from "@/features/vendor/lib/property-drafts";
+import {
+  draftAsProperty,
+  formatPropertyPrice,
+  propertyStatus as getPropertyStatus,
+  propertyStatusVariant,
+  type PropertyDraftValues,
+} from "@/features/vendor/lib/vendor-property-display";
+import { VendorPropertyThumbnail } from "@/features/vendor/components/vendor-property-thumbnail";
 
 const PAGE_SIZE = 6;
 const EMPTY_PROPERTIES: PropertyApiItem[] = [];
-type ListingStatus = "published" | "pending" | "draft" | "rejected";
-type DraftValues = {
-  name?: string;
-  description?: string;
-  type?: string;
-  listingType?: string;
-  price?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  size?: string;
-  sizeUnit?: string;
-  bedrooms?: string;
-  bathrooms?: string;
-  amenities?: string[];
-};
-
-function draftAsProperty(draft: PropertyDraft<DraftValues>): PropertyApiItem {
-  const values = draft.values;
-  const amount = Number(values.price) || 0;
-  const listingType = values.listingType || "FOR_SALE";
-  return {
-    id: `draft:${draft.id}`,
-    name: values.name?.trim() || "Untitled property",
-    description: values.description || "Incomplete property draft",
-    type: values.type || "RESIDENTIAL",
-    listingType,
-    status: "DRAFT",
-    rentAmount: listingType === "FOR_RENT" ? amount : null,
-    salePrice: listingType === "FOR_SALE" ? amount : null,
-    landFee: listingType === "FOR_LAND" ? amount : null,
-    shortletAmount: listingType === "FOR_SHORTLET" ? amount : null,
-    address: values.address || "",
-    city: values.city || "",
-    state: values.state || "",
-    country: values.country || "Nigeria",
-    size: Number(values.size) || 0,
-    sizeUnit: values.sizeUnit,
-    bedrooms: Number(values.bedrooms) || 0,
-    bathrooms: Number(values.bathrooms) || 0,
-    amenities: values.amenities || [],
-    vendorId: "local",
-    createdAt: draft.updatedAt,
-  };
-}
-
-function price(property: PropertyApiItem) {
-  const amount =
-    property.listingType === "FOR_RENT"
-      ? property.rentAmount
-      : property.listingType === "FOR_LAND"
-        ? property.landFee
-        : property.listingType === "FOR_SHORTLET"
-          ? property.shortletAmount
-          : property.salePrice;
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(amount ?? 0);
-}
-
-function statusOf(property: PropertyApiItem): {
-  key: ListingStatus;
-  label: string;
-} {
-  const raw = (
-    property.approvalStatus ||
-    property.status ||
-    "PENDING_REVIEW"
-  ).toUpperCase();
-  if (["AVAILABLE", "APPROVED", "PUBLISHED"].includes(raw))
-    return { key: "published", label: "Published" };
-  if (raw.includes("DRAFT")) return { key: "draft", label: "Draft" };
-  if (["REJECTED", "DECLINED"].includes(raw))
-    return { key: "rejected", label: "Rejected" };
-  return { key: "pending", label: "Pending review" };
-}
-
-function imageOf(property: PropertyApiItem) {
-  return (
-    [...(property.media ?? [])]
-      .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary))
-      .find((item) => item.type === "IMAGE")?.url ??
-    "/assets/images/hero-property.jpeg"
-  );
-}
-
-function statusVariant(
-  key: string,
-): "default" | "secondary" | "outline" | "destructive" {
-  if (key === "published") return "default";
-  if (key === "rejected") return "destructive";
-  return key === "pending" ? "secondary" : "outline";
-}
 
 function StatCard({
   title,
@@ -225,7 +135,7 @@ export function VendorProperties() {
   const [draftProperties, setDraftProperties] = useState<PropertyApiItem[]>([]);
   useEffect(() => {
     const load = async () => {
-      const drafts = await getPropertyDrafts<DraftValues>();
+      const drafts = await getPropertyDrafts<PropertyDraftValues>();
       queueMicrotask(() => setDraftProperties(drafts.map(draftAsProperty)));
     };
     void load();
@@ -252,7 +162,7 @@ export function VendorProperties() {
     () =>
       properties.reduce(
         (result, property) => {
-          result[statusOf(property).key] += 1;
+          result[getPropertyStatus(property).key] += 1;
           return result;
         },
         { published: 0, pending: 0, draft: 0, rejected: 0 },
@@ -263,7 +173,7 @@ export function VendorProperties() {
     () =>
       properties.filter((property) => {
         const term = search.trim().toLocaleLowerCase();
-        const propertyStatus = statusOf(property).key;
+        const propertyStatus = getPropertyStatus(property).key;
         return (
           (!term ||
             [
@@ -525,16 +435,14 @@ export function VendorProperties() {
                 </TableHeader>
                 <TableBody>
                   {visible.map((property) => {
-                    const propertyStatus = statusOf(property);
+                    const propertyStatus = getPropertyStatus(property);
                     return (
                       <TableRow key={property.id} className="h-24">
                         <TableCell className="pl-6">
                           <div className="flex min-w-56 items-center gap-3">
                             <div className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-muted">
-                              <Image
-                                src={imageOf(property)}
-                                alt=""
-                                fill
+                              <VendorPropertyThumbnail
+                                property={property}
                                 sizes="56px"
                                 className="object-cover"
                               />
@@ -557,13 +465,15 @@ export function VendorProperties() {
                           </p>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {price(property)}
+                          {formatPropertyPrice(property)}
                         </TableCell>
                         <TableCell className="capitalize">
                           {property.type.replaceAll("_", " ").toLowerCase()}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={statusVariant(propertyStatus.key)}>
+                          <Badge
+                            variant={propertyStatusVariant(propertyStatus.key)}
+                          >
                             {propertyStatus.label}
                           </Badge>
                         </TableCell>
@@ -600,9 +510,13 @@ export function VendorProperties() {
                                     View listing
                                   </Link>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem disabled>
-                                  <FilePenLine />
-                                  Edit property
+                                <DropdownMenuItem asChild>
+                                  <Link
+                                    href={`/vendor/properties/new?edit=${property.id}`}
+                                  >
+                                    <FilePenLine />
+                                    Edit property
+                                  </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   variant="destructive"

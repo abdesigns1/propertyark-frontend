@@ -49,52 +49,17 @@ import {
 import { useAccountKey } from "@/lib/account-identity";
 import { useAuthStore } from "@/store/auth.store";
 import { useVendorDashboard } from "@/features/vendor/hooks/use-vendor-dashboard";
+import {
+  displayProfileValue,
+  formatAccountAge,
+  formatActivityDate,
+  formatCompactCurrency,
+  isVerificationComplete,
+  profileInitials,
+} from "@/features/vendor/lib/vendor-profile-display";
 
 const profileQueryRoot = ["vendor", "settings", "profile"] as const;
 
-function initials(name: string) {
-  return (
-    name
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part.charAt(0))
-      .join("")
-      .toUpperCase() || "PA"
-  );
-}
-
-function displayValue(value: string) {
-  return value.trim() || "Not provided";
-}
-
-function isComplete(status: string) {
-  return ["VERIFIED", "COMPLETED", "APPROVED", "ACTIVE"].includes(
-    status.toUpperCase(),
-  );
-}
-
-function compactCurrency(value: number) {
-  if (!value) return "—";
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(value);
-}
-
-function accountAge(createdAt: string | null) {
-  if (!createdAt) return "Membership date unavailable";
-  const date = new Date(createdAt);
-  if (Number.isNaN(date.getTime())) return "Membership date unavailable";
-  const years = Math.max(
-    0,
-    Math.floor((Date.now() - date.getTime()) / (365.25 * 24 * 60 * 60 * 1000)),
-  );
-  return years
-    ? `${years} ${years === 1 ? "year" : "years"} on PropertyArk`
-    : "New to PropertyArk";
-}
 
 export function VendorProfile() {
   const accountKey = useAccountKey();
@@ -224,7 +189,7 @@ export function VendorProfile() {
   const responseRate = totalResponses
     ? Math.round(((stats?.acceptedInquiries ?? 0) / totalResponses) * 100)
     : null;
-  const verified = isComplete(data.identityVerificationStatus);
+  const verified = isVerificationComplete(data.identityVerificationStatus);
 
   const downloadReport = () => {
     const rows = [
@@ -262,7 +227,7 @@ export function VendorProfile() {
                 className="rounded-2xl object-cover"
               />
               <AvatarFallback className="rounded-2xl text-2xl">
-                {initials(name)}
+                {profileInitials(name)}
               </AvatarFallback>
             </Avatar>
             <Button
@@ -313,7 +278,7 @@ export function VendorProfile() {
               <Separator orientation="vertical" className="h-10" />
               <ProfileStat
                 label="Total Sales"
-                value={compactCurrency(stats?.totalSales ?? 0)}
+                value={formatCompactCurrency(stats?.totalSales ?? 0)}
               />
               <Separator orientation="vertical" className="h-10" />
               <ProfileStat
@@ -458,7 +423,7 @@ function ReadOnlyField({
             : "flex h-11 items-center rounded-lg border bg-surface/50 px-3 text-muted-foreground"
         }
       >
-        {displayValue(value)}
+        {displayProfileValue(value)}
       </div>
     </Field>
   );
@@ -497,7 +462,7 @@ function PublicProfilePreview({
             <Avatar className="size-24">
               <AvatarImage src={avatarUrl} alt={name} />
               <AvatarFallback className="text-xl">
-                {initials(name)}
+                {profileInitials(name)}
               </AvatarFallback>
             </Avatar>
             <div>
@@ -513,7 +478,7 @@ function PublicProfilePreview({
                 {verified
                   ? "Identity verified"
                   : "Identity verification pending"}{" "}
-                · {accountAge(profile.createdAt)}
+                · {formatAccountAge(profile.createdAt)}
               </p>
             </div>
           </div>
@@ -560,7 +525,7 @@ function VerificationProgress({ profile }: { profile: VendorSettingsProfile }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {rows.map(([label, status]) => {
-          const complete = isComplete(status);
+          const complete = isVerificationComplete(status);
           return (
             <div
               key={label}
@@ -701,15 +666,6 @@ function RecentActivity() {
       </CardContent>
     </Card>
   );
-}
-
-function formatActivityDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Recently";
-  return new Intl.DateTimeFormat("en-NG", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
 }
 
 function AccountManagement() {

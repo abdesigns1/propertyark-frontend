@@ -65,6 +65,24 @@ import {
 } from "@/features/vendor/hooks/use-vendor-inspections";
 import { useVendorProperties } from "@/features/vendor/hooks/use-vendor-properties";
 import { ScheduleInspectionDialog } from "@/features/vendor/components/schedule-inspection-dialog";
+import {
+  calendarDays,
+  calendarEventTone,
+  dateKey,
+  formatInspectionTime,
+  formatMeetingType,
+  formatShortDate,
+  formatTimelineDate,
+  inspectionCode,
+  isSameDay,
+  monthStart,
+  nameInitials,
+  nearestInspectionDate,
+  normalizeMeetingType,
+  parseInspectionDate,
+  statTone,
+  statusLabel,
+} from "@/features/vendor/lib/inspection-display";
 import { cn } from "@/lib/utils";
 import type {
   VendorInspection,
@@ -674,7 +692,7 @@ function InspectionCalendar({
   const grouped = useMemo(() => {
     const groups = new Map<string, VendorInspection[]>();
     inspections.forEach((inspection) => {
-      const date = parseDate(inspection.inspectionDate);
+      const date = parseInspectionDate(inspection.inspectionDate);
       if (!date) return;
       const key = dateKey(date);
       groups.set(key, [...(groups.get(key) ?? []), inspection]);
@@ -877,132 +895,4 @@ function InspectionsSkeleton() {
       </div>
     </div>
   );
-}
-
-function normalizeMeetingType(value: string | null) {
-  const normalized = value?.toUpperCase() ?? "";
-  return normalized.includes("VIDEO") || normalized.includes("VIRTUAL") ? "virtual" : "physical";
-}
-
-function formatMeetingType(value: string | null) {
-  return normalizeMeetingType(value) === "virtual" ? "Virtual" : "Physical";
-}
-
-function inspectionCode(inspection: VendorInspection) {
-  if (inspection.propertyReference?.toUpperCase().startsWith("INS-")) {
-    return inspection.propertyReference;
-  }
-  return `INS-${inspection.id.replace(/[^a-zA-Z0-9]/g, "").slice(-10).toUpperCase()}`;
-}
-
-function nameInitials(name: string) {
-  return name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
-}
-
-function parseDate(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatShortDate(value: string) {
-  const date = parseDate(value);
-  return date
-    ? new Intl.DateTimeFormat("en-NG", { month: "short", day: "numeric", year: "numeric" }).format(date)
-    : "Date not set";
-}
-
-function formatInspectionTime(inspection: VendorInspection) {
-  if (inspection.time) return inspection.time;
-  const date = parseDate(inspection.inspectionDate);
-  return date
-    ? new Intl.DateTimeFormat("en-NG", { hour: "numeric", minute: "2-digit" }).format(date)
-    : "Time not set";
-}
-
-function formatTimelineDate(value: string) {
-  const date = parseDate(value);
-  return date
-    ? new Intl.DateTimeFormat("en-NG", {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      }).format(date)
-    : "Not recorded";
-}
-
-function statusLabel(status: string) {
-  return ({
-    ACCEPTED: "Confirmed",
-    CONFIRMED: "Confirmed",
-    SCHEDULED: "Scheduled",
-    PENDING: "Pending",
-    COMPLETED: "Completed",
-    DECLINED: "Declined",
-    REJECTED: "Declined",
-    CANCELLED: "Cancelled",
-  } as Record<string, string>)[status] ?? status;
-}
-
-function monthStart(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-function nearestInspectionDate(inspections: VendorInspection[]) {
-  const now = Date.now();
-  return inspections
-    .map((inspection) => parseDate(inspection.inspectionDate))
-    .filter((date): date is Date => Boolean(date))
-    .sort(
-      (first, second) =>
-        Math.abs(first.getTime() - now) - Math.abs(second.getTime() - now),
-    )[0];
-}
-
-function calendarDays(month: Date) {
-  const first = monthStart(month);
-  const start = new Date(first);
-  start.setDate(first.getDate() - first.getDay());
-  const last = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-  const cells = first.getDay() + last.getDate() > 35 ? 42 : 35;
-  return Array.from({ length: cells }, (_, index) => {
-    const day = new Date(start);
-    day.setDate(start.getDate() + index);
-    return day;
-  });
-}
-
-function dateKey(date: Date) {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0"),
-  ].join("-");
-}
-
-function isSameDay(first: Date, second: Date) {
-  return dateKey(first) === dateKey(second);
-}
-
-function calendarEventTone(status: string) {
-  if (["DECLINED", "REJECTED", "CANCELLED"].includes(status)) {
-    return "border-destructive bg-destructive/10 text-destructive";
-  }
-  if (status === "PENDING") {
-    return "border-secondary bg-secondary/10 text-secondary";
-  }
-  if (status === "COMPLETED") {
-    return "border-success bg-success/10 text-success";
-  }
-  return "border-primary bg-primary/10 text-primary";
-}
-
-function statTone(tone: string) {
-  return ({
-    blue: "bg-primary/10 text-primary",
-    orange: "bg-secondary/10 text-secondary",
-    green: "bg-success/10 text-success",
-    red: "bg-destructive/10 text-destructive",
-    brown: "bg-warning/10 text-warning",
-  } as Record<string, string>)[tone];
 }

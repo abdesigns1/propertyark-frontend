@@ -3,9 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  ChangeEvent,
-  DragEvent,
   useEffect,
   useMemo,
   useRef,
@@ -20,12 +19,10 @@ import {
   FileText,
   ImagePlus,
   Info,
-  Lightbulb,
   LoaderCircle,
   MapPin,
   ShieldCheck,
   Trash2,
-  UploadCloud,
   Video,
   X,
 } from "lucide-react";
@@ -62,6 +59,28 @@ import { Textarea } from "@/components/ui/textarea";
 import { getApiErrorMessage } from "@/services/api-error";
 import { propertyService } from "@/services/property.service";
 import { cn } from "@/lib/utils";
+import { useAccountKey } from "@/lib/account-identity";
+import { vendorDashboardQueryKey } from "@/features/vendor/hooks/use-vendor-dashboard";
+import {
+  useVendorProperties,
+  vendorPropertiesQueryKey,
+} from "@/features/vendor/hooks/use-vendor-properties";
+import type { PropertyMediaResponse } from "@/features/properties/types/api";
+import {
+  PropertyFileList,
+  PropertyStepper,
+  PropertyTipCard,
+  PropertyUploadBox,
+} from "@/features/vendor/components/add-property-wizard-ui";
+import {
+  formatPropertyMoney,
+  INITIAL_PROPERTY_VALUES,
+  PRICE_FIELDS,
+  PRICE_LABELS,
+  readablePropertyValue,
+  type AddPropertyFormValues,
+  type LegalFiles,
+} from "@/features/vendor/lib/add-property-form";
 import {
   deletePropertyDraft,
   getDraftMedia,
@@ -71,239 +90,22 @@ import {
   savePropertyDraft,
 } from "@/features/vendor/lib/property-drafts";
 
-type ListingType = "FOR_SALE" | "FOR_RENT" | "FOR_LAND" | "FOR_SHORTLET";
-type PropertyType =
-  | "RESIDENTIAL"
-  | "COMMERCIAL"
-  | "INDUSTRIAL"
-  | "LAND"
-  | "MIXED_USE";
-type FormValues = {
-  name: string;
-  description: string;
-  type: PropertyType;
-  listingType: ListingType;
-  price: string;
-  address: string;
-  city: string;
-  state: string;
-  country: string;
-  zipCode: string;
-  size: string;
-  sizeUnit: string;
-  bedrooms: string;
-  bathrooms: string;
-  amenities: string[];
-};
-type LegalFiles = { ownership: File[]; identification: File[]; tax: File[] };
-
-const initialValues: FormValues = {
-  name: "",
-  description: "",
-  type: "RESIDENTIAL",
-  listingType: "FOR_SALE",
-  price: "",
-  address: "",
-  city: "",
-  state: "",
-  country: "Nigeria",
-  zipCode: "",
-  size: "",
-  sizeUnit: "sqm",
-  bedrooms: "",
-  bathrooms: "",
-  amenities: [],
-};
-const steps = ["Basic Info", "Details", "Images", "Legal documents", "Review"];
-const priceFields: Record<ListingType, string> = {
-  FOR_SALE: "salePrice",
-  FOR_RENT: "rentAmount",
-  FOR_LAND: "landFee",
-  FOR_SHORTLET: "shortletAmount",
-};
-const priceLabels: Record<ListingType, string> = {
-  FOR_SALE: "Asking Price",
-  FOR_RENT: "Monthly Rent",
-  FOR_LAND: "Land Fee",
-  FOR_SHORTLET: "Shortlet Amount",
-};
-
-function readable(value: string) {
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-function formatMoney(value: string) {
-  const number = Number(value);
-  return number
-    ? new Intl.NumberFormat("en-NG", {
-        style: "currency",
-        currency: "NGN",
-        maximumFractionDigits: 0,
-      }).format(number)
-    : "Price not set";
-}
-
-function Stepper({ current }: { current: number }) {
-  return (
-    <ol className="grid grid-cols-5" aria-label="Property creation progress">
-      {steps.map((label, index) => (
-        <li
-          key={label}
-          className="relative flex flex-col items-center gap-2 text-center"
-        >
-          {index > 0 && (
-            <span
-              className={cn(
-                "absolute right-1/2 top-5 h-px w-full bg-border",
-                index <= current && "bg-primary",
-              )}
-            />
-          )}
-          <span
-            className={cn(
-              "relative flex size-10 items-center justify-center rounded-full bg-muted font-semibold text-muted-foreground ring-4 ring-background",
-              index < current && "bg-primary text-primary-foreground",
-              index === current &&
-                "bg-primary text-primary-foreground ring-primary/20",
-            )}
-          >
-            {index < current ? <Check aria-hidden="true" /> : index + 1}
-          </span>
-          <span
-            className={cn(
-              "hidden text-xs font-medium sm:block",
-              index === current && "text-primary",
-            )}
-          >
-            {label}
-          </span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function TipCard({
-  title = "Expert Tip",
-  children,
-}: {
-  title?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Card className="bg-primary/5">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-primary">
-          <Lightbulb className="size-5" />
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="leading-6 text-muted-foreground">
-        {children}
-      </CardContent>
-    </Card>
-  );
-}
-
-function UploadBox({
-  title,
-  description,
-  accept,
-  multiple = true,
-  icon: Icon,
-  onFiles,
-}: {
-  title: string;
-  description: string;
-  accept: string;
-  multiple?: boolean;
-  icon: typeof UploadCloud;
-  onFiles: (files: File[]) => void;
-}) {
-  const input = useRef<HTMLInputElement>(null);
-  const handle = (files: FileList | null) =>
-    files && onFiles(Array.from(files));
-  return (
-    <button
-      type="button"
-      onClick={() => input.current?.click()}
-      onDragOver={(event) => event.preventDefault()}
-      onDrop={(event: DragEvent<HTMLButtonElement>) => {
-        event.preventDefault();
-        handle(event.dataTransfer.files);
-      }}
-      className="flex min-h-56 w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-8 text-center transition-colors hover:bg-primary/10"
-    >
-      <span className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-        <Icon className="size-7" />
-      </span>
-      <span className="text-lg font-semibold">{title}</span>
-      <span className="max-w-md text-sm text-muted-foreground">
-        {description}
-      </span>
-      <Badge variant="secondary">Click or drag and drop</Badge>
-      <input
-        ref={input}
-        type="file"
-        accept={accept}
-        multiple={multiple}
-        className="hidden"
-        onChange={(event: ChangeEvent<HTMLInputElement>) => {
-          handle(event.target.files);
-          event.target.value = "";
-        }}
-      />
-    </button>
-  );
-}
-
-function FileList({
-  files,
-  onRemove,
-}: {
-  files: File[];
-  onRemove?: (index: number) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      {files.map((file, index) => (
-        <div
-          key={`${file.name}-${file.lastModified}`}
-          className="flex items-center gap-3 rounded-lg border p-3"
-        >
-          <FileText className="size-5 text-primary" />
-          <span className="min-w-0 flex-1 truncate text-sm">{file.name}</span>
-          <Badge variant="outline">
-            {(file.size / 1024 / 1024).toFixed(1)} MB
-          </Badge>
-          {onRemove && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Remove ${file.name}`}
-              onClick={() => onRemove(index)}
-            >
-              <Trash2 />
-            </Button>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function AddPropertyWizard({
   initialDraftId,
+  initialPropertyId,
 }: {
   initialDraftId: string | null;
+  initialPropertyId: string | null;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const accountKey = useAccountKey();
+  const vendorProperties = useVendorProperties();
+  const isEditing = Boolean(initialPropertyId);
   const [step, setStep] = useState(0);
-  const [values, setValues] = useState<FormValues>(initialValues);
+  const [values, setValues] = useState<AddPropertyFormValues>(
+    INITIAL_PROPERTY_VALUES,
+  );
   const [draftId, setDraftId] = useState<string | null>(null);
   const expiryTimer = useRef<number | null>(null);
   const [photos, setPhotos] = useState<File[]>([]);
@@ -318,18 +120,25 @@ export function AddPropertyWizard({
   const [terms, setTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
+  const [existingMedia, setExistingMedia] = useState<PropertyMediaResponse[]>(
+    [],
+  );
+  const editInitialized = useRef(false);
   const photoUrls = useMemo(
     () => photos.map((file) => ({ file, url: URL.createObjectURL(file) })),
     [photos],
   );
   useEffect(
+    // Object URLs retain browser memory until explicitly revoked.
     () => () => photoUrls.forEach(({ url }) => URL.revokeObjectURL(url)),
     [photoUrls],
   );
   useEffect(() => {
     if (!initialDraftId) return;
+    // Draft metadata lives in localStorage, while File objects are restored from
+    // IndexedDB because they cannot be serialized safely as JSON.
     void (async () => {
-      const draft = await getPropertyDraft<FormValues>(initialDraftId);
+      const draft = await getPropertyDraft<AddPropertyFormValues>(initialDraftId);
       if (!draft) {
         toast.error("This draft expired or no longer exists.");
         router.replace("/vendor/properties/new");
@@ -337,7 +146,7 @@ export function AddPropertyWizard({
       }
       const media = await getDraftMedia(initialDraftId);
       queueMicrotask(() => {
-        setValues({ ...initialValues, ...draft.values });
+        setValues({ ...INITIAL_PROPERTY_VALUES, ...draft.values });
         setStep(draft.step);
         setPhotos(media?.photos ?? []);
         setVideos(media?.videos ?? []);
@@ -349,16 +158,72 @@ export function AddPropertyWizard({
     })();
   }, [initialDraftId, router]);
   useEffect(() => {
+    if (!initialPropertyId || editInitialized.current) return;
+    const property = vendorProperties.data?.properties.find(
+      (item) => item.id === initialPropertyId,
+    );
+    if (!property) {
+      if (!vendorProperties.isLoading && vendorProperties.data) {
+        toast.error("The property could not be found in your listings.");
+        router.replace("/vendor/dashboard#properties");
+      }
+      return;
+    }
+
+    editInitialized.current = true;
+    const price =
+      property.listingType === "FOR_RENT"
+        ? property.rentAmount
+        : property.listingType === "FOR_LAND"
+          ? property.landFee
+          : property.listingType === "FOR_SHORTLET"
+            ? property.shortletAmount
+            : property.salePrice;
+    queueMicrotask(() =>
+      setValues({
+        name: property.name ?? "",
+        description: property.description ?? "",
+        type: property.type as AddPropertyFormValues["type"],
+        listingType:
+          property.listingType as AddPropertyFormValues["listingType"],
+        price: price == null ? "" : String(price),
+        address: property.address ?? "",
+        city: property.city ?? "",
+        state: property.state ?? "",
+        country: property.country ?? "Nigeria",
+        zipCode: property.zipCode ?? "",
+        size: property.size == null ? "" : String(property.size),
+        sizeUnit: property.sizeUnit ?? "sqm",
+        bedrooms:
+          property.bedrooms == null ? "" : String(property.bedrooms),
+        bathrooms:
+          property.bathrooms == null ? "" : String(property.bathrooms),
+        amenities: property.amenities ?? [],
+      }),
+    );
+    void (async () => {
+      try {
+        const media = property.media?.length
+          ? property.media
+          : await propertyService.getMedia(property.id);
+        setExistingMedia(media);
+      } catch {
+        setExistingMedia(property.media ?? []);
+      }
+    })();
+  }, [initialPropertyId, router, vendorProperties.data, vendorProperties.isLoading]);
+  useEffect(() => {
     if (!draftId) return;
+    // Debounce autosaves and restart the one-hour inactivity window after edits.
     const timeout = window.setTimeout(() => {
       savePropertyDraft(values, step, draftId);
       void saveDraftMedia(draftId, { photos, videos, documents });
       if (expiryTimer.current) window.clearTimeout(expiryTimer.current);
       expiryTimer.current = window.setTimeout(() => {
-        void deletePropertyDraft<FormValues>(draftId);
+        void deletePropertyDraft<AddPropertyFormValues>(draftId);
         setDraftId(null);
         setStep(0);
-        setValues(initialValues);
+        setValues(INITIAL_PROPERTY_VALUES);
         setPhotos([]);
         setVideos([]);
         setDocuments({ ownership: [], identification: [], tax: [] });
@@ -374,7 +239,10 @@ export function AddPropertyWizard({
     },
     [],
   );
-  const update = (key: keyof FormValues, value: string | string[]) => {
+  const update = (
+    key: keyof AddPropertyFormValues,
+    value: string | string[],
+  ) => {
     setValues((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: "" }));
   };
@@ -382,6 +250,7 @@ export function AddPropertyWizard({
     const cleaned = entries.map((entry) => entry.trim()).filter(Boolean);
     if (!cleaned.length) return;
     setValues((current) => {
+      // Compare case-insensitively while preserving the vendor's original casing.
       const existing = new Set(
         current.amenities.map((entry) => entry.toLocaleLowerCase()),
       );
@@ -433,9 +302,13 @@ export function AddPropertyWizard({
       )
         next.bathrooms = "Enter the number of bathrooms.";
     }
-    if (index === 2 && photos.length === 0)
+    if (
+      index === 2 &&
+      photos.length === 0 &&
+      !existingMedia.some((item) => item.type === "IMAGE")
+    )
       next.photos = "Upload at least one property photo.";
-    if (index === 3 && documents.ownership.length === 0)
+    if (index === 3 && !isEditing && documents.ownership.length === 0)
       next.ownership = "Upload proof of ownership.";
     setErrors(next);
     if (Object.keys(next).length) {
@@ -502,6 +375,8 @@ export function AddPropertyWizard({
       toast.error("Accept the listing declaration before submitting.");
       return;
     }
+    // The property endpoint accepts one multipart request containing fields,
+    // property media, and legal documents.
     const form = new FormData();
     Object.entries({
       name: values.name.trim(),
@@ -517,18 +392,63 @@ export function AddPropertyWizard({
       size: values.size,
       bedrooms: values.bedrooms || "0",
       bathrooms: values.bathrooms || "0",
-      [priceFields[values.listingType]]: values.price,
+      [PRICE_FIELDS[values.listingType]]: values.price,
       amenities: JSON.stringify(values.amenities),
     }).forEach(([key, value]) => form.append(key, value));
-    photos.forEach((file) => form.append("photos", file));
-    videos.forEach((file) => form.append("videos", file));
-    Object.values(documents)
-      .flat()
-      .forEach((file) => form.append("documents", file));
+    if (isEditing) {
+      // Keep edit media in the PATCH request instead of calling the backend's
+      // bulk media endpoint, which currently fails when resolving uploaded IDs.
+      photos.forEach((file) => form.append("photos", file));
+      videos.forEach((file) => form.append("videos", file));
+    } else {
+      photos.forEach((file) => form.append("photos", file));
+      videos.forEach((file) => form.append("videos", file));
+      Object.values(documents)
+        .flat()
+        .forEach((file) => form.append("documents", file));
+    }
     setSubmitting(true);
     try {
-      const property = await propertyService.create(form);
-      if (draftId) await deletePropertyDraft<FormValues>(draftId);
+      const property = initialPropertyId
+        ? await propertyService.update(initialPropertyId, form)
+        : await propertyService.create(form);
+
+      // Some backend deployments create the property successfully but do not
+      // persist files included in that initial multipart request. Confirm that
+      // at least one image was attached and use the dedicated media endpoint as
+      // a compatibility fallback when the create response/media lookup is empty.
+      if (!initialPropertyId && photos.length > 0) {
+        const attachedMedia = property.media?.length
+          ? property.media
+          : await propertyService.getMedia(property.id);
+        const hasAttachedImage = attachedMedia.some(
+          (item) => item.type === "IMAGE",
+        );
+
+        if (!hasAttachedImage) {
+          const mediaForm = new FormData();
+          photos.forEach((file) => mediaForm.append("photos", file));
+          videos.forEach((file) => mediaForm.append("videos", file));
+          Object.values(documents)
+            .flat()
+            .forEach((file) => mediaForm.append("documents", file));
+          await propertyService.uploadMedia(property.id, mediaForm);
+        }
+      }
+
+      if (draftId) await deletePropertyDraft<AddPropertyFormValues>(draftId);
+      if (accountKey) {
+        // Refresh both consumers immediately so the new pending listing and its
+        // uploaded media appear without waiting for each query's stale timeout.
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: vendorPropertiesQueryKey(accountKey),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: vendorDashboardQueryKey(accountKey),
+          }),
+        ]);
+      }
       setCreatedId(property.id);
       toast.success("Property saved successfully.");
     } catch (error) {
@@ -551,11 +471,14 @@ export function AddPropertyWizard({
         </span>
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-semibold tracking-tight">
-            Property Listed Successfully
+            {isEditing
+              ? "Property Updated Successfully"
+              : "Property Listed Successfully"}
           </h1>
           <p className="max-w-xl text-muted-foreground">
-            Your property was saved and submitted for review. Our team will
-            verify the listing before it appears publicly.
+            {isEditing
+              ? "Your changes and newly uploaded media were saved successfully. The backend will apply any required review status."
+              : "Your property was saved and submitted for review. Our team will verify the listing before it appears publicly."}
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-3">
@@ -577,15 +500,17 @@ export function AddPropertyWizard({
       <header className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">
-            Add New Property
+            {isEditing ? "Edit Property" : "Add New Property"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create a complete listing for marketplace review.
+            {isEditing
+              ? "Update the listing information and upload additional media."
+              : "Create a complete listing for marketplace review."}
           </p>
         </div>
         <Badge variant="outline">Step {step + 1} of 5</Badge>
       </header>
-      <Stepper current={step} />
+      <PropertyStepper current={step} />
       {step === 0 && (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <Card>
@@ -631,7 +556,7 @@ export function AddPropertyWizard({
                             "MIXED_USE",
                           ].map((item) => (
                             <SelectItem key={item} value={item}>
-                              {readable(item)}
+                              {readablePropertyValue(item)}
                             </SelectItem>
                           ))}
                         </SelectGroup>
@@ -656,7 +581,7 @@ export function AddPropertyWizard({
                             "FOR_SHORTLET",
                           ].map((item) => (
                             <SelectItem key={item} value={item}>
-                              {readable(item)}
+                              {readablePropertyValue(item)}
                             </SelectItem>
                           ))}
                         </SelectGroup>
@@ -666,7 +591,7 @@ export function AddPropertyWizard({
                 </div>
                 <Field data-invalid={Boolean(errors.price)}>
                   <FieldLabel htmlFor="property-price">
-                    {priceLabels[values.listingType]}
+                    {PRICE_LABELS[values.listingType]}
                   </FieldLabel>
                   <Input
                     id="property-price"
@@ -755,10 +680,10 @@ export function AddPropertyWizard({
             </CardContent>
           </Card>
           <aside className="flex flex-col gap-6">
-            <TipCard>
+            <PropertyTipCard>
               Detailed descriptions and accurate addresses receive more
               qualified inquiries. Highlight what makes this listing unique.
-            </TipCard>
+            </PropertyTipCard>
             <Card>
               <CardHeader>
                 <CardTitle>Location Preview</CardTitle>
@@ -904,16 +829,16 @@ export function AddPropertyWizard({
               </FieldGroup>
             </CardContent>
           </Card>
-          <TipCard>
+          <PropertyTipCard>
             Accurate measurements and amenities help buyers compare listings and
             reduce unnecessary questions.
-          </TipCard>
+          </PropertyTipCard>
         </div>
       )}
       {step === 2 && (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
           <div className="flex flex-col gap-6">
-            <UploadBox
+            <PropertyUploadBox
               title="Upload Property Images"
               description="High-resolution JPG or PNG photos, up to 3 MB each. The first photo becomes the cover."
               accept="image/jpeg,image/png"
@@ -923,26 +848,60 @@ export function AddPropertyWizard({
             {errors.photos && (
               <p className="text-sm text-destructive">{errors.photos}</p>
             )}
-            <UploadBox
+            <PropertyUploadBox
               title="Upload Property Video"
               description="Optional MP4 walkthrough videos, up to 10 MB each."
               accept="video/mp4"
               icon={Video}
               onFiles={(files) => addMedia("videos", files)}
             />
-            <TipCard title="Tips for better listings">
+            <PropertyTipCard title="Tips for better listings">
               Bright, wide-angle photos usually attract more inquiries. Use a
               clear exterior or living-room image as your cover.
-            </TipCard>
+            </PropertyTipCard>
           </div>
           <Card>
             <CardHeader>
               <CardTitle>Uploaded Media</CardTitle>
               <CardAction>
-                <Badge variant="outline">{photos.length} / 20 photos</Badge>
+                <Badge variant="outline">
+                  {existingMedia.filter((item) => item.type === "IMAGE").length +
+                    photos.length}{" "}
+                  / 20 photos
+                </Badge>
               </CardAction>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
+              {existingMedia.some((item) => item.type === "IMAGE") && (
+                <div className="grid grid-cols-2 gap-3">
+                  {existingMedia
+                    .filter((item) => item.type === "IMAGE")
+                    .map((item, index) => (
+                      <figure
+                        key={item.id}
+                        className={cn(
+                          "relative aspect-square overflow-hidden rounded-lg border",
+                          index === 0 &&
+                            "col-span-2 aspect-video ring-2 ring-primary",
+                        )}
+                      >
+                        <Image
+                          src={item.url}
+                          alt={`Existing property photo ${index + 1}`}
+                          fill
+                          sizes={index === 0 ? "800px" : "400px"}
+                          className="object-cover"
+                        />
+                        <Badge
+                          variant="secondary"
+                          className="absolute left-2 top-2"
+                        >
+                          {index === 0 ? "Current cover" : "Saved photo"}
+                        </Badge>
+                      </figure>
+                    ))}
+                </div>
+              )}
               {photoUrls.length ? (
                 <div className="grid grid-cols-2 gap-3">
                   {photoUrls.map(({ file, url }, index) => (
@@ -985,7 +944,7 @@ export function AddPropertyWizard({
                     </figure>
                   ))}
                 </div>
-              ) : (
+              ) : existingMedia.some((item) => item.type === "IMAGE") ? null : (
                 <p className="py-16 text-center text-sm text-muted-foreground">
                   Uploaded photos will appear here.
                 </p>
@@ -993,7 +952,7 @@ export function AddPropertyWizard({
               {videos.length > 0 && (
                 <>
                   <Separator />
-                  <FileList
+                  <PropertyFileList
                     files={videos}
                     onRemove={(index) =>
                       setVideos((current) =>
@@ -1011,7 +970,24 @@ export function AddPropertyWizard({
       )}
       {step === 3 && (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="flex flex-col gap-6">
+          {isEditing ? (
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Legal Documents</CardTitle>
+                <CardDescription>
+                  Your previously submitted ownership and verification
+                  documents remain attached to this property.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PropertyTipCard title="Documents retained">
+                  Contact support if a legal document must be replaced after a
+                  listing has been submitted.
+                </PropertyTipCard>
+              </CardContent>
+            </Card>
+          ) : (
+          <><div className="flex flex-col gap-6">
             {(
               [
                 {
@@ -1040,7 +1016,7 @@ export function AddPropertyWizard({
                   <CardDescription>{copy}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
-                  <UploadBox
+                  <PropertyUploadBox
                     title={`Upload ${title}`}
                     description="PDF, JPG, or PNG, up to 10 MB per file."
                     accept="application/pdf,image/jpeg,image/png"
@@ -1050,7 +1026,7 @@ export function AddPropertyWizard({
                   {errors[key] && (
                     <p className="text-sm text-destructive">{errors[key]}</p>
                   )}
-                  <FileList
+                  <PropertyFileList
                     files={documents[key]}
                     onRemove={(index) =>
                       setDocuments((current) => ({
@@ -1074,17 +1050,19 @@ export function AddPropertyWizard({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <FileList
+                <PropertyFileList
                   files={Object.values(documents).flat()}
                   onRemove={() => {}}
                 />
               </CardContent>
             </Card>
-            <TipCard title="Secure upload">
+            <PropertyTipCard title="Secure upload">
               Documents are sent through the authenticated endpoint and are only
               listed as complete after the server accepts the property.
-            </TipCard>
+            </PropertyTipCard>
           </aside>
+          </>
+          )}
         </div>
       )}
       {step === 4 && (
@@ -1111,13 +1089,15 @@ export function AddPropertyWizard({
                   <p className="text-xs font-semibold uppercase text-muted-foreground">
                     Property type
                   </p>
-                  <p className="mt-1">{readable(values.type)}</p>
+                  <p className="mt-1">{readablePropertyValue(values.type)}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase text-muted-foreground">
                     Listing type
                   </p>
-                  <p className="mt-1">{readable(values.listingType)}</p>
+                  <p className="mt-1">
+                    {readablePropertyValue(values.listingType)}
+                  </p>
                 </div>
                 <div className="sm:col-span-2">
                   <p className="text-xs font-semibold uppercase text-muted-foreground">
@@ -1135,7 +1115,7 @@ export function AddPropertyWizard({
                 <div>
                   <p className="text-xs text-muted-foreground">Price</p>
                   <p className="mt-1 font-semibold text-primary">
-                    {formatMoney(values.price)}
+                    {formatPropertyMoney(values.price)}
                   </p>
                 </div>
                 <div>
@@ -1161,7 +1141,7 @@ export function AddPropertyWizard({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <FileList
+                <PropertyFileList
                   files={[
                     ...photos,
                     ...videos,
@@ -1196,7 +1176,7 @@ export function AddPropertyWizard({
                   </p>
                 </div>
                 <p className="text-xl font-semibold text-primary">
-                  {formatMoney(values.price)}
+                  {formatPropertyMoney(values.price)}
                 </p>
                 <Separator />
                 <p className="flex items-center gap-2 text-sm">
@@ -1250,9 +1230,11 @@ export function AddPropertyWizard({
               Previous
             </Button>
           )}
-          <Button type="button" variant="outline" onClick={saveDraft}>
-            Save Draft
-          </Button>
+          {!isEditing && (
+            <Button type="button" variant="outline" onClick={saveDraft}>
+              Save Draft
+            </Button>
+          )}
           {step < 4 ? (
             <Button type="button" onClick={next}>
               Next Step
@@ -1270,7 +1252,7 @@ export function AddPropertyWizard({
                 </>
               ) : (
                 <>
-                  Submit Property
+                  {isEditing ? "Save Changes" : "Submit Property"}
                   <ArrowRight data-icon="inline-end" />
                 </>
               )}

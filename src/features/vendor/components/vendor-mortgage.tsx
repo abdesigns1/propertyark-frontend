@@ -39,29 +39,24 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-
-type Frequency = "monthly" | "quarterly" | "yearly";
-type MortgageValues = {
-  propertyPrice: number;
-  downPayment: number;
-  annualRate: number;
-  termMonths: number;
-  frequency: Frequency;
-  householdIncome: number;
-};
-
-const DEFAULT_VALUES: MortgageValues = {
-  propertyPrice: 80_000_000,
-  downPayment: 20_000_000,
-  annualRate: 18,
-  termMonths: 180,
-  frequency: "monthly",
-  householdIncome: 4_000_000,
-};
+import {
+  calculateMortgage,
+  DEFAULT_MORTGAGE_VALUES,
+  formatMortgageInput,
+  formatNaira,
+  formatPercent,
+  frequencyLabel,
+  parseMortgageInput,
+  termDisplayValue,
+  termSliderValue,
+  termSummary,
+  type MortgageValues,
+  type PaymentFrequency,
+} from "@/features/vendor/lib/mortgage-calculator";
 
 export function MortgageCalculator() {
-  const [draft, setDraft] = useState(DEFAULT_VALUES);
-  const [calculated, setCalculated] = useState(DEFAULT_VALUES);
+  const [draft, setDraft] = useState(DEFAULT_MORTGAGE_VALUES);
+  const [calculated, setCalculated] = useState(DEFAULT_MORTGAGE_VALUES);
   const [submitted, setSubmitted] = useState(false);
   const result = useMemo(() => calculateMortgage(calculated), [calculated]);
   const downPaymentPercent = draft.propertyPrice
@@ -82,8 +77,8 @@ export function MortgageCalculator() {
   };
 
   const reset = () => {
-    setDraft(DEFAULT_VALUES);
-    setCalculated(DEFAULT_VALUES);
+    setDraft(DEFAULT_MORTGAGE_VALUES);
+    setCalculated(DEFAULT_MORTGAGE_VALUES);
     setSubmitted(false);
   };
 
@@ -144,11 +139,11 @@ export function MortgageCalculator() {
                       id="property-price"
                       inputMode="numeric"
                       className="font-numeric text-xl font-semibold"
-                      value={formatInputNumber(draft.propertyPrice)}
+                      value={formatMortgageInput(draft.propertyPrice)}
                       onChange={(event) =>
                         setDraft((current) => ({
                           ...current,
-                          propertyPrice: parseInputNumber(event.target.value),
+                          propertyPrice: parseMortgageInput(event.target.value),
                         }))
                       }
                       aria-invalid={submitted && invalidPrice}
@@ -164,11 +159,11 @@ export function MortgageCalculator() {
                       <InputGroupInput
                         id="down-payment"
                         inputMode="numeric"
-                        value={formatInputNumber(draft.downPayment)}
+                        value={formatMortgageInput(draft.downPayment)}
                         onChange={(event) =>
                           setDraft((current) => ({
                             ...current,
-                            downPayment: parseInputNumber(event.target.value),
+                            downPayment: parseMortgageInput(event.target.value),
                           }))
                         }
                         aria-invalid={submitted && invalidDownPayment}
@@ -208,7 +203,7 @@ export function MortgageCalculator() {
                     value={draft.frequency}
                     onValueChange={(value) => {
                       if (!value) return;
-                      const frequency = value as Frequency;
+                      const frequency = value as PaymentFrequency;
                       setDraft((current) => ({
                         ...current,
                         frequency,
@@ -271,11 +266,11 @@ export function MortgageCalculator() {
                     <InputGroupInput
                       id="household-income"
                       inputMode="numeric"
-                      value={formatInputNumber(draft.householdIncome)}
+                      value={formatMortgageInput(draft.householdIncome)}
                       onChange={(event) =>
                         setDraft((current) => ({
                           ...current,
-                          householdIncome: parseInputNumber(event.target.value),
+                          householdIncome: parseMortgageInput(event.target.value),
                         }))
                       }
                       aria-invalid={submitted && invalidIncome}
@@ -446,68 +441,4 @@ function Legend({ color, label }: { color: string; label: string }) {
       <span>{label}</span>
     </div>
   );
-}
-
-function calculateMortgage(values: MortgageValues) {
-  const loanAmount = Math.max(0, values.propertyPrice - values.downPayment);
-  const paymentsPerYear = { monthly: 12, quarterly: 4, yearly: 1 }[values.frequency];
-  const years = values.termMonths / 12;
-  const numberOfPayments = years * paymentsPerYear;
-  const periodicRate = values.annualRate / 100 / paymentsPerYear;
-  const payment =
-    periodicRate === 0
-      ? loanAmount / numberOfPayments
-      : loanAmount *
-        ((periodicRate * (1 + periodicRate) ** numberOfPayments) /
-          ((1 + periodicRate) ** numberOfPayments - 1));
-  const totalRepayment = Number.isFinite(payment) ? payment * numberOfPayments : 0;
-  return {
-    loanAmount,
-    payment: Number.isFinite(payment) ? payment : 0,
-    totalRepayment,
-    totalInterest: Math.max(0, totalRepayment - loanAmount),
-    monthlyEquivalent: totalRepayment / values.termMonths,
-  };
-}
-
-function parseInputNumber(value: string) {
-  return Number(value.replace(/[^\d.]/g, "")) || 0;
-}
-
-function formatInputNumber(value: number) {
-  return new Intl.NumberFormat("en-NG", { maximumFractionDigits: 0 }).format(value);
-}
-
-function formatNaira(value: number) {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(Math.round(value));
-}
-
-function formatPercent(value: number) {
-  return `${new Intl.NumberFormat("en-NG", { maximumFractionDigits: 1 }).format(value)}%`;
-}
-
-function frequencyLabel(frequency: Frequency) {
-  return ({ monthly: "Monthly", quarterly: "Quarterly", yearly: "Yearly" } as const)[frequency];
-}
-
-function termSliderValue(values: MortgageValues) {
-  return values.frequency === "monthly"
-    ? values.termMonths
-    : Math.round(values.termMonths / 12);
-}
-
-function termDisplayValue(values: MortgageValues) {
-  return values.frequency === "monthly"
-    ? values.termMonths
-    : values.termMonths / 12;
-}
-
-function termSummary(values: MortgageValues) {
-  return values.frequency === "monthly"
-    ? `${values.termMonths} Mos`
-    : `${values.termMonths / 12} Yrs`;
 }

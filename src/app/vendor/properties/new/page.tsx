@@ -3,8 +3,13 @@ import { AddPropertyWizard } from "@/features/vendor/components/add-property-wiz
 export default async function AddPropertyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ draft?: string }>;
+  searchParams: Promise<{ draft?: string; edit?: string }>;
 }) {
-  const { draft } = await searchParams;
-  return <AddPropertyWizard initialDraftId={draft ?? null} />;
+  const { draft, edit } = await searchParams;
+  return (
+    <AddPropertyWizard
+      initialDraftId={draft ?? null}
+      initialPropertyId={edit ?? null}
+    />
+  );
 }

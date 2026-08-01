@@ -12,6 +12,8 @@ export interface PropertyApiItem {
   type: string;
   listingType: string;
   status: string;
+  /** Publication workflow state returned by the backend (for example ACTIVE). */
+  listingStatus?: string;
   rentAmount: number | null;
   salePrice: number | null;
   landFee: number | null;
@@ -32,6 +34,11 @@ export interface PropertyApiItem {
   media?: PropertyMediaResponse[];
   priceDisplay?: string;
   approvalStatus?: string;
+  reviewStatus?: string;
+  verificationStatus?: string;
+  isApproved?: boolean;
+  approved?: boolean;
+  isVerified?: boolean;
   viewCount?: number;
   views?: number;
   inquiryCount?: number;

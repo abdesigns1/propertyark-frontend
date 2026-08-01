@@ -24,6 +24,7 @@ function ownerKey() {
 }
 
 function draftsKey() {
+  // Scope drafts to the authenticated account to prevent cross-account leakage.
   return `${DRAFTS_KEY_PREFIX}:${encodeURIComponent(ownerKey())}`;
 }
 
@@ -48,6 +49,7 @@ function write<T>(drafts: PropertyDraft<T>[]) {
 }
 
 function openMediaDb() {
+  // IndexedDB is used only for File objects; draft form fields remain lightweight.
   return new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(MEDIA_DB, 1);
     request.onupgradeneeded = () =>
@@ -80,6 +82,7 @@ export async function cleanupExpiredDrafts<T>() {
     (draft) => new Date(draft.expiresAt).getTime() <= now,
   );
   if (expired.length) {
+    // Keep localStorage and IndexedDB in sync when the one-hour TTL elapses.
     write(active);
     await Promise.allSettled(
       expired.map((draft) => deleteDraftMedia(draft.id)),
@@ -103,6 +106,7 @@ export function savePropertyDraft<T>(
   step: number,
   existingId?: string | null,
 ) {
+  // Reuse the ID when editing so autosave updates rather than duplicates a draft.
   const id = existingId ?? crypto.randomUUID();
   const now = new Date();
   const draft: PropertyDraft<T> = {

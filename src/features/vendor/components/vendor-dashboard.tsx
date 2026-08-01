@@ -40,6 +40,8 @@ import { useDashboardUser } from "@/features/dashboard/hooks/use-dashboard-user"
 import { useAvailableProperties } from "@/features/properties/hooks/use-available-properties";
 import type { Property } from "@/features/properties/types";
 import { useVendorDashboard } from "@/features/vendor/hooks/use-vendor-dashboard";
+import { useVendorProperties } from "@/features/vendor/hooks/use-vendor-properties";
+import { propertyStatus } from "@/features/vendor/lib/vendor-property-display";
 import type {
   VendorDashboardStats,
   VendorInquiry,
@@ -304,6 +306,7 @@ export function VendorDashboard() {
   const userId = useAuthStore((state) => state.userId);
   const updateUser = useAuthStore((state) => state.updateUser);
   const dashboard = useVendorDashboard();
+  const vendorPropertiesQuery = useVendorProperties();
   const availableProperties = useAvailableProperties(1, 100);
   const profile = dashboard.data?.profile;
 
@@ -319,7 +322,26 @@ export function VendorDashboard() {
     });
   }, [profile, updateUser]);
 
-  const stats = dashboard.data?.stats ?? ZERO_STATS;
+  const backendStats = dashboard.data?.stats ?? ZERO_STATS;
+  const listingStats = useMemo(
+    () =>
+      (vendorPropertiesQuery.data?.properties ?? []).reduce(
+        (totals, property) => {
+          const status = propertyStatus(property).key;
+          totals.totalListings += 1;
+          if (status === "published") totals.activeListings += 1;
+          if (status === "pending") totals.pendingApproval += 1;
+          return totals;
+        },
+        { totalListings: 0, activeListings: 0, pendingApproval: 0 },
+      ),
+    [vendorPropertiesQuery.data?.properties],
+  );
+  // Listing totals come from the same authenticated collection as My Properties;
+  // inquiry and sales metrics continue to come from the dashboard endpoint.
+  const stats = vendorPropertiesQuery.data
+    ? { ...backendStats, ...listingStats }
+    : backendStats;
   const vendorId = profile?.id ?? storedUser?.id ?? userId;
   const vendorProperties = useMemo(
     () =>
@@ -370,7 +392,7 @@ export function VendorDashboard() {
         aria-label="Vendor statistics"
         className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
       >
-        {dashboard.isLoading ? (
+        {dashboard.isLoading || vendorPropertiesQuery.isLoading ? (
           Array.from({ length: 4 }, (_, index) => (
             <StatCardSkeleton key={index} />
           ))

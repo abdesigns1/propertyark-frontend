@@ -29,7 +29,7 @@ const buyerNavigation = [
   { label: "Dashboard", icon: Gauge, href: "/buyer/dashboard" },
   { label: "Properties", icon: House, href: "/buyer/properties" },
   { label: "Saved Properties", icon: Heart, href: "/buyer/saved-properties" },
-  { label: "Inspection", icon: FileText, href: "#" },
+  { label: "Inspection", icon: FileText, href: "/buyer/inspections" },
   { label: "Mortgage", icon: FileText, href: "/buyer/mortgage" },
   { label: "Investments", icon: WalletCards, href: "/buyer/investments" },
   { label: "Messages", icon: Mail, href: "#" },

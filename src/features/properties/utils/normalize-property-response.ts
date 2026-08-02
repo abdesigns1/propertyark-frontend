@@ -36,13 +36,23 @@ function getPrice(property: PropertyApiItem) {
 }
 
 export function normalizePropertyMediaUrl(url: string) {
-  // The hosted backend sometimes serializes its own upload URLs as HTTP even
-  // though Render serves them over HTTPS. Upgrade only this known host to avoid
-  // mixed-content failures without rewriting third-party image URLs.
-  return url.replace(
-    /^http:\/\/propertyark-backend\.onrender\.com(?=\/)/,
-    "https://propertyark-backend.onrender.com",
-  );
+  try {
+    const parsed = new URL(url);
+    if (
+      parsed.hostname === "propertyark-backend.onrender.com" &&
+      parsed.pathname.startsWith("/uploads/")
+    ) {
+      const mediaPath = parsed.pathname
+        .slice("/uploads/".length)
+        .split("/")
+        .map((segment) => encodeURIComponent(decodeURIComponent(segment)))
+        .join("/");
+      return `/api/property-media/${mediaPath}`;
+    }
+  } catch {
+    // Relative URLs and local assets should pass through unchanged.
+  }
+  return url;
 }
 
 export function normalizePropertyResponse(property: PropertyApiItem): Property {

@@ -123,6 +123,9 @@ export function AddPropertyWizard({
   const [existingMedia, setExistingMedia] = useState<PropertyMediaResponse[]>(
     [],
   );
+  const [deletingMediaIds, setDeletingMediaIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const editInitialized = useRef(false);
   const photoUrls = useMemo(
     () => photos.map((file) => ({ file, url: URL.createObjectURL(file) })),
@@ -340,6 +343,40 @@ export function AddPropertyWizard({
     if (image) setPhotos((current) => [...current, ...valid].slice(0, 20));
     else setVideos((current) => [...current, ...valid].slice(0, 5));
   };
+  const deleteExistingMedia = async (media: PropertyMediaResponse) => {
+    if (!initialPropertyId || deletingMediaIds.has(media.id)) return;
+    const label = media.type === "VIDEO" ? "video" : "image";
+    if (!window.confirm(`Delete this property ${label}?`)) return;
+
+    setDeletingMediaIds((current) => new Set(current).add(media.id));
+    try {
+      await propertyService.bulkDeleteMedia(initialPropertyId, [media.id]);
+      setExistingMedia((current) =>
+        current.filter((item) => item.id !== media.id),
+      );
+      if (accountKey) {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: vendorPropertiesQueryKey(accountKey),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: vendorDashboardQueryKey(accountKey),
+          }),
+        ]);
+      }
+      toast.success(`Property ${label} deleted.`);
+    } catch (error) {
+      toast.error(
+        getApiErrorMessage(error, `The property ${label} could not be deleted.`),
+      );
+    } finally {
+      setDeletingMediaIds((current) => {
+        const next = new Set(current);
+        next.delete(media.id);
+        return next;
+      });
+    }
+  };
   const addDocuments = (kind: keyof LegalFiles, incoming: File[]) => {
     const valid = incoming.filter(
       (file) =>
@@ -477,7 +514,7 @@ export function AddPropertyWizard({
           </h1>
           <p className="max-w-xl text-muted-foreground">
             {isEditing
-              ? "Your changes and newly uploaded media were saved successfully. The backend will apply any required review status."
+              ? "Your changes and newly uploaded media were saved successfully. The admin will review your update status and verify your property."
               : "Your property was saved and submitted for review. Our team will verify the listing before it appears publicly."}
           </p>
         </div>
@@ -880,7 +917,7 @@ export function AddPropertyWizard({
                       <figure
                         key={item.id}
                         className={cn(
-                          "relative aspect-square overflow-hidden rounded-lg border",
+                          "group relative aspect-square overflow-hidden rounded-lg border",
                           index === 0 &&
                             "col-span-2 aspect-video ring-2 ring-primary",
                         )}
@@ -898,6 +935,21 @@ export function AddPropertyWizard({
                         >
                           {index === 0 ? "Current cover" : "Saved photo"}
                         </Badge>
+                        <Button
+                          type="button"
+                          size="icon-sm"
+                          variant="destructive"
+                          className="absolute right-2 top-2"
+                          disabled={deletingMediaIds.has(item.id)}
+                          aria-label={`Delete property image ${index + 1}`}
+                          onClick={() => void deleteExistingMedia(item)}
+                        >
+                          {deletingMediaIds.has(item.id) ? (
+                            <LoaderCircle className="animate-spin" />
+                          ) : (
+                            <Trash2 />
+                          )}
+                        </Button>
                       </figure>
                     ))}
                 </div>
@@ -962,6 +1014,45 @@ export function AddPropertyWizard({
                       )
                     }
                   />
+                </>
+              )}
+              {existingMedia.some((item) => item.type === "VIDEO") && (
+                <>
+                  <Separator />
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Saved videos
+                    </p>
+                    {existingMedia
+                      .filter((item) => item.type === "VIDEO")
+                      .map((item, index) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center gap-3 rounded-lg border p-3"
+                        >
+                          <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                            <Video className="size-4" />
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm">
+                            Property video {index + 1}
+                          </span>
+                          <Button
+                            type="button"
+                            size="icon-sm"
+                            variant="destructive"
+                            disabled={deletingMediaIds.has(item.id)}
+                            aria-label={`Delete property video ${index + 1}`}
+                            onClick={() => void deleteExistingMedia(item)}
+                          >
+                            {deletingMediaIds.has(item.id) ? (
+                              <LoaderCircle className="animate-spin" />
+                            ) : (
+                              <Trash2 />
+                            )}
+                          </Button>
+                        </div>
+                      ))}
+                  </div>
                 </>
               )}
             </CardContent>

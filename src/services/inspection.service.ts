@@ -178,6 +178,16 @@ function normalizeStats(value: unknown, inspections: VendorInspection[]): Vendor
 }
 
 export const inspectionService = {
+  async getBuyerInspections(): Promise<VendorInspectionsResult> {
+    const { data } = await api.get("/inquiries/my", {
+      params: { page: 1, limit: 100 },
+    });
+    const inspections = inspectionRows(data).map(normalizeInspection);
+    return {
+      inspections,
+      stats: normalizeStats({}, inspections),
+    };
+  },
   async getVendorInspections(): Promise<VendorInspectionsResult> {
     const [listResponse, statsResponse] = await Promise.all([
       api.get("/inquiries/vendor", { params: { page: 1, limit: 100 } }),

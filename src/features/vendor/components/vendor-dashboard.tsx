@@ -62,6 +62,7 @@ const ZERO_STATS: VendorDashboardStats = {
   totalSales: 0,
   rating: 0,
   reviewCount: 0,
+  totalViews: 0,
 };
 
 function formatDate(value: string) {
@@ -255,7 +256,7 @@ function RecentInquiries({ inquiries }: { inquiries: VendorInquiry[] }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {inquiries.map((inquiry) => (
+              {inquiries.slice(0, 5).map((inquiry) => (
                 <TableRow key={inquiry.id}>
                   <TableCell className="pl-4">
                     <div className="flex min-w-48 items-center gap-3">
@@ -337,7 +338,7 @@ export function VendorDashboard() {
       ),
     [vendorPropertiesQuery.data?.properties],
   );
-  const totalPropertyViews = useMemo(
+  const propertyCollectionViews = useMemo(
     () =>
       (vendorPropertiesQuery.data?.properties ?? []).reduce(
         (total, property) =>
@@ -345,6 +346,12 @@ export function VendorDashboard() {
         0,
       ),
     [vendorPropertiesQuery.data?.properties],
+  );
+  // Deployments expose views either on each property or as an aggregate in
+  // vendor stats. Prefer whichever source is fresher/non-zero.
+  const totalPropertyViews = Math.max(
+    propertyCollectionViews,
+    backendStats.totalViews,
   );
   // Listing totals come from the same authenticated collection as My Properties;
   // inquiry and sales metrics continue to come from the dashboard endpoint.

@@ -57,7 +57,7 @@ async function proxyRequest(
     return Response.json(
       {
         message:
-          "The authentication server is currently unavailable. Please try again shortly.",
+          "The backend API is currently unavailable. Please try again shortly.",
       },
       { status: 502 },
     );

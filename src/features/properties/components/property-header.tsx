@@ -56,7 +56,10 @@ export function PropertyHeader({ property }: { property: Property }) {
           currency={property.currency}
           className="text-xl font-bold text-primary sm:text-2xl"
         />
-        {property.sizeSqm && (
+        {property.purpose === "shortlet" && (
+          <p className="mt-1 text-xs font-medium text-muted-foreground">per night</p>
+        )}
+        {property.purpose !== "shortlet" && property.sizeSqm && (
           <p className="mt-1 text-xs text-muted-foreground">
             <span className="font-numeric">
               {property.sizeSqm.toLocaleString()}

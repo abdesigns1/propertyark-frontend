@@ -52,10 +52,11 @@ const MONTH_FORMATTER = new Intl.DateTimeFormat("en-NG", { month: "short" });
 function derivePerformance(
   inquiries: VendorInquiry[],
   totalViews: number,
+  weekCount: number,
 ): VendorPerformancePoint[] {
   const now = Date.now();
-  return Array.from({ length: 4 }, (_, index) => {
-    const oldestWeek = 3 - index;
+  return Array.from({ length: weekCount }, (_, index) => {
+    const oldestWeek = weekCount - 1 - index;
     const inquiriesInWeek = inquiries.filter((inquiry) => {
       const timestamp = new Date(inquiry.date).getTime();
       if (Number.isNaN(timestamp)) return false;
@@ -64,10 +65,10 @@ function derivePerformance(
     }).length;
     return {
       label: `Week ${index + 1}`,
-      date: null,
+      date: new Date(now - oldestWeek * 7 * 86_400_000).toISOString(),
       // A cumulative backend count has no historical timestamps, so show it on
       // the latest point instead of presenting a misleading all-zero chart.
-      views: index === 3 ? totalViews : 0,
+      views: index === weekCount - 1 ? totalViews : 0,
       inquiries: inquiriesInWeek,
     };
   });
@@ -116,11 +117,33 @@ function PerformanceChart({
 }) {
   const [range, setRange] = useState("30");
   const data = useMemo(() => {
-    const source = performance.length
-      ? performance
-      : derivePerformance(inquiries, totalViews);
     const pointCount = range === "7" ? 2 : range === "90" ? 12 : 4;
-    return source.slice(-pointCount);
+    const inquirySeries = derivePerformance(
+      inquiries,
+      totalViews,
+      pointCount,
+    );
+    const backendSeries = performance.slice(-pointCount);
+
+    // Inquiry records are fresher than the aggregated vendor-stats response.
+    // Keep historical backend views, but always calculate the inquiry line
+    // from the authenticated vendor inquiry collection.
+    return inquirySeries.map((point, index) => {
+      const backendIndex = index - (pointCount - backendSeries.length);
+      const backendPoint =
+        backendIndex >= 0 ? backendSeries[backendIndex] : undefined;
+      const backendViews = backendPoint?.views ?? 0;
+      const isLatestPoint = index === pointCount - 1;
+      return {
+        ...point,
+        // A stale aggregated series can contain zero even while the property
+        // collection or stats summary reports views. Preserve historical
+        // points and reconcile the newest point with the live total.
+        views: isLatestPoint
+          ? Math.max(backendViews, totalViews)
+          : backendViews,
+      };
+    });
   }, [inquiries, performance, range, totalViews]);
 
   return (
@@ -215,11 +238,21 @@ function PropertyStatusChart({
   propertyStatus: VendorPropertyStatusPoint[];
   properties: Property[];
 }) {
-  const data = useMemo(
-    () =>
-      propertyStatus.length ? propertyStatus : derivePropertyStatus(properties),
-    [properties, propertyStatus],
-  );
+  const data = useMemo(() => {
+    const currentMonths = derivePropertyStatus(properties);
+
+    return currentMonths.map((currentMonth) => {
+      const backendMonth = propertyStatus.find(
+        (point) =>
+          point.month.slice(0, 3).toLowerCase() ===
+          currentMonth.month.slice(0, 3).toLowerCase(),
+      );
+
+      return backendMonth
+        ? { ...backendMonth, month: currentMonth.month }
+        : currentMonth;
+    });
+  }, [properties, propertyStatus]);
 
   return (
     <Card className="min-h-[520px]">

@@ -1,3 +1,4 @@
+import axios from "axios";
 import { api } from "@/services/axios";
 import type {
   AvailablePropertiesResponse,
@@ -96,6 +97,49 @@ function unwrapProperty(value: unknown): PropertyApiItem {
   const data = asRecord(root.data);
   const candidate = data.property ?? root.property ?? root.data ?? value;
   return normalizeVendorProperty(candidate);
+}
+
+/**
+ * Some backend deployments persist a property successfully and then return a
+ * 500 while resolving the newly uploaded media IDs. Recover only that exact
+ * post-save failure so retrying the form cannot create a duplicate property.
+ */
+function persistedPropertyIdFromMediaLookupError(error: unknown) {
+  if (!axios.isAxiosError(error)) return null;
+
+  const payload = asRecord(error.response?.data);
+  const message = [payload.message, payload.error, payload.details]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ");
+
+  if (
+    !message.includes("prisma.media.findMany") ||
+    !message.includes("undefined")
+  ) {
+    return null;
+  }
+
+  return message.match(/propertyId\s*:\s*["']([^"']+)["']/)?.[1] ?? null;
+}
+
+async function recoverPersistedProperty(error: unknown) {
+  const propertyId = persistedPropertyIdFromMediaLookupError(error);
+  if (!propertyId) throw error;
+
+  // Prefer the vendor collection here. Some backend versions repeat the same
+  // broken media lookup on the single-property endpoint.
+  const { data } = await api.get<unknown>("/properties", {
+    params: { page: 1, limit: 1000 },
+  });
+  const recovered = normalizeVendorPropertiesResponse(data, 1, 1000)
+    .properties.find((property) => property.id === propertyId);
+
+  if (recovered) return recovered;
+
+  // The database ID came from the backend error, but the new row was not
+  // returned by the authenticated vendor collection. Preserve the original
+  // failure rather than risking a second submission and a duplicate listing.
+  throw error;
 }
 
 function normalizeVendorPropertiesResponse(
@@ -219,15 +263,28 @@ export const propertyService = {
   },
   getAllAvailable: getFilteredAvailable,
   create: async (payload: FormData) => {
-    const { data } = await api.post<unknown>("/properties", payload);
-    return unwrapProperty(data);
+    try {
+      const { data } = await api.post<unknown>("/properties", payload);
+      return unwrapProperty(data);
+    } catch (error) {
+      return recoverPersistedProperty(error);
+    }
   },
   update: async (propertyId: string, payload: FormData) => {
-    const { data } = await api.patch<unknown>(
-      `/properties/${propertyId}`,
-      payload,
-    );
-    return unwrapProperty(data);
+    try {
+      const { data } = await api.patch<unknown>(
+        `/properties/${propertyId}`,
+        payload,
+      );
+      return unwrapProperty(data);
+    } catch (error) {
+      const recoveredPropertyId =
+        persistedPropertyIdFromMediaLookupError(error);
+      if (!recoveredPropertyId || recoveredPropertyId !== propertyId) {
+        throw error;
+      }
+      return recoverPersistedProperty(error);
+    }
   },
   remove: async (propertyId: string) => {
     if (propertyId.startsWith("draft:")) {

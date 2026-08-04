@@ -12,6 +12,7 @@ import { PropertyReviews } from "@/features/properties/components/property-revie
 import { VendorContactCard } from "@/features/properties/components/vendor-contact-card";
 import { PropertyCard } from "@/features/properties/components/property-card";
 import { PropertyViewTracker } from "@/features/properties/components/property-view-tracker";
+import { ShortletBookingCard } from "@/features/properties/components/shortlet-booking-card";
 import { Footer } from "@/components/shared/footer";
 import { getAvailablePropertiesServer } from "@/features/properties/server/get-available-properties";
 import { CONTAINER, cn } from "@/lib/utils";
@@ -89,7 +90,11 @@ export default async function PropertyDetailPage({
           </div>
 
           <div>
-            <VendorContactCard property={property} />
+            {property.purpose === "shortlet" ? (
+              <ShortletBookingCard property={property} />
+            ) : (
+              <VendorContactCard property={property} />
+            )}
           </div>
         </div>
       </div>

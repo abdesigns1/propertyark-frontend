@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { CalendarCheck2, LoaderCircle, MessageSquare, Phone } from "lucide-react";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,14 +33,15 @@ import {
 } from "@/features/properties/utils/property-labels";
 import type { Property } from "@/features/properties/types";
 import { cn } from "@/lib/utils";
-import { api } from "@/services/axios";
 import { getApiErrorMessage } from "@/services/api-error";
+import { inspectionService } from "@/services/inspection.service";
 import { useAuthStore } from "@/store/auth.store";
 
-type ContactMode = "message" | "inspection" | null;
+type ContactMode = "inspection" | null;
 
 export function VendorContactCard({ property }: { property: Property }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const userId = useAuthStore((state) => state.userId);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -51,30 +53,37 @@ export function VendorContactCard({ property }: { property: Property }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const openContact = (nextMode: Exclude<ContactMode, null>) => {
+  const requireAuthentication = (action: string) => {
     if (!isAuthenticated) {
-      toast.info("Please log in to contact this vendor.");
+      toast.info(`Please log in to ${action}.`);
       router.push(`/login?redirect=/properties/${property.id}`);
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const openInspection = () => {
+    if (!requireAuthentication("book an inspection")) return;
     setSubmitted(false);
-    setMode(nextMode);
+    setMode("inspection");
+  };
+
+  const openVendorChat = () => {
+    if (!requireAuthentication("message the vendor")) return;
+    toast.info("Direct messaging is coming soon", {
+      description: `Your conversation with ${property.vendorName ?? "this vendor"} will open here once chat is available.`,
+    });
   };
 
   const submitInquiry = async () => {
     setSubmitted(true);
-    const needsSchedule = mode === "inspection";
-    if ((!needsSchedule && !message.trim()) || (needsSchedule && (!date || !time)))
-      return;
+    if (!date || !time) return;
 
     setSubmitting(true);
     try {
-      const scheduledAt = needsSchedule
-        ? new Date(`${date}T${time}`).toISOString()
-        : undefined;
-      await api.post("/inquiries", {
+      await inspectionService.schedule({
         propertyId: property.id,
-        buyerId: user?.id ?? userId ?? undefined,
+        buyerId: user?.id ?? userId,
         name: user?.fullName ?? "PropertyArk user",
         location:
           user?.location ??
@@ -82,20 +91,14 @@ export function VendorContactCard({ property }: { property: Property }) {
         message:
           message.trim() ||
           `I would like to book an inspection for ${property.title}.`,
-        meetingType,
-        ...(scheduledAt
-          ? {
-              inspectionDate: scheduledAt,
-              scheduledDate: scheduledAt,
-              time,
-            }
-          : {}),
+        meetingType: meetingType as "IN_PERSON" | "VIDEO_CALL",
+        date,
+        time,
       });
-      toast.success(
-        needsSchedule
-          ? "Your inspection request was sent to the vendor."
-          : "Your message was sent to the vendor.",
-      );
+      await queryClient.invalidateQueries({ queryKey: ["buyer", "inspections"] });
+      toast.success("Inspection booked successfully", {
+        description: "The vendor has received your preferred date and time.",
+      });
       setMode(null);
       setMessage("");
       setDate("");
@@ -147,6 +150,12 @@ export function VendorContactCard({ property }: { property: Property }) {
       <div className="mt-3 rounded-xl bg-surface p-4">
         <div className="flex items-center gap-3">
           <Avatar className="h-10 w-10">
+            {property.vendorAvatarUrl && (
+              <AvatarImage
+                src={property.vendorAvatarUrl}
+                alt={property.vendorName ?? "Vendor"}
+              />
+            )}
             <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
               {property.vendorName?.slice(0, 2) ?? "V"}
             </AvatarFallback>
@@ -157,27 +166,26 @@ export function VendorContactCard({ property }: { property: Property }) {
             </p>
             <p className="flex items-center gap-1 text-xs text-muted-foreground">
               <Phone className="h-3 w-3" />
-              {property.vendorPhone ?? "—"}
+              {isAuthenticated
+                ? (property.vendorPhone ?? "Contact unavailable")
+                : "••••••••••"}
             </p>
           </div>
         </div>
         <div className="mt-4 flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 rounded-lg py-5"
-            asChild={Boolean(property.vendorPhone)}
-          >
-            {property.vendorPhone ? (
-              <a href={`tel:${property.vendorPhone}`}>Call Now</a>
-            ) : (
-              "Call Now"
-            )}
-          </Button>
+          {isAuthenticated && property.vendorPhone ? (
+            <Button variant="outline" size="sm" className="flex-1 rounded-lg py-5" asChild>
+              <a href={`tel:${property.vendorPhone}`}><Phone data-icon="inline-start" /> Call Now</a>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" className="flex-1 rounded-lg py-5" disabled={isAuthenticated && !property.vendorPhone} onClick={() => requireAuthentication("view the vendor contact")}>
+              <Phone data-icon="inline-start" /> Call Now
+            </Button>
+          )}
           <Button
             size="sm"
             className="flex-1 rounded-lg py-5"
-            onClick={() => openContact("message")}
+            onClick={openVendorChat}
           >
             <MessageSquare data-icon="inline-start" />
             Send A Message
@@ -186,7 +194,7 @@ export function VendorContactCard({ property }: { property: Property }) {
         <Button
           variant="secondary"
           className="mt-2 w-full"
-          onClick={() => openContact("inspection")}
+          onClick={openInspection}
         >
           <CalendarCheck2 data-icon="inline-start" />
           Book Inspection
@@ -196,19 +204,14 @@ export function VendorContactCard({ property }: { property: Property }) {
       <Dialog open={mode !== null} onOpenChange={(open) => !open && setMode(null)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {mode === "inspection" ? "Book an Inspection" : "Send a Message"}
-            </DialogTitle>
+            <DialogTitle>Book an Inspection</DialogTitle>
             <DialogDescription>
-              {mode === "inspection"
-                ? `Request a convenient viewing time for ${property.title}.`
-                : `Send a quick property inquiry to ${property.vendorName ?? "the vendor"}.`}
+              Request a convenient viewing time for {property.title}.
             </DialogDescription>
           </DialogHeader>
 
           <FieldGroup>
-            {mode === "inspection" && (
-              <>
+            <>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field data-invalid={submitted && !date}>
                     <FieldLabel htmlFor="inspection-date">Date</FieldLabel>
@@ -249,33 +252,16 @@ export function VendorContactCard({ property }: { property: Property }) {
                   </Select>
                 </Field>
               </>
-            )}
-            <Field
-              data-invalid={
-                mode === "message" && submitted && !message.trim()
-              }
-            >
-              <FieldLabel htmlFor="vendor-message">
-                {mode === "inspection" ? "Additional note" : "Message"}
-              </FieldLabel>
+            <Field>
+              <FieldLabel htmlFor="vendor-message">Additional note</FieldLabel>
               <Textarea
                 id="vendor-message"
                 rows={5}
                 maxLength={500}
                 value={message}
-                aria-invalid={
-                  mode === "message" && submitted && !message.trim()
-                }
-                placeholder={
-                  mode === "inspection"
-                    ? "Tell the vendor anything they should know before the visit..."
-                    : "Hello, I’m interested in this property..."
-                }
+                placeholder="Tell the vendor anything they should know before the visit..."
                 onChange={(event) => setMessage(event.target.value)}
               />
-              {mode === "message" && submitted && !message.trim() && (
-                <FieldError>Enter a message for the vendor.</FieldError>
-              )}
             </Field>
           </FieldGroup>
 
@@ -285,7 +271,7 @@ export function VendorContactCard({ property }: { property: Property }) {
             </Button>
             <Button disabled={submitting} onClick={submitInquiry}>
               {submitting && <LoaderCircle data-icon="inline-start" className="animate-spin" />}
-              {mode === "inspection" ? "Request Inspection" : "Send Message"}
+              Book Inspection
             </Button>
           </DialogFooter>
         </DialogContent>

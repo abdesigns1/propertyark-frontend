@@ -15,8 +15,8 @@ export function useVendorDashboard() {
     queryKey: vendorDashboardQueryKey(accountKey ?? "unresolved-session"),
     queryFn: vendorService.getDashboard,
     enabled: Boolean(accountKey),
-    staleTime: 30_000,
-    refetchInterval: 30_000,
+    staleTime: 15_000,
+    refetchInterval: 15_000,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });

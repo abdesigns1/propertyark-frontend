@@ -1,3 +1,4 @@
+import axios from "axios";
 import { api } from "@/services/axios";
 
 type UnknownRecord = Record<string, unknown>;
@@ -177,6 +178,30 @@ function normalizeStats(value: unknown, inspections: VendorInspection[]): Vendor
   };
 }
 
+function isUncertainInquiryDelivery(error: unknown) {
+  if (!axios.isAxiosError(error)) return false;
+  return !error.response || [502, 503, 504].includes(error.response.status);
+}
+
+async function findRecentlyCreatedInquiry(
+  propertyId: string,
+  requestedAfter: number,
+) {
+  const { data } = await api.get("/inquiries/my", {
+    params: { page: 1, limit: 20 },
+  });
+  const inspections = inspectionRows(data).map(normalizeInspection);
+
+  return inspections.find((inspection) => {
+    const createdAt = new Date(inspection.requestSentAt).getTime();
+    return (
+      inspection.propertyId === propertyId &&
+      Number.isFinite(createdAt) &&
+      createdAt >= requestedAfter - 30_000
+    );
+  });
+}
+
 export const inspectionService = {
   async getBuyerInspections(): Promise<VendorInspectionsResult> {
     const { data } = await api.get("/inquiries/my", {
@@ -215,18 +240,38 @@ export const inspectionService = {
     return data;
   },
   schedule: async (input: ScheduleInspectionInput) => {
-    const scheduledAt = new Date(`${input.date}T${input.time}`).toISOString();
-    const { data } = await api.post("/inquiries", {
-      propertyId: input.propertyId,
-      buyerId: input.buyerId ?? undefined,
-      name: input.name,
-      location: input.location,
-      message: input.message,
-      meetingType: input.meetingType,
-      inspectionDate: scheduledAt,
-      scheduledDate: scheduledAt,
-      time: input.time,
-    });
-    return data;
+    const requestedAt = Date.now();
+    const preferredSchedule = new Intl.DateTimeFormat("en-NG", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(`${input.date}T${input.time}`));
+    const scheduleNote = `Preferred inspection time: ${preferredSchedule}.`;
+    try {
+      const { data } = await api.post("/inquiries", {
+        propertyId: input.propertyId,
+        name: input.name,
+        location: input.location,
+        message: `${input.message.trim()} ${scheduleNote}`.trim(),
+        meetingType: input.meetingType,
+      });
+      return data;
+    } catch (error) {
+      if (!isUncertainInquiryDelivery(error)) throw error;
+
+      // A gateway timeout can occur after the backend commits the inquiry.
+      // Confirm it through the buyer list before showing an error that would
+      // encourage the user to submit the same request again.
+      try {
+        const inquiry = await findRecentlyCreatedInquiry(
+          input.propertyId,
+          requestedAt,
+        );
+        if (inquiry) return inquiry;
+      } catch {
+        // Preserve the original POST failure when confirmation is unavailable.
+      }
+
+      throw error;
+    }
   },
 };

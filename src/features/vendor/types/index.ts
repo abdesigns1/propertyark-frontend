@@ -9,6 +9,7 @@ export interface VendorDashboardStats {
   totalSales: number;
   rating: number;
   reviewCount: number;
+  totalViews: number;
 }
 
 export interface VendorPerformancePoint {

@@ -8,7 +8,7 @@ const MEDIA_ORIGIN = "https://propertyark-backend.onrender.com";
  * files directly on the frontend domain.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> },
 ) {
   const { path } = await params;
@@ -22,7 +22,14 @@ export async function GET(
   );
 
   try {
-    const response = await fetch(upstreamUrl, { cache: "no-store" });
+    const requestHeaders = new Headers();
+    const range = request.headers.get("range");
+    if (range) requestHeaders.set("range", range);
+
+    const response = await fetch(upstreamUrl, {
+      headers: requestHeaders,
+      cache: "no-store",
+    });
     if (!response.ok) {
       return Response.json(
         { message: "Property media could not be loaded." },
@@ -33,11 +40,15 @@ export async function GET(
     const headers = new Headers();
     const contentType = response.headers.get("content-type");
     const contentLength = response.headers.get("content-length");
+    const contentRange = response.headers.get("content-range");
+    const acceptRanges = response.headers.get("accept-ranges");
     if (contentType) headers.set("content-type", contentType);
     if (contentLength) headers.set("content-length", contentLength);
+    if (contentRange) headers.set("content-range", contentRange);
+    if (acceptRanges) headers.set("accept-ranges", acceptRanges);
     headers.set("cache-control", "public, max-age=3600");
 
-    return new Response(response.body, { status: 200, headers });
+    return new Response(response.body, { status: response.status, headers });
   } catch {
     return Response.json(
       { message: "Property media is temporarily unavailable." },

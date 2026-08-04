@@ -21,6 +21,7 @@ const EMPTY_STATS: VendorDashboardStats = {
   totalSales: 0,
   rating: 0,
   reviewCount: 0,
+  totalViews: 0,
 };
 
 function asRecord(value: unknown): UnknownRecord {
@@ -106,6 +107,13 @@ function normalizeStats(statsResponse: unknown, inquiryStatsResponse: unknown) {
     ]),
     rating: numberFrom(stats, ["rating", "averageRating", "vendorRating"]),
     reviewCount: numberFrom(stats, ["reviewCount", "reviews", "totalReviews"]),
+    totalViews: numberFrom(stats, [
+      "totalViews",
+      "propertyViews",
+      "listingViews",
+      "views",
+      "viewCount",
+    ]),
   } satisfies VendorDashboardStats;
 }
 
@@ -192,7 +200,13 @@ function normalizeInquiries(value: unknown): VendorInquiry[] {
         stringFrom(property, ["name", "title"]) ??
         "Property inquiry",
       date:
-        stringFrom(inquiry, ["createdAt", "date", "updatedAt"]) ??
+        stringFrom(inquiry, [
+          "createdAt",
+          "requestedAt",
+          "submittedAt",
+          "date",
+          "updatedAt",
+        ]) ??
         new Date(0).toISOString(),
       status: stringFrom(inquiry, ["status"]) ?? "PENDING",
     };
@@ -221,7 +235,7 @@ export const vendorService = {
   async getDashboard(): Promise<VendorDashboardData> {
     const [stats, inquiries, inquiryStats, profile] = await Promise.allSettled([
       api.get("/vendor/stats"),
-      api.get("/inquiries/vendor", { params: { page: 1, limit: 5 } }),
+      api.get("/inquiries/vendor", { params: { page: 1, limit: 100 } }),
       api.get("/inquiries/vendor/stats"),
       api.get("/users/profile"),
     ]);
@@ -229,9 +243,23 @@ export const vendorService = {
     const responseData = (result: PromiseSettledResult<{ data: unknown }>) =>
       result.status === "fulfilled" ? result.value.data : undefined;
 
+    const normalizedInquiries = normalizeInquiries(responseData(inquiries));
+    const normalizedStats = normalizeStats(
+      responseData(stats),
+      responseData(inquiryStats),
+    );
+
     return {
-      stats: normalizeStats(responseData(stats), responseData(inquiryStats)),
-      inquiries: normalizeInquiries(responseData(inquiries)),
+      stats: {
+        ...normalizedStats,
+        // The inquiry stats endpoint can lag behind the list endpoint. Never
+        // show fewer received leads than the authenticated list already has.
+        leadsReceived: Math.max(
+          normalizedStats.leadsReceived,
+          normalizedInquiries.length,
+        ),
+      },
+      inquiries: normalizedInquiries,
       profile: normalizeProfile(responseData(profile)),
       performance: normalizePerformance(responseData(stats)),
       propertyStatus: normalizePropertyStatus(responseData(stats)),

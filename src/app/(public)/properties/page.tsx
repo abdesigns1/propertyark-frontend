@@ -46,6 +46,10 @@ function PropertiesContent() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const routePurpose =
+    pathname === "/shortlets"
+      ? "shortlet"
+      : searchParams.get("purpose") ?? searchParams.get("type");
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<PropertyFilterState>(DEFAULT_FILTERS);
   const [searchQuery, setSearchQuery] = useState(
@@ -80,7 +84,10 @@ function PropertiesContent() {
   /* eslint-disable react-hooks/set-state-in-effect -- URL query parameters are external navigation state. */
   useEffect(() => {
     const location = searchParams.get("location") ?? "";
-    const type = searchParams.get("type");
+    const type =
+      pathname === "/shortlets"
+        ? "shortlet"
+        : searchParams.get("purpose") ?? searchParams.get("type");
     const minPrice = searchParams.get("minPrice");
     const maxPrice = searchParams.get("maxPrice");
 
@@ -95,7 +102,7 @@ function PropertiesContent() {
       ],
     });
     setPage(1);
-  }, [searchParams]);
+  }, [pathname, searchParams]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const filteredProperties = availableProperties.data?.properties ?? [];
@@ -121,8 +128,20 @@ function PropertiesContent() {
   return (
     <>
       <PageBanner
-        title="Properties"
-        description="Find Properties that suits you, in any location according to your budget"
+        title={
+          routePurpose === "sale"
+            ? "Properties For Sale"
+            : routePurpose === "rent"
+              ? "Properties For Rent"
+              : routePurpose === "shortlet"
+                ? "Shortlet Properties"
+                : "Properties"
+        }
+        description={
+          routePurpose === "shortlet"
+            ? "Discover comfortable shortlet stays available for your next trip"
+            : "Find properties that suit you, in any location according to your budget"
+        }
         imageSrc="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1600"
         imageAlt="Residential neighborhood"
         belowContent={<PropertySearchForm />}

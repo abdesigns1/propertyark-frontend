@@ -450,29 +450,6 @@ export function AddPropertyWizard({
         ? await propertyService.update(initialPropertyId, form)
         : await propertyService.create(form);
 
-      // Some backend deployments create the property successfully but do not
-      // persist files included in that initial multipart request. Confirm that
-      // at least one image was attached and use the dedicated media endpoint as
-      // a compatibility fallback when the create response/media lookup is empty.
-      if (!initialPropertyId && photos.length > 0) {
-        const attachedMedia = property.media?.length
-          ? property.media
-          : await propertyService.getMedia(property.id);
-        const hasAttachedImage = attachedMedia.some(
-          (item) => item.type === "IMAGE",
-        );
-
-        if (!hasAttachedImage) {
-          const mediaForm = new FormData();
-          photos.forEach((file) => mediaForm.append("photos", file));
-          videos.forEach((file) => mediaForm.append("videos", file));
-          Object.values(documents)
-            .flat()
-            .forEach((file) => mediaForm.append("documents", file));
-          await propertyService.uploadMedia(property.id, mediaForm);
-        }
-      }
-
       if (draftId) await deletePropertyDraft<AddPropertyFormValues>(draftId);
       if (accountKey) {
         // Refresh both consumers immediately so the new pending listing and its

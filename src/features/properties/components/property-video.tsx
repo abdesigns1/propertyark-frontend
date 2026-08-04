@@ -17,13 +17,17 @@ export function PropertyVideo({ thumbnailSrc, videoUrl }: PropertyVideoProps) {
       <h2 className="text-lg font-semibold text-foreground">Video</h2>
       <div className="relative mt-4 aspect-video overflow-hidden rounded-2xl bg-black">
         {playing ? (
-          <iframe
+          <video
             src={videoUrl}
-            title="Property walkthrough video"
+            poster={thumbnailSrc}
             className="h-full w-full"
-            allow="autoplay; encrypted-media"
-            allowFullScreen
-          />
+            controls
+            autoPlay
+            playsInline
+            preload="metadata"
+          >
+            Your browser does not support MP4 video playback.
+          </video>
         ) : (
           <button
             type="button"

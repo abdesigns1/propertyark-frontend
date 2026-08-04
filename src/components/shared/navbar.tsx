@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, LayoutDashboard, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,8 +45,42 @@ interface NavbarProps {
   reserveSpace?: boolean;
 }
 
-export function Navbar({ reserveSpace = false }: NavbarProps) {
+function MainNavLink({ link, mobile = false, onNavigate }: { link: { label: string; href: string }; mobile?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [linkPath, query = ""] = link.href.split("?");
+  const linkPurpose = new URLSearchParams(query).get("purpose");
+  const currentPurpose = searchParams.get("purpose") ?? searchParams.get("type");
+  const isActive =
+    pathname === linkPath &&
+    (linkPurpose
+      ? currentPurpose === linkPurpose
+      : linkPath === "/properties"
+        ? !currentPurpose
+        : true);
+
+  return (
+    <Link
+      href={link.href}
+      onClick={onNavigate}
+      className={cn(
+        "text-sm font-medium transition-colors",
+        mobile && "rounded-lg px-3 py-2",
+        isActive
+          ? mobile
+            ? "bg-primary/10 text-primary"
+            : "border-b-2 border-primary pb-0.5 text-primary"
+          : mobile
+            ? "text-muted-foreground hover:bg-accent hover:text-foreground"
+            : "text-navbar-foreground/80 hover:text-navbar-foreground",
+      )}
+    >
+      {link.label}
+    </Link>
+  );
+}
+
+export function Navbar({ reserveSpace = false }: NavbarProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -88,23 +122,11 @@ export function Navbar({ reserveSpace = false }: NavbarProps) {
 
           {/* Links */}
           <div className="hidden items-center gap-6 lg:flex">
-            {MAIN_NAV_LINKS.map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "text-sm font-medium transition-colors",
-                    isActive
-                      ? "border-b-2 border-primary pb-0.5 text-primary"
-                      : "text-navbar-foreground/80 hover:text-navbar-foreground",
-                  )}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
+            {MAIN_NAV_LINKS.map((link) => (
+              <Suspense key={link.href} fallback={<Link href={link.href} className="text-sm font-medium text-navbar-foreground/80">{link.label}</Link>}>
+                <MainNavLink link={link} />
+              </Suspense>
+            ))}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -150,24 +172,11 @@ export function Navbar({ reserveSpace = false }: NavbarProps) {
               </SheetHeader>
               <div className="flex flex-col gap-4 px-4 pb-4">
                 <nav className="flex flex-col gap-3">
-                  {MAIN_NAV_LINKS.map((link) => {
-                    const isActive = pathname === link.href;
-                    return (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        onClick={() => setMobileOpen(false)}
-                        className={cn(
-                          "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                          isActive
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                        )}
-                      >
-                        {link.label}
-                      </Link>
-                    );
-                  })}
+                  {MAIN_NAV_LINKS.map((link) => (
+                    <Suspense key={link.href} fallback={<Link href={link.href} onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground">{link.label}</Link>}>
+                      <MainNavLink link={link} mobile onNavigate={() => setMobileOpen(false)} />
+                    </Suspense>
+                  ))}
 
                   <Collapsible
                     open={professionalsOpen}

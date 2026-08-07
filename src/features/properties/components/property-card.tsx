@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { BedDouble, Bath, Ruler, MapPin } from "lucide-react";
@@ -20,6 +21,7 @@ interface PropertyCardProps {
 }
 
 export function PropertyCard({ property }: PropertyCardProps) {
+  const [imageIndex, setImageIndex] = useState(0);
   const {
     id,
     title,
@@ -33,17 +35,25 @@ export function PropertyCard({ property }: PropertyCardProps) {
     sizeSqm,
     images,
   } = property;
+  const displayedImage =
+    images[imageIndex] ?? "/assets/images/hero-property.jpeg";
 
   return (
     <div className="group overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
       {/* Image */}
       <div className="relative aspect-[4/3] w-full overflow-hidden">
         <Image
-          src={images[0]}
+          key={displayedImage}
+          src={displayedImage}
           alt={title}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           className="object-cover transition-transform duration-300 group-hover:scale-105"
+          onError={() => {
+            if (imageIndex <= images.length - 1) {
+              setImageIndex((current) => current + 1);
+            }
+          }}
         />
 
         <span

@@ -57,7 +57,9 @@ export function PropertyHeader({ property }: { property: Property }) {
           className="text-xl font-bold text-primary sm:text-2xl"
         />
         {property.purpose === "shortlet" && (
-          <p className="mt-1 text-xs font-medium text-muted-foreground">per night</p>
+          <p className="mt-1 text-xs font-medium text-muted-foreground">
+            per night
+          </p>
         )}
         {property.purpose !== "shortlet" && property.sizeSqm && (
           <p className="mt-1 text-xs text-muted-foreground">

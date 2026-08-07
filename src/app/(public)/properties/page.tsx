@@ -49,7 +49,7 @@ function PropertiesContent() {
   const routePurpose =
     pathname === "/shortlets"
       ? "shortlet"
-      : searchParams.get("purpose") ?? searchParams.get("type");
+      : (searchParams.get("purpose") ?? searchParams.get("type"));
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<PropertyFilterState>(DEFAULT_FILTERS);
   const [searchQuery, setSearchQuery] = useState(
@@ -87,7 +87,7 @@ function PropertiesContent() {
     const type =
       pathname === "/shortlets"
         ? "shortlet"
-        : searchParams.get("purpose") ?? searchParams.get("type");
+        : (searchParams.get("purpose") ?? searchParams.get("type"));
     const minPrice = searchParams.get("minPrice");
     const maxPrice = searchParams.get("maxPrice");
 
@@ -144,7 +144,7 @@ function PropertiesContent() {
         }
         imageSrc="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1600"
         imageAlt="Residential neighborhood"
-        belowContent={<PropertySearchForm />}
+        // belowContent={<PropertySearchForm />}
       />
 
       <section

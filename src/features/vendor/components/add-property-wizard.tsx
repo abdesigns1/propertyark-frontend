@@ -451,18 +451,25 @@ export function AddPropertyWizard({
         : await propertyService.create(form);
 
       if (draftId) await deletePropertyDraft<AddPropertyFormValues>(draftId);
+      // Refresh the public catalogue as well as vendor-owned views. An approved
+      // edit can become public immediately, and must not remain hidden behind
+      // a catalogue response cached before the save completed.
+      const invalidations = [
+        queryClient.invalidateQueries({
+          queryKey: ["properties", "available"],
+        }),
+      ];
       if (accountKey) {
-        // Refresh both consumers immediately so the new pending listing and its
-        // uploaded media appear without waiting for each query's stale timeout.
-        await Promise.all([
+        invalidations.push(
           queryClient.invalidateQueries({
             queryKey: vendorPropertiesQueryKey(accountKey),
           }),
           queryClient.invalidateQueries({
             queryKey: vendorDashboardQueryKey(accountKey),
           }),
-        ]);
+        );
       }
+      await Promise.all(invalidations);
       setCreatedId(property.id);
       toast.success("Property saved successfully.");
     } catch (error) {

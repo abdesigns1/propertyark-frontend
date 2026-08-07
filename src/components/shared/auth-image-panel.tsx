@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface SlideContent {
   imageSrc: string;
@@ -67,14 +68,20 @@ export function AuthImagePanel({
 
   return (
     <div className="relative hidden overflow-hidden lg:sticky lg:top-0 lg:block lg:h-screen">
-      <Image
-        key={currentSlide.imageSrc}
-        src={currentSlide.imageSrc}
-        alt={currentSlide.imageAlt}
-        fill
-        priority
-        className="object-cover transition-opacity duration-500"
-      />
+      {slideData.map((slide, index) => (
+        <Image
+          key={`${slide.imageSrc}-${index}`}
+          src={slide.imageSrc}
+          alt={index === activeIndex ? slide.imageAlt : ""}
+          fill
+          priority={index === 0}
+          aria-hidden={index !== activeIndex}
+          className={cn(
+            "object-cover transition-opacity duration-1000 ease-in-out motion-reduce:transition-none",
+            index === activeIndex ? "opacity-100" : "opacity-0",
+          )}
+        />
+      ))}
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-black/30" />
 
       <Link href="/" className="absolute left-8 top-8 z-10">

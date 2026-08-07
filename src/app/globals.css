@@ -138,11 +138,6 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
-  /* Tabular numerals for prices, stats, dates across the app */
-  .font-numeric {
-    font-family: var(--font-geist-mono);
-    font-variant-numeric: tabular-nums;
-  }
   /* Visible keyboard focus, never removed */
   :focus-visible {
     outline: 2px solid var(--ring);
@@ -160,6 +155,12 @@
 }
 
 @layer utilities {
+  /* Prices and aligned figures use the same Geist Sans face as the website. */
+  .font-numeric {
+    font-family: var(--font-geist-sans) !important;
+    font-variant-numeric: tabular-nums;
+  }
+
   .testimonial-marquee {
     animation: testimonial-marquee 24s linear infinite;
     will-change: transform;

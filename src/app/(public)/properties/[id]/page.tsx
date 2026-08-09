@@ -63,11 +63,14 @@ export default async function PropertyDetailPage({
               <PropertyAmenities amenities={property.amenities} />
             )}
 
-            <div>
-              <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+            <section>
+              <h2 className="text-lg font-semibold text-foreground">
+                Property Description
+              </h2>
+              <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
                 {property.description}
               </p>
-            </div>
+            </section>
 
             {property.videoUrl && (
               <PropertyVideo

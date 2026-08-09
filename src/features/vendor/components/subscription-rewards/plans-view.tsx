@@ -43,22 +43,22 @@ export function PlansView({ onChoose, onBack }: PlansViewProps) {
         }
       />
 
-      <div className="grid items-stretch gap-4 pt-16 lg:grid-cols-3">
+      <div className="grid items-stretch gap-6 pt-16 lg:grid-cols-3">
         {SUBSCRIPTION_PLANS.map((plan) => (
           <Card
             key={plan.id}
             className={cn(
               "relative min-h-[540px]",
-              plan.recommended && "ring-2 ring-primary",
+              plan.recommended && "overflow-visible ring-2 ring-primary",
             )}
           >
             {plan.recommended && (
-              <Badge className="absolute -top-4 left-1/2 h-7 -translate-x-1/2 px-6 uppercase tracking-widest">
+              <Badge className="absolute -top-4 left-1/2 h-8 min-w-44 -translate-x-1/2 justify-center rounded-full px-6 text-xs font-semibold uppercase tracking-[0.14em] shadow-sm">
                 Recommended
               </Badge>
             )}
 
-            <CardHeader className="pt-4">
+            <CardHeader className={cn("pt-4", plan.recommended && "pt-7")}>
               <Badge variant="secondary" className="uppercase tracking-wide">
                 {plan.eyebrow}
               </Badge>

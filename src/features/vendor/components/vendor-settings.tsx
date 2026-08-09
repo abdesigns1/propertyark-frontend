@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   BriefcaseBusiness,
@@ -38,7 +38,11 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getApiErrorMessage } from "@/services/api-error";
-import { settingsService } from "@/services/settings.service";
+import {
+  settingsService,
+  type VendorSettingsProfile,
+  vendorProfileQueryKey,
+} from "@/services/settings.service";
 import { useAuthStore } from "@/store/auth.store";
 import { useAccountKey } from "@/lib/account-identity";
 import { cn } from "@/lib/utils";
@@ -151,13 +155,12 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
   const storedUser = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
   const accountKey = useAccountKey();
+  const queryClient = useQueryClient();
+  const profileQueryKey = vendorProfileQueryKey(
+    accountKey ?? "unresolved-session",
+  );
   const profile = useQuery({
-    queryKey: [
-      "vendor",
-      "settings",
-      "profile",
-      accountKey ?? "unresolved-session",
-    ],
+    queryKey: profileQueryKey,
     queryFn: settingsService.getProfile,
     enabled: Boolean(accountKey),
     staleTime: 60_000,
@@ -189,6 +192,17 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
         phone: updated.phone || phone,
         location: updated.location || location,
       });
+      queryClient.setQueryData<VendorSettingsProfile>(
+        profileQueryKey,
+        (current) => ({
+          ...(current ?? updated),
+          ...updated,
+          fullName: updated.fullName || fullName,
+          phone: updated.phone || phone,
+          location: updated.location || location,
+        }),
+      );
+      queryClient.invalidateQueries({ queryKey: ["vendor", "dashboard"] });
       toast.success("Profile saved to your account.");
     },
     onError: (error) =>
@@ -202,6 +216,12 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
       const next = updated.avatarUrl ?? avatarUrl;
       setAvatarUrl(next);
       updateUser({ avatarUrl: next });
+      queryClient.setQueryData<VendorSettingsProfile>(
+        profileQueryKey,
+        (current) =>
+          current ? { ...current, avatarUrl: next } : updated,
+      );
+      queryClient.invalidateQueries({ queryKey: ["vendor", "dashboard"] });
       toast.success("Profile photo updated.");
     },
     onError: (error) =>
@@ -231,6 +251,23 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
         <Skeleton className="h-36 rounded-xl" />
         <Skeleton className="h-80 rounded-xl" />
       </div>
+    );
+  if (profile.isError || !profile.data)
+    return (
+      <Card className="mx-auto max-w-xl">
+        <CardHeader className="text-center">
+          <CardTitle>Profile settings could not be loaded</CardTitle>
+          <CardDescription>
+            {getApiErrorMessage(
+              profile.error,
+              "Please check the backend connection and try again.",
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center pb-8">
+          <Button onClick={() => profile.refetch()}>Try again</Button>
+        </CardContent>
+      </Card>
     );
   return (
     <div className="flex flex-col gap-6">

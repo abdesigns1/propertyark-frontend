@@ -48,6 +48,7 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth.store";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const UNAVAILABLE_DATES: Date[] = [];
 
 export function ShortletBookingCard({ property }: { property: Property }) {
   const router = useRouter();
@@ -62,12 +63,9 @@ export function ShortletBookingCard({ property }: { property: Property }) {
   const [guestPickerOpen, setGuestPickerOpen] = useState(false);
   const guests = adults + children;
 
-  // Temporary availability data. Replace this list with the vendor availability
-  // endpoint response without changing the calendar or input behaviour.
-  const unavailableDates = useMemo(
-    () => [8, 9, 23, 24, 25].map((day) => setDate(initialMonth, day)),
-    [initialMonth],
-  );
+  // Keep this empty until the API exposes property-specific blocked/booked dates.
+  // Appointment availability cannot safely be used because it is not scoped to a property.
+  const unavailableDates = UNAVAILABLE_DATES;
 
   const calendarDays = useMemo(
     () =>
@@ -140,6 +138,8 @@ export function ShortletBookingCard({ property }: { property: Property }) {
       checkIn: format(checkIn, "yyyy-MM-dd"),
       checkOut: format(checkOut, "yyyy-MM-dd"),
       guests: String(guests),
+      adults: String(adults),
+      children: String(children),
     });
     router.push(`/shortlets/${property.id}/book?${query}`);
   }
@@ -258,7 +258,12 @@ export function ShortletBookingCard({ property }: { property: Property }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground"><span className="inline-block w-5 border-t-2 border-muted-foreground" /> Struck-through dates are unavailable</div>
+        {unavailableDates.length > 0 && (
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            <span className="inline-block w-5 border-t-2 border-muted-foreground" />
+            Struck-through dates are unavailable
+          </div>
+        )}
         <Button size="lg" className="h-11 w-full" onClick={continueToBooking} disabled={selectingCheckout || nights < 1}>Book Now</Button>
       </CardContent>
 

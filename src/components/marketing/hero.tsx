@@ -27,18 +27,18 @@ export function Hero() {
 
         <div className="mx-auto mt-8 grid max-w-7xl grid-cols-1 items-center gap-12 px-6 lg:px-8 lg:mt-8 lg:grid-cols-2 lg:gap-8">
           {/* Left: copy */}
-          <div>
+          <div className="text-center lg:text-left">
             <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
               Buy, Sell &amp; Rent
               <br />
               <span className="text-secondary">Verified</span> Properties
             </h1>
-            <p className="mt-6 max-w-md text-base leading-relaxed text-white/85">
+            <p className="mx-auto mt-6 max-w-md text-base leading-relaxed text-white/85 lg:mx-0">
               Discover a curated selection of premium real estate, backed by
               data and verified for your security. Join thousands of investors
               in the next generation of property management.
             </p>
-            <div className="mt-8 flex flex-wrap gap-4">
+            <div className="mt-8 flex flex-wrap justify-center gap-4 lg:justify-start">
               <Button
                 asChild
                 size="lg"

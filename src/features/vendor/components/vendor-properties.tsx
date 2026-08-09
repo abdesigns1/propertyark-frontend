@@ -6,10 +6,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Building2,
   CheckCircle2,
+  ChevronDown,
   CircleEllipsis,
   Eye,
   FilePenLine,
   MoreVertical,
+  Percent,
   Plus,
   Search,
   Trash2,
@@ -96,7 +98,7 @@ function StatCard({
   icon: Icon,
 }: {
   title: string;
-  value: number;
+  value: number | string;
   note: string;
   icon: typeof Building2;
 }) {
@@ -112,7 +114,9 @@ function StatCard({
       </CardHeader>
       <CardContent>
         <div className="flex items-end justify-between gap-3">
-          <p className="text-3xl font-semibold">{value.toLocaleString()}</p>
+          <p className="text-3xl font-semibold">
+            {typeof value === "number" ? value.toLocaleString() : value}
+          </p>
           <p className="text-xs text-muted-foreground">{note}</p>
         </div>
       </CardContent>
@@ -129,6 +133,9 @@ export function VendorProperties() {
   const [type, setType] = useState("all");
   const [city, setCity] = useState("all");
   const [page, setPage] = useState(1);
+  const [rateMetric, setRateMetric] = useState<"occupancy" | "sold">(
+    "occupancy",
+  );
   const [deleteTarget, setDeleteTarget] = useState<PropertyApiItem | null>(
     null,
   );
@@ -235,12 +242,32 @@ export function VendorProperties() {
             Manage, update, and monitor all your listed properties.
           </p>
         </div>
-        <Button size="lg" asChild>
-          <Link href="/vendor/properties/new">
-            <Plus data-icon="inline-start" />
-            Add New Property
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="lg">
+                {rateMetric === "occupancy" ? "Occupancy Rate" : "Sold Rate"}
+                <ChevronDown data-icon="inline-end" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-44">
+              <DropdownMenuGroup>
+                <DropdownMenuItem onSelect={() => setRateMetric("occupancy")}>
+                  Occupancy Rate
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setRateMetric("sold")}>
+                  Sold Rate
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button size="lg" asChild>
+            <Link href="/vendor/properties/new">
+              <Plus data-icon="inline-start" />
+              Add New Property
+            </Link>
+          </Button>
+        </div>
       </header>
       <section
         aria-label="Property totals"
@@ -265,10 +292,18 @@ export function VendorProperties() {
           icon={CircleEllipsis}
         />
         <StatCard
-          title="Draft"
-          value={counts.draft}
-          note="Incomplete"
-          icon={FilePenLine}
+          title={rateMetric === "occupancy" ? "Occupancy rate" : "Sold rate"}
+          value={`${Math.round(
+            rateMetric === "occupancy"
+              ? (query.data?.metrics.occupancyRate ?? 0)
+              : (query.data?.metrics.soldRate ?? 0),
+          )}%`}
+          note={
+            rateMetric === "occupancy"
+              ? "Current occupancy"
+              : "Completed sales"
+          }
+          icon={Percent}
         />
       </section>
       <Card>

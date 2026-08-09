@@ -60,12 +60,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useShortletBookings } from "@/features/vendor/hooks/use-shortlet-bookings";
+import {
+  useShortletBookings,
+  useUpdateShortletBooking,
+} from "@/features/vendor/hooks/use-shortlet-bookings";
 import type {
   ShortletBooking,
   ShortletBookingStatus,
   ShortletCalendarEvent,
 } from "@/services/shortlet-booking.service";
+import { getApiErrorMessage } from "@/services/api-error";
 import { cn } from "@/lib/utils";
 
 const currency = new Intl.NumberFormat("en-NG", {
@@ -96,6 +100,7 @@ function BookingStatusBadge({ status }: { status: ShortletBookingStatus }) {
         "capitalize",
         status === "PENDING" && "bg-secondary/15 text-secondary-hover",
         status === "CONFIRMED" && "bg-primary/10 text-primary",
+        status === "CHECKED_IN" && "bg-success/10 text-success",
         status === "COMPLETED" && "bg-success/10 text-success",
         status === "CANCELLED" && "bg-destructive/10 text-destructive",
       )}
@@ -167,11 +172,13 @@ function BookingsTable({
   onConfirm,
   onSelect,
   onExport,
+  isUpdating,
 }: {
   bookings: ShortletBooking[];
   onConfirm: (bookingId: string) => void;
   onSelect: (bookingId: string) => void;
   onExport: () => void;
+  isUpdating: boolean;
 }) {
   return (
     <Card className="gap-0 py-0 shadow-sm">
@@ -259,7 +266,9 @@ function BookingsTable({
                           variant="ghost"
                           size="icon-sm"
                           aria-label={`Confirm booking ${booking.id}`}
-                          disabled={booking.status !== "PENDING"}
+                          disabled={
+                            booking.status !== "PENDING" || isUpdating
+                          }
                           onClick={(event) => {
                             event.stopPropagation();
                             onConfirm(booking.id);
@@ -296,12 +305,16 @@ function BookingDetailsSheet({
   onOpenChange,
   onAccept,
   onReject,
+  onCheckIn,
+  isUpdating,
 }: {
   booking: ShortletBooking | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAccept: (bookingId: string) => void;
   onReject: (bookingId: string) => void;
+  onCheckIn: (bookingId: string) => void;
+  isUpdating: boolean;
 }) {
   if (!booking) return null;
   const nightlyRate = booking.nights ? booking.amount / booking.nights : 0;
@@ -398,12 +411,14 @@ function BookingDetailsSheet({
                       ? "Booking Rejected"
                       : booking.status === "CONFIRMED"
                         ? "Booking Confirmed"
-                        : "Stay Completed"
+                        : booking.status === "CHECKED_IN"
+                          ? "Guest Checked In"
+                          : "Stay Completed"
                 }
                 detail={
                   booking.status === "PENDING"
                     ? "Awaiting vendor response"
-                    : "Temporary preview status"
+                    : "Status updated by the booking service"
                 }
               />
             </div>
@@ -419,13 +434,29 @@ function BookingDetailsSheet({
                 size="lg"
                 className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => onReject(booking.id)}
+                disabled={isUpdating}
               >
                 Reject Booking
               </Button>
-              <Button size="lg" onClick={() => onAccept(booking.id)}>
+              <Button
+                size="lg"
+                onClick={() => onAccept(booking.id)}
+                disabled={isUpdating}
+              >
                 Accept &amp; Confirm
               </Button>
             </>
+          ) : booking.status === "CONFIRMED" ? (
+            <div className="col-span-full flex items-center justify-between gap-3">
+              <BookingStatusBadge status={booking.status} />
+              <Button
+                size="lg"
+                onClick={() => onCheckIn(booking.id)}
+                disabled={isUpdating}
+              >
+                Check In Guest
+              </Button>
+            </div>
           ) : (
             <div className="col-span-full flex items-center justify-between gap-3">
               <span className="text-sm text-muted-foreground">Current status</span>
@@ -587,6 +618,7 @@ function HospitalityCalendar({ events }: { events: ShortletCalendarEvent[] }) {
 
 export function ShortletBookingManagement() {
   const dashboard = useShortletBookings();
+  const updateBooking = useUpdateShortletBooking();
   const calendarRef = useRef<HTMLDivElement>(null);
   const availabilityRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState("");
@@ -596,17 +628,9 @@ export function ShortletBookingManagement() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
-  const [statusOverrides, setStatusOverrides] = useState<
-    Record<string, ShortletBookingStatus>
-  >({});
-
   const bookings = useMemo(
-    () =>
-      (dashboard.data?.bookings ?? []).map((booking) => ({
-        ...booking,
-        status: statusOverrides[booking.id] ?? booking.status,
-      })),
-    [dashboard.data?.bookings, statusOverrides],
+    () => dashboard.data?.bookings ?? [],
+    [dashboard.data?.bookings],
   );
 
   const filteredBookings = useMemo(() => {
@@ -641,10 +665,16 @@ export function ShortletBookingManagement() {
   if (dashboard.isError || !dashboard.data) {
     return (
       <Card className="mx-auto mt-16 max-w-xl">
-        <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
-          <p className="text-muted-foreground">
-            Shortlet booking management is temporarily unavailable.
-          </p>
+        <CardHeader className="items-center text-center">
+          <CardTitle>Shortlet bookings unavailable</CardTitle>
+          <CardDescription className="max-w-md">
+            {getApiErrorMessage(
+              dashboard.error,
+              "The booking service could not be reached.",
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center pb-8">
           <Button onClick={() => dashboard.refetch()}>Try again</Button>
         </CardContent>
       </Card>
@@ -657,19 +687,15 @@ export function ShortletBookingManagement() {
     "Selected property";
 
   function confirmBooking(bookingId: string) {
-    setStatusOverrides((current) => ({
-      ...current,
-      [bookingId]: "CONFIRMED",
-    }));
-    toast.success(`Booking #${bookingId} confirmed for this preview.`);
+    updateBooking.mutate({ bookingId, action: "approve" });
   }
 
   function rejectBooking(bookingId: string) {
-    setStatusOverrides((current) => ({
-      ...current,
-      [bookingId]: "CANCELLED",
-    }));
-    toast.success(`Booking #${bookingId} rejected for this preview.`);
+    updateBooking.mutate({ bookingId, action: "cancel" });
+  }
+
+  function checkInBooking(bookingId: string) {
+    updateBooking.mutate({ bookingId, action: "check-in" });
   }
 
   function exportCsv() {
@@ -824,6 +850,7 @@ export function ShortletBookingManagement() {
                     <SelectItem value="ALL">All Status</SelectItem>
                     <SelectItem value="PENDING">Pending</SelectItem>
                     <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+                    <SelectItem value="CHECKED_IN">Checked In</SelectItem>
                     <SelectItem value="COMPLETED">Completed</SelectItem>
                     <SelectItem value="CANCELLED">Cancelled</SelectItem>
                   </SelectGroup>
@@ -856,6 +883,7 @@ export function ShortletBookingManagement() {
             onConfirm={confirmBooking}
             onSelect={setSelectedBookingId}
             onExport={exportCsv}
+            isUpdating={updateBooking.isPending}
           />
 
           <div ref={calendarRef}>
@@ -1016,6 +1044,8 @@ export function ShortletBookingManagement() {
         }}
         onAccept={confirmBooking}
         onReject={rejectBooking}
+        onCheckIn={checkInBooking}
+        isUpdating={updateBooking.isPending}
       />
     </div>
   );

@@ -21,6 +21,10 @@ export interface VendorSettingsProfile {
   pushNotifications: boolean | null;
 }
 
+export function vendorProfileQueryKey(accountKey: string) {
+  return ["vendor", "settings", "profile", accountKey] as const;
+}
+
 function record(value: unknown): Record<string, unknown> {
   return value && typeof value === "object"
     ? (value as Record<string, unknown>)
@@ -73,6 +77,10 @@ export const settingsService = {
     fullName: string;
     phone: string;
     location: string;
+    businessName?: string;
+    businessDescription?: string;
+    cacRegistrationNumber?: string;
+    taxId?: string;
   }) => normalizeProfile((await api.patch("/users/update", payload)).data),
   updateAvatar: async (avatar: File) => {
     const form = new FormData();

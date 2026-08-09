@@ -27,6 +27,7 @@ export interface AvailablePropertiesPageOptions {
 export interface VendorPropertiesResult {
   properties: PropertyApiItem[];
   pagination: { page: number; limit: number; total: number; pages: number };
+  metrics: { occupancyRate: number; soldRate: number };
 }
 
 type UnknownRecord = Record<string, unknown>;
@@ -81,13 +82,75 @@ function normalizeMediaResponse(value: unknown): PropertyMediaResponse[] {
 function normalizeVendorProperty(value: unknown): PropertyApiItem {
   const property = asRecord(value) as unknown as PropertyApiItem;
   const source = asRecord(value);
+  const pricing = asRecord(source.pricing ?? source.priceDetails ?? source.rates);
   const embeddedMedia =
     [source.media, source.medias, source.photos, source.images].find(
       Array.isArray,
     ) ?? [];
+  const amountFrom = (...values: unknown[]) => {
+    for (const candidate of values) {
+      if (typeof candidate === "number" && Number.isFinite(candidate)) {
+        return candidate;
+      }
+      if (typeof candidate === "string" && candidate.trim()) {
+        const normalized = Number(candidate.replace(/[^0-9.-]/g, ""));
+        if (Number.isFinite(normalized)) return normalized;
+      }
+    }
+    return null;
+  };
+  const rawListingType = String(
+    source.listingType ?? source.purpose ?? source.listingPurpose ?? "FOR_SALE",
+  ).toUpperCase();
+  const listingType = rawListingType.startsWith("FOR_")
+    ? rawListingType
+    : rawListingType.includes("SHORT")
+      ? "FOR_SHORTLET"
+      : rawListingType.includes("RENT")
+        ? "FOR_RENT"
+        : rawListingType.includes("LAND")
+          ? "FOR_LAND"
+          : "FOR_SALE";
+  const commonPrice = amountFrom(
+    source.price,
+    source.amount,
+    source.listingPrice,
+    source.propertyPrice,
+    pricing.price,
+    pricing.amount,
+  );
 
   return {
     ...property,
+    listingType,
+    rentAmount: amountFrom(
+      source.rentAmount,
+      source.monthlyRent,
+      source.rentPrice,
+      pricing.rentAmount,
+      pricing.monthlyRent,
+      listingType === "FOR_RENT" ? commonPrice : null,
+    ),
+    salePrice: amountFrom(
+      source.salePrice,
+      source.sellingPrice,
+      pricing.salePrice,
+      listingType === "FOR_SALE" ? commonPrice : null,
+    ),
+    landFee: amountFrom(
+      source.landFee,
+      source.landPrice,
+      pricing.landFee,
+      listingType === "FOR_LAND" ? commonPrice : null,
+    ),
+    shortletAmount: amountFrom(
+      source.shortletAmount,
+      source.nightlyRate,
+      source.pricePerNight,
+      pricing.shortletAmount,
+      pricing.nightlyRate,
+      listingType === "FOR_SHORTLET" ? commonPrice : null,
+    ),
     media: normalizeMediaResponse({ data: embeddedMedia }),
   };
 }
@@ -128,7 +191,7 @@ async function recoverPersistedProperty(error: unknown) {
 
   // Prefer the vendor collection here. Some backend versions repeat the same
   // broken media lookup on the single-property endpoint.
-  const { data } = await api.get<unknown>("/properties", {
+  const { data } = await api.get<unknown>("/properties/my-properties", {
     params: { page: 1, limit: 1000 },
   });
   const recovered = normalizeVendorPropertiesResponse(data, 1, 1000)
@@ -167,6 +230,9 @@ function normalizeVendorPropertiesResponse(
       ? (data.pagination as Record<string, unknown>)
       : data;
   const rows = (properties ?? []).map(normalizeVendorProperty);
+  const metricsSource = asRecord(
+    data.metrics ?? data.stats ?? data.summary ?? root.metrics ?? root.stats,
+  );
   const numberValue = (key: string, fallback: number) => {
     const candidate = paginationSource[key];
     return typeof candidate === "number"
@@ -176,6 +242,48 @@ function normalizeVendorPropertiesResponse(
         : fallback;
   };
   const total = numberValue("total", rows.length);
+  const optionalNumber = (keys: string[]) => {
+    for (const key of keys) {
+      const candidate = metricsSource[key] ?? data[key] ?? root[key];
+      if (typeof candidate === "number" && Number.isFinite(candidate)) {
+        return candidate;
+      }
+      if (
+        typeof candidate === "string" &&
+        candidate.trim() &&
+        !Number.isNaN(Number(candidate))
+      ) {
+        return Number(candidate);
+      }
+    }
+    return null;
+  };
+  const rateFromRows = (kind: "occupancy" | "sold") => {
+    const eligible = rows.filter((property) => {
+      const listingType = property.listingType?.toUpperCase() ?? "";
+      return kind === "occupancy"
+        ? Boolean(
+            property.rentAmount != null ||
+              property.shortletAmount != null ||
+              listingType.includes("RENT") ||
+              listingType.includes("SHORTLET"),
+          )
+        : Boolean(property.salePrice != null || listingType.includes("SALE"));
+    });
+    if (!eligible.length) return 0;
+    const matching = eligible.filter((property) => {
+      const source = asRecord(property);
+      const status = String(
+        kind === "occupancy"
+          ? source.occupancyStatus ?? source.availabilityStatus ?? source.status
+          : source.saleStatus ?? source.listingStatus ?? source.status,
+      ).toUpperCase();
+      return kind === "occupancy"
+        ? source.isOccupied === true || status === "OCCUPIED"
+        : source.isSold === true || status === "SOLD";
+    }).length;
+    return Math.round((matching / eligible.length) * 100);
+  };
   return {
     properties: rows,
     pagination: {
@@ -183,6 +291,17 @@ function normalizeVendorPropertiesResponse(
       limit: numberValue("limit", limit),
       total,
       pages: numberValue("pages", Math.max(1, Math.ceil(total / limit))),
+    },
+    metrics: {
+      occupancyRate:
+        optionalNumber([
+          "occupancyRate",
+          "occupancyPercentage",
+          "occupiedRate",
+        ]) ?? rateFromRows("occupancy"),
+      soldRate:
+        optionalNumber(["soldRate", "salesRate", "soldPercentage"]) ??
+        rateFromRows("sold"),
     },
   };
 }
@@ -215,7 +334,7 @@ export const propertyService = {
     page = 1,
     limit = 1000,
   }: { page?: number; limit?: number } = {}) => {
-    const { data } = await api.get<unknown>("/properties", {
+    const { data } = await api.get<unknown>("/properties/my-properties", {
       params: { page, limit },
     });
     return normalizeVendorPropertiesResponse(data, page, limit);

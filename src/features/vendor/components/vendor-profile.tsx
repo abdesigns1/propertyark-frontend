@@ -39,16 +39,19 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getApiErrorMessage } from "@/services/api-error";
 import {
   settingsService,
   type VendorSettingsProfile,
+  vendorProfileQueryKey,
 } from "@/services/settings.service";
 import { useAccountKey } from "@/lib/account-identity";
 import { useAuthStore } from "@/store/auth.store";
 import { useVendorDashboard } from "@/features/vendor/hooks/use-vendor-dashboard";
+import { useVendorProperties } from "@/features/vendor/hooks/use-vendor-properties";
 import {
   displayProfileValue,
   formatAccountAge,
@@ -58,26 +61,31 @@ import {
   profileInitials,
 } from "@/features/vendor/lib/vendor-profile-display";
 
-const profileQueryRoot = ["vendor", "settings", "profile"] as const;
-
-
 export function VendorProfile() {
   const accountKey = useAccountKey();
   const storedUser = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
   const queryClient = useQueryClient();
   const dashboard = useVendorDashboard();
+  const vendorProperties = useVendorProperties();
+  const profileQueryKey = vendorProfileQueryKey(
+    accountKey ?? "unresolved-session",
+  );
   const profile = useQuery({
-    queryKey: [...profileQueryRoot, accountKey ?? "unresolved-session"],
+    queryKey: profileQueryKey,
     queryFn: settingsService.getProfile,
     enabled: Boolean(accountKey),
     staleTime: 60_000,
     refetchOnWindowFocus: true,
   });
   const [editOpen, setEditOpen] = useState(false);
+  const [businessEditOpen, setBusinessEditOpen] = useState(false);
   const [fullName, setFullName] = useState(storedUser?.fullName ?? "");
   const [phone, setPhone] = useState(storedUser?.phone ?? "");
   const [location, setLocation] = useState(storedUser?.location ?? "");
+  const [businessDescription, setBusinessDescription] = useState("");
+  const [cacRegistrationNumber, setCacRegistrationNumber] = useState("");
+  const [taxId, setTaxId] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -86,6 +94,9 @@ export function VendorProfile() {
       setFullName(profile.data.fullName);
       setPhone(profile.data.phone);
       setLocation(profile.data.location);
+      setBusinessDescription(profile.data.businessDescription);
+      setCacRegistrationNumber(profile.data.cacRegistrationNumber);
+      setTaxId(profile.data.taxId);
     });
   }, [profile.data]);
 
@@ -103,7 +114,7 @@ export function VendorProfile() {
         location: updated.location || location,
       });
       queryClient.setQueryData(
-        [...profileQueryRoot, accountKey ?? "unresolved-session"],
+        profileQueryKey,
         (current: VendorSettingsProfile | undefined) => ({
           ...(current ?? updated),
           fullName: updated.fullName || fullName,
@@ -122,12 +133,48 @@ export function VendorProfile() {
       ),
   });
 
+  const saveBusinessProfile = useMutation({
+    mutationFn: () =>
+      settingsService.updateProfile({
+        fullName: profile.data?.fullName || fullName.trim(),
+        phone: profile.data?.phone || phone.trim(),
+        location: location.trim(),
+        businessName: profile.data?.businessName,
+        businessDescription: businessDescription.trim(),
+        cacRegistrationNumber: cacRegistrationNumber.trim(),
+        taxId: taxId.trim(),
+      }),
+    onSuccess: (updated) => {
+      updateUser({ location: updated.location || location });
+      queryClient.setQueryData<VendorSettingsProfile>(
+        profileQueryKey,
+        (current) => ({
+          ...(current ?? updated),
+          ...updated,
+          location: updated.location || location,
+          businessDescription:
+            updated.businessDescription || businessDescription,
+          cacRegistrationNumber:
+            updated.cacRegistrationNumber || cacRegistrationNumber,
+          taxId: updated.taxId || taxId,
+        }),
+      );
+      queryClient.invalidateQueries({ queryKey: ["vendor", "dashboard"] });
+      setBusinessEditOpen(false);
+      toast.success("Business information updated successfully.");
+    },
+    onError: (error) =>
+      toast.error(
+        getApiErrorMessage(error, "Business information could not be updated."),
+      ),
+  });
+
   const updateAvatar = useMutation({
     mutationFn: settingsService.updateAvatar,
     onSuccess: (updated) => {
       updateUser({ avatarUrl: updated.avatarUrl });
       queryClient.setQueryData<VendorSettingsProfile>(
-        [...profileQueryRoot, accountKey ?? "unresolved-session"],
+        profileQueryKey,
         (current) =>
           current ? { ...current, avatarUrl: updated.avatarUrl } : updated,
       );
@@ -167,7 +214,7 @@ export function VendorProfile() {
           <CardDescription>
             {getApiErrorMessage(
               profile.error,
-              "Please check the backend connection and try again.",
+              "Your profile could not be loaded. Please try again shortly.",
             )}
           </CardDescription>
         </CardHeader>
@@ -182,6 +229,12 @@ export function VendorProfile() {
   const name = data.fullName || storedUser?.fullName || "PropertyArk Vendor";
   const avatarUrl = data.avatarUrl || storedUser?.avatarUrl || "";
   const stats = dashboard.data?.stats;
+  const totalProperties = vendorProperties.data
+    ? Math.max(
+        vendorProperties.data.pagination.total,
+        vendorProperties.data.properties.length,
+      )
+    : (stats?.totalListings ?? 0);
   const totalResponses =
     (stats?.acceptedInquiries ?? 0) +
     (stats?.pendingInquiries ?? 0) +
@@ -197,7 +250,7 @@ export function VendorProfile() {
       ["Email", data.email],
       ["Phone", data.phone],
       ["Location", data.location],
-      ["Total properties", String(stats?.totalListings ?? 0)],
+      ["Total properties", String(totalProperties)],
       ["Active properties", String(stats?.activeListings ?? 0)],
       ["Pending approval", String(stats?.pendingApproval ?? 0)],
       ["Leads received", String(stats?.leadsReceived ?? 0)],
@@ -273,7 +326,9 @@ export function VendorProfile() {
             <div className="mt-5 flex flex-wrap items-center gap-6">
               <ProfileStat
                 label="Properties"
-                value={String(stats?.totalListings ?? 0)}
+                value={
+                  vendorProperties.isLoading ? "—" : String(totalProperties)
+                }
               />
               <Separator orientation="vertical" className="h-10" />
               <ProfileStat
@@ -307,7 +362,13 @@ export function VendorProfile() {
         <div className="flex min-w-0 flex-col gap-7">
           <BusinessInformation
             profile={data}
-            onEdit={() => setEditOpen(true)}
+            onEdit={() => {
+              setLocation(data.location);
+              setBusinessDescription(data.businessDescription);
+              setCacRegistrationNumber(data.cacRegistrationNumber);
+              setTaxId(data.taxId);
+              setBusinessEditOpen(true);
+            }}
           />
           <PublicProfilePreview
             profile={data}
@@ -342,6 +403,20 @@ export function VendorProfile() {
         setLocation={setLocation}
         onSave={() => saveProfile.mutate()}
         saving={saveProfile.isPending}
+      />
+      <EditBusinessInformationDialog
+        open={businessEditOpen}
+        onOpenChange={setBusinessEditOpen}
+        cacRegistrationNumber={cacRegistrationNumber}
+        taxId={taxId}
+        location={location}
+        businessDescription={businessDescription}
+        setCacRegistrationNumber={setCacRegistrationNumber}
+        setTaxId={setTaxId}
+        setLocation={setLocation}
+        setBusinessDescription={setBusinessDescription}
+        onSave={() => saveBusinessProfile.mutate()}
+        saving={saveBusinessProfile.isPending}
       />
     </div>
   );
@@ -391,14 +466,6 @@ function BusinessInformation({
             multiline
           />
         </FieldGroup>
-        {(!profile.cacRegistrationNumber ||
-          !profile.taxId ||
-          !profile.businessDescription) && (
-          <p className="mt-4 text-xs text-muted-foreground">
-            Business registration fields will become editable when the backend
-            exposes them.
-          </p>
-        )}
       </CardContent>
     </Card>
   );
@@ -546,9 +613,6 @@ function VerificationProgress({ profile }: { profile: VendorSettingsProfile }) {
             </div>
           );
         })}
-        <p className="mt-2 text-sm leading-5 text-muted-foreground">
-          Verification status is read directly from your authenticated profile.
-        </p>
       </CardContent>
     </Card>
   );
@@ -621,9 +685,6 @@ function NotificationCard({ profile }: { profile: VendorSettingsProfile }) {
             />
           </Field>
         ))}
-        <p className="text-xs text-muted-foreground">
-          Preferences are read-only until a notification endpoint is available.
-        </p>
       </CardContent>
     </Card>
   );
@@ -676,8 +737,7 @@ function AccountManagement() {
           Account Management
         </CardTitle>
         <CardDescription>
-          These actions require vendor self-service endpoints that are not
-          present in the current API.
+          Manage access to your PropertyArk vendor account.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -741,7 +801,7 @@ function EditProfileDialog({
         <DialogHeader>
           <DialogTitle>Edit Vendor Profile</DialogTitle>
           <DialogDescription>
-            These fields are saved through the authenticated profile endpoint.
+            Update your personal and contact information.
           </DialogDescription>
         </DialogHeader>
         <FieldGroup>
@@ -778,6 +838,101 @@ function EditProfileDialog({
               <LoaderCircle data-icon="inline-start" className="animate-spin" />
             )}
             Save Changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditBusinessInformationDialog({
+  open,
+  onOpenChange,
+  cacRegistrationNumber,
+  taxId,
+  location,
+  businessDescription,
+  setCacRegistrationNumber,
+  setTaxId,
+  setLocation,
+  setBusinessDescription,
+  onSave,
+  saving,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  cacRegistrationNumber: string;
+  taxId: string;
+  location: string;
+  businessDescription: string;
+  setCacRegistrationNumber: (value: string) => void;
+  setTaxId: (value: string) => void;
+  setLocation: (value: string) => void;
+  setBusinessDescription: (value: string) => void;
+  onSave: () => void;
+  saving: boolean;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Edit Business Information</DialogTitle>
+          <DialogDescription>
+            Update the registration and company details shown on your vendor
+            profile.
+          </DialogDescription>
+        </DialogHeader>
+        <FieldGroup>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="vendor-cac-number">
+                CAC Registration Number
+              </FieldLabel>
+              <Input
+                id="vendor-cac-number"
+                value={cacRegistrationNumber}
+                onChange={(event) =>
+                  setCacRegistrationNumber(event.target.value)
+                }
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="vendor-tax-id">Tax ID (TIN)</FieldLabel>
+              <Input
+                id="vendor-tax-id"
+                value={taxId}
+                onChange={(event) => setTaxId(event.target.value)}
+              />
+            </Field>
+          </div>
+          <Field>
+            <FieldLabel htmlFor="vendor-office-address">
+              Office Address
+            </FieldLabel>
+            <Input
+              id="vendor-office-address"
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="vendor-company-description">
+              Company Description
+            </FieldLabel>
+            <Textarea
+              id="vendor-company-description"
+              value={businessDescription}
+              onChange={(event) => setBusinessDescription(event.target.value)}
+              className="min-h-28"
+            />
+          </Field>
+        </FieldGroup>
+        <DialogFooter showCloseButton>
+          <Button onClick={onSave} disabled={saving}>
+            {saving && (
+              <LoaderCircle data-icon="inline-start" className="animate-spin" />
+            )}
+            Save Business Information
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -14,7 +14,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
-  FieldDescription,
   FieldGroup,
   FieldLabel,
   FieldLegend,
@@ -285,10 +284,6 @@ function PaymentSummary({ price, onPay }: { price: number; onPay: () => void }) 
           <ShieldCheck className="size-4 text-primary" />
           PCI-DSS compliant infrastructure
         </div>
-        <FieldDescription className="text-center">
-          Preview checkout only. No charge will be made until the subscription
-          API is connected.
-        </FieldDescription>
       </CardContent>
     </Card>
   );

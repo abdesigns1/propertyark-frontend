@@ -29,9 +29,9 @@ export function PropertyInformation({ property }: { property: Property }) {
         {rows.map((row, i) => (
           <div key={i} className="grid grid-cols-2 gap-6 sm:grid-cols-5">
             {row.map((item) => (
-              <div key={item.label}>
+              <div key={item.label} className="min-w-0">
                 <p className="text-xs text-muted-foreground">{item.label}</p>
-                <p className="mt-1 font-numeric text-sm font-semibold text-foreground">
+                <p className="mt-1 break-words font-numeric text-sm font-semibold text-foreground [overflow-wrap:anywhere]">
                   {item.value}
                 </p>
               </div>

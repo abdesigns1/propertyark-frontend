@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, LayoutDashboard, LogOut, Menu } from "lucide-react";
+import { ChevronDown, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -158,15 +158,34 @@ export function Navbar({ reserveSpace = false }: NavbarProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-navbar-foreground hover:bg-white/10 hover:text-navbar-foreground lg:hidden"
-                aria-label="Open navigation menu"
+                className="relative text-navbar-foreground hover:bg-white/10 hover:text-navbar-foreground lg:hidden"
+                aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+                aria-expanded={mobileOpen}
               >
-                <Menu className="h-5 w-5" />
+                <Menu
+                  className={cn(
+                    "absolute transition-all duration-300 ease-out",
+                    mobileOpen
+                      ? "rotate-90 scale-75 opacity-0"
+                      : "rotate-0 scale-100 opacity-100",
+                  )}
+                />
+                <X
+                  className={cn(
+                    "absolute transition-all duration-300 ease-out",
+                    mobileOpen
+                      ? "rotate-0 scale-100 opacity-100"
+                      : "-rotate-90 scale-75 opacity-0",
+                  )}
+                />
               </Button>
             </SheetTrigger>
 
             {/* The sheet uses its own solid surface and semantic text colors. */}
-            <SheetContent side="right" className="lg:hidden">
+            <SheetContent
+              side="right"
+              className="duration-300 ease-out data-closed:duration-200 data-closed:ease-in lg:hidden"
+            >
               <SheetHeader>
                 <SheetTitle>Menu</SheetTitle>
               </SheetHeader>

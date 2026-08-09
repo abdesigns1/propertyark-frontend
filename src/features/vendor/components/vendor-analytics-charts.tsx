@@ -2,7 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -78,10 +86,10 @@ function derivePropertyStatus(
   properties: Property[],
 ): VendorPropertyStatusPoint[] {
   const today = new Date();
-  return Array.from({ length: 4 }, (_, index) => {
+  return Array.from({ length: 12 }, (_, index) => {
     const date = new Date(
       today.getFullYear(),
-      today.getMonth() - (3 - index),
+      today.getMonth() - (11 - index),
       1,
     );
     const propertiesInMonth = properties.filter((property) => {
@@ -169,23 +177,37 @@ function PerformanceChart({
         </CardAction>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={performanceConfig} className="h-[410px] w-full">
-          <LineChart
+        <ChartContainer
+          config={performanceConfig}
+          className="h-[410px] w-full"
+        >
+          <BarChart
             data={data}
-            margin={{ top: 18, right: 12, bottom: 10, left: 0 }}
+            margin={{ top: 18, right: 12, bottom: 8, left: 0 }}
             accessibilityLayer
+            barCategoryGap="34%"
+            barGap={6}
           >
-            <CartesianGrid vertical={false} strokeDasharray="0" />
+            <CartesianGrid
+              vertical={false}
+              stroke="var(--border)"
+            />
             <XAxis
               dataKey="label"
               tickLine={false}
-              axisLine={false}
+              axisLine={{ stroke: "var(--border)" }}
               tickMargin={16}
               tick={{ fontSize: 12, fontWeight: 600 }}
             />
-            <YAxis hide allowDecimals={false} />
+            <YAxis
+              allowDecimals={false}
+              tickLine={false}
+              axisLine={{ stroke: "var(--border)" }}
+              tickMargin={10}
+              width={38}
+            />
             <ChartTooltip
-              cursor={{ stroke: "var(--border)", strokeDasharray: "4 4" }}
+              cursor={{ fill: "var(--muted)", fillOpacity: 0.5 }}
               content={
                 <ChartTooltipContent
                   labelFormatter={(label, payload) => {
@@ -197,24 +219,22 @@ function PerformanceChart({
                 />
               }
             />
-            <ChartLegend content={<ChartLegendContent />} />
-            <Line
+            <ChartLegend
+              content={<ChartLegendContent className="gap-6 pt-5" />}
+            />
+            <Bar
               dataKey="views"
-              type="monotone"
-              stroke="var(--color-views)"
-              strokeWidth={2.5}
-              dot={false}
-              activeDot={{ r: 5 }}
+              fill="var(--color-views)"
+              radius={[8, 8, 0, 0]}
+              maxBarSize={28}
             />
-            <Line
+            <Bar
               dataKey="inquiries"
-              type="monotone"
-              stroke="var(--color-inquiries)"
-              strokeWidth={2.5}
-              dot={false}
-              activeDot={{ r: 5 }}
+              fill="var(--color-inquiries)"
+              radius={[8, 8, 0, 0]}
+              maxBarSize={28}
             />
-          </LineChart>
+          </BarChart>
         </ChartContainer>
       </CardContent>
     </Card>
@@ -278,51 +298,66 @@ function PropertyStatusChart({
         >
           <LineChart
             data={data}
-            margin={{ top: 18, right: 12, bottom: 10, left: 0 }}
+            margin={{ top: 18, right: 16, bottom: 8, left: 0 }}
             accessibilityLayer
           >
-            <CartesianGrid vertical={false} />
+            <CartesianGrid vertical={false} stroke="var(--border)" />
             <XAxis
               dataKey="month"
               tickLine={false}
               axisLine={false}
-              tickMargin={16}
+              tickMargin={14}
               tick={{ fontSize: 12, fontWeight: 600 }}
             />
-            <YAxis hide allowDecimals={false} />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <ChartLegend content={<ChartLegendContent />} />
+            <YAxis
+              allowDecimals={false}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={10}
+              width={36}
+            />
+            <ChartTooltip
+              cursor={{ stroke: "var(--border)", strokeDasharray: "4 4" }}
+              content={<ChartTooltipContent indicator="line" />}
+            />
+            <ChartLegend
+              content={<ChartLegendContent className="gap-6 pt-5" />}
+            />
             <Line
               dataKey="shortlet"
-              type="monotone"
+              type="natural"
               stroke="var(--color-shortlet)"
-              strokeWidth={2.5}
+              strokeWidth={3}
               dot={false}
-              activeDot={{ r: 5 }}
+              activeDot={{ r: 5, strokeWidth: 2 }}
+              connectNulls
             />
             <Line
               dataKey="rent"
-              type="monotone"
+              type="natural"
               stroke="var(--color-rent)"
-              strokeWidth={2.5}
+              strokeWidth={3}
               dot={false}
-              activeDot={{ r: 5 }}
+              activeDot={{ r: 5, strokeWidth: 2 }}
+              connectNulls
             />
             <Line
               dataKey="sale"
-              type="monotone"
+              type="natural"
               stroke="var(--color-sale)"
-              strokeWidth={2.5}
+              strokeWidth={3}
               dot={false}
-              activeDot={{ r: 5 }}
+              activeDot={{ r: 5, strokeWidth: 2 }}
+              connectNulls
             />
             <Line
               dataKey="land"
-              type="monotone"
+              type="natural"
               stroke="var(--color-land)"
-              strokeWidth={2.5}
+              strokeWidth={3}
               dot={false}
-              activeDot={{ r: 5 }}
+              activeDot={{ r: 5, strokeWidth: 2 }}
+              connectNulls
             />
           </LineChart>
         </ChartContainer>

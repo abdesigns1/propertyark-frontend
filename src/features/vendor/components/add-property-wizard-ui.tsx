@@ -6,12 +6,7 @@ import { Check, FileText, Lightbulb, Trash2, UploadCloud } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PROPERTY_STEPS } from "@/features/vendor/lib/add-property-form";
 import { cn } from "@/lib/utils";
 

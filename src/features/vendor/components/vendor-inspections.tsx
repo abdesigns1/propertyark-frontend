@@ -5,6 +5,7 @@ import {
   BadgeCheck,
   Building2,
   CalendarCheck2,
+  CalendarClock,
   CalendarDays,
   CalendarX2,
   Check,
@@ -15,6 +16,7 @@ import {
   LoaderCircle,
   Mail,
   Megaphone,
+  MoreHorizontal,
   Phone,
   Plus,
   TrendingUp,
@@ -41,6 +43,14 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -125,7 +135,8 @@ export function VendorInspections() {
         (inspection) =>
           (status === "all" || inspection.status === status) &&
           (propertyId === "all" ||
-            (inspection.propertyId ?? inspection.propertyName) === propertyId) &&
+            (inspection.propertyId ?? inspection.propertyName) ===
+              propertyId) &&
           (meetingType === "all" ||
             normalizeMeetingType(inspection.meetingType) === meetingType),
       ),
@@ -138,7 +149,8 @@ export function VendorInspections() {
     visible[0] ??
     inspections[0] ??
     null;
-  const pending = inspections.find((inspection) => inspection.status === "PENDING") ?? null;
+  const pending =
+    inspections.find((inspection) => inspection.status === "PENDING") ?? null;
   const upcoming =
     [...inspections]
       .filter((inspection) =>
@@ -146,7 +158,8 @@ export function VendorInspections() {
       )
       .sort(
         (a, b) =>
-          new Date(a.inspectionDate).getTime() - new Date(b.inspectionDate).getTime(),
+          new Date(a.inspectionDate).getTime() -
+          new Date(b.inspectionDate).getTime(),
       )[0] ?? null;
 
   if (query.isLoading) return <InspectionsSkeleton />;
@@ -154,7 +167,9 @@ export function VendorInspections() {
   if (query.isError) {
     return (
       <Empty className="min-h-[560px] rounded-xl border">
-        <EmptyMedia variant="icon"><CalendarX2 /></EmptyMedia>
+        <EmptyMedia variant="icon">
+          <CalendarX2 />
+        </EmptyMedia>
         <EmptyHeader>
           <EmptyTitle>Inspections could not be loaded</EmptyTitle>
           <EmptyDescription>
@@ -184,7 +199,9 @@ export function VendorInspections() {
     <div className="mx-auto flex w-full max-w-[1560px] flex-col gap-6 pb-10">
       <header className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Property Inspections</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            Property Inspections
+          </h1>
           <p className="mt-1 max-w-lg text-base text-muted-foreground">
             Manage user inspection requests and schedule property visits.
           </p>
@@ -297,45 +314,56 @@ export function VendorInspections() {
               onSelect={setSelectedId}
             />
           ) : filtered.length ? (
-              <InspectionTableCard
-                inspections={visible}
-                total={filtered.length}
-                page={page}
-                totalPages={totalPages}
-                selectedId={selected?.id}
-                onPageChange={setPage}
-                onSelect={setSelectedId}
-              />
+            <InspectionTableCard
+              inspections={visible}
+              total={filtered.length}
+              page={page}
+              totalPages={totalPages}
+              selectedId={selected?.id}
+              onPageChange={setPage}
+              onSelect={setSelectedId}
+              review={review}
+            />
           ) : (
             <Empty className="min-h-[420px] rounded-xl border">
-              <EmptyMedia variant="icon"><CalendarDays /></EmptyMedia>
+              <EmptyMedia variant="icon">
+                <CalendarDays />
+              </EmptyMedia>
               <EmptyHeader>
                 <EmptyTitle>No inspections found</EmptyTitle>
                 <EmptyDescription>
-                  There are no backend inspection requests matching these filters.
+                  There are no backend inspection requests matching these
+                  filters.
                 </EmptyDescription>
               </EmptyHeader>
-              {(status !== "all" || propertyId !== "all" || meetingType !== "all") && (
-                <Button variant="outline" onClick={resetFilters}>Clear filters</Button>
+              {(status !== "all" ||
+                propertyId !== "all" ||
+                meetingType !== "all") && (
+                <Button variant="outline" onClick={resetFilters}>
+                  Clear filters
+                </Button>
               )}
             </Empty>
           )}
         </main>
 
-        {view === "list" && <aside className="min-w-0 space-y-5">
-          <Reminders
-            upcoming={upcoming}
-            pending={pending}
-            review={review}
-            onSelect={setSelectedId}
-          />
-          {selected && (
-            <InspectionDetails
-              inspection={selected}
-              onClose={() => setSelectedId(null)}
+        {view === "list" && (
+          <aside className="min-w-0 space-y-5">
+            <Reminders
+              upcoming={upcoming}
+              pending={pending}
+              review={review}
+              onSelect={setSelectedId}
             />
-          )}
-        </aside>}
+            {selected && (
+              <InspectionDetails
+                inspection={selected}
+                onClose={() => setSelectedId(null)}
+                review={review}
+              />
+            )}
+          </aside>
+        )}
       </div>
 
       <ScheduleInspectionDialog
@@ -349,14 +377,45 @@ export function VendorInspections() {
 }
 
 function InspectionStats({ stats }: { stats: VendorInspectionStats }) {
-  const total = stats.upcoming + stats.pending + stats.completed + stats.declined;
+  const total =
+    stats.upcoming + stats.pending + stats.completed + stats.declined;
   const occupancy = total ? Math.round((stats.upcoming / total) * 100) : 0;
   const cards = [
-    { label: "Upcoming", value: stats.upcoming, note: "Active", icon: CalendarCheck2, tone: "blue" },
-    { label: "Pending Requests", value: stats.pending, note: "Needs Action", icon: ClipboardClock, tone: "orange" },
-    { label: "Completed", value: stats.completed, note: "Recorded", icon: BadgeCheck, tone: "green" },
-    { label: "Cancelled", value: stats.declined, note: "Closed", icon: CalendarX2, tone: "red" },
-    { label: "Occupancy Rate", value: `${occupancy}%`, note: "Accepted share", icon: TrendingUp, tone: "brown" },
+    {
+      label: "Upcoming",
+      value: stats.upcoming,
+      note: "Active",
+      icon: CalendarCheck2,
+      tone: "blue",
+    },
+    {
+      label: "Pending Requests",
+      value: stats.pending,
+      note: "Needs Action",
+      icon: ClipboardClock,
+      tone: "orange",
+    },
+    {
+      label: "Completed",
+      value: stats.completed,
+      note: "Recorded",
+      icon: BadgeCheck,
+      tone: "green",
+    },
+    {
+      label: "Cancelled",
+      value: stats.declined,
+      note: "Closed",
+      icon: CalendarX2,
+      tone: "red",
+    },
+    {
+      label: "Occupancy Rate",
+      value: `${occupancy}%`,
+      note: "Accepted share",
+      icon: TrendingUp,
+      tone: "brown",
+    },
   ] as const;
 
   return (
@@ -364,13 +423,22 @@ function InspectionStats({ stats }: { stats: VendorInspectionStats }) {
       {cards.map(({ label, value, note, icon: Icon, tone }) => (
         <Card key={label} className="gap-5 py-5">
           <CardHeader className="flex-row items-center justify-between px-5">
-            <div className={cn("flex size-9 items-center justify-center rounded-lg", statTone(tone))}>
+            <div
+              className={cn(
+                "flex size-9 items-center justify-center rounded-lg",
+                statTone(tone),
+              )}
+            >
               <Icon className="size-5" />
             </div>
-            <span className="text-xs font-medium text-muted-foreground">{note}</span>
+            <span className="text-xs font-medium text-muted-foreground">
+              {note}
+            </span>
           </CardHeader>
           <CardContent className="px-5">
-            <p className="font-numeric text-4xl font-semibold tracking-tight">{value}</p>
+            <p className="font-numeric text-4xl font-semibold tracking-tight">
+              {value}
+            </p>
             <p className="mt-1 text-sm text-muted-foreground">{label}</p>
           </CardContent>
         </Card>
@@ -387,6 +455,7 @@ function InspectionTableCard({
   selectedId,
   onPageChange,
   onSelect,
+  review,
 }: {
   inspections: VendorInspection[];
   total: number;
@@ -395,19 +464,21 @@ function InspectionTableCard({
   selectedId?: string;
   onPageChange: (page: number) => void;
   onSelect: (id: string) => void;
+  review: ReturnType<typeof useReviewInspection>;
 }) {
   return (
     <Card className="min-w-0 gap-0 overflow-hidden py-0">
       <CardContent className="min-w-0 p-0">
-        <Table className="min-w-[820px]">
+        <Table className="min-w-[940px]">
           <TableHeader>
             <TableRow>
               <TableHead className="px-4">Inspection ID</TableHead>
-              <TableHead>Buyer</TableHead>
+              <TableHead>User</TableHead>
               <TableHead>Property</TableHead>
               <TableHead>Date &amp; Time</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead className="pr-4">Status</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="pr-4 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -427,7 +498,10 @@ function InspectionTableCard({
                   <div className="flex items-center gap-2">
                     <Avatar className="size-8">
                       {inspection.userAvatarUrl && (
-                        <AvatarImage src={inspection.userAvatarUrl} alt={inspection.userName} />
+                        <AvatarImage
+                          src={inspection.userAvatarUrl}
+                          alt={inspection.userName}
+                        />
                       )}
                       <AvatarFallback className="text-[10px]">
                         {nameInitials(inspection.userName)}
@@ -453,7 +527,8 @@ function InspectionTableCard({
                 </TableCell>
                 <TableCell>
                   <span className="flex items-center gap-1.5">
-                    {normalizeMeetingType(inspection.meetingType) === "virtual" ? (
+                    {normalizeMeetingType(inspection.meetingType) ===
+                    "virtual" ? (
                       <Video className="size-4" />
                     ) : (
                       <Building2 className="size-4" />
@@ -461,7 +536,15 @@ function InspectionTableCard({
                     {formatMeetingType(inspection.meetingType)}
                   </span>
                 </TableCell>
-                <TableCell className="pr-4"><InspectionStatus status={inspection.status} /></TableCell>
+                <TableCell>
+                  <InspectionStatus status={inspection.status} />
+                </TableCell>
+                <TableCell className="pr-4 text-right">
+                  <InspectionActionsMenu
+                    inspection={inspection}
+                    review={review}
+                  />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -469,7 +552,8 @@ function InspectionTableCard({
       </CardContent>
       <CardFooter className="flex flex-col gap-4 border-t py-4 sm:flex-row sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          Showing {(page - 1) * PAGE_SIZE + 1} to {Math.min(page * PAGE_SIZE, total)} of {total} results
+          Showing {(page - 1) * PAGE_SIZE + 1} to{" "}
+          {Math.min(page * PAGE_SIZE, total)} of {total} results
         </p>
         <PaginationControls
           currentPage={page}
@@ -506,10 +590,13 @@ function Reminders({
             <CardDescription className="text-xs font-semibold uppercase text-primary">
               Upcoming inspection
             </CardDescription>
-            <CardTitle className="font-mono text-base">{inspectionCode(upcoming)}</CardTitle>
+            <CardTitle className="font-mono text-base">
+              {inspectionCode(upcoming)}
+            </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            {formatInspectionTime(upcoming)} with {upcoming.userName} at {upcoming.propertyName}.
+            {formatInspectionTime(upcoming)} with {upcoming.userName} at{" "}
+            {upcoming.propertyName}.
           </CardContent>
           <CardFooter>
             <Button
@@ -518,7 +605,9 @@ function Reminders({
               className="h-auto px-0"
               onClick={(event) => {
                 event.stopPropagation();
-                toast.info("Inspection alerts require a backend notification endpoint.");
+                toast.info(
+                  "Inspection alerts require a backend notification endpoint.",
+                );
               }}
             >
               Set Alert →
@@ -526,7 +615,11 @@ function Reminders({
           </CardFooter>
         </Card>
       ) : (
-        <Card><CardContent className="py-5 text-sm text-muted-foreground">No upcoming reminders.</CardContent></Card>
+        <Card>
+          <CardContent className="py-5 text-sm text-muted-foreground">
+            No upcoming reminders.
+          </CardContent>
+        </Card>
       )}
 
       {pending && (
@@ -544,9 +637,15 @@ function Reminders({
             <Button
               size="sm"
               disabled={review.isPending}
-              onClick={() => review.mutate({ inspectionId: pending.id, status: "ACCEPTED" })}
+              onClick={() =>
+                review.mutate({ inspectionId: pending.id, status: "ACCEPTED" })
+              }
             >
-              {review.isPending ? <LoaderCircle className="animate-spin" /> : <Check />}
+              {review.isPending ? (
+                <LoaderCircle className="animate-spin" />
+              ) : (
+                <Check />
+              )}
               Approve
             </Button>
             <Button
@@ -570,18 +669,93 @@ function Reminders({
   );
 }
 
+function InspectionActionsMenu({
+  inspection,
+  review,
+}: {
+  inspection: VendorInspection;
+  review: ReturnType<typeof useReviewInspection>;
+}) {
+  const pending = inspection.status === "PENDING";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={`Actions for ${inspectionCode(inspection)}`}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <MoreHorizontal />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <DropdownMenuGroup>
+          <DropdownMenuItem
+            disabled={!pending || review.isPending}
+            onSelect={() =>
+              review.mutate({ inspectionId: inspection.id, status: "ACCEPTED" })
+            }
+          >
+            <Check /> Confirm inspection
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={!pending || review.isPending}
+            onSelect={() =>
+              review.mutate({
+                inspectionId: inspection.id,
+                status: "DECLINED",
+                reason: "Declined by vendor",
+              })
+            }
+          >
+            <X /> Reject inspection
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem onSelect={notifyRescheduleUnavailable}>
+            <CalendarClock /> Reschedule inspection
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function notifyRescheduleUnavailable() {
+  toast.info("Rescheduling is not available yet", {
+    description:
+      "The backend needs an inspection reschedule endpoint before this date can be changed safely.",
+  });
+}
+
 function InspectionDetails({
   inspection,
   onClose,
+  review,
 }: {
   inspection: VendorInspection;
   onClose: () => void;
+  review: ReturnType<typeof useReviewInspection>;
 }) {
+  const pending = inspection.status === "PENDING";
+
   return (
     <Card className="gap-5">
       <CardHeader className="flex-row items-start justify-between">
         <CardTitle className="text-xl">Inspection Details</CardTitle>
-        <Button size="icon-sm" variant="ghost" aria-label="Close details" onClick={onClose}>
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          aria-label="Close details"
+          onClick={onClose}
+        >
           <X />
         </Button>
       </CardHeader>
@@ -591,7 +765,10 @@ function InspectionDetails({
         <div className="flex items-center gap-3">
           <Avatar>
             {inspection.userAvatarUrl && (
-              <AvatarImage src={inspection.userAvatarUrl} alt={inspection.userName} />
+              <AvatarImage
+                src={inspection.userAvatarUrl}
+                alt={inspection.userName}
+              />
             )}
             <AvatarFallback>{nameInitials(inspection.userName)}</AvatarFallback>
           </Avatar>
@@ -603,18 +780,36 @@ function InspectionDetails({
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <Button asChild={Boolean(inspection.userEmail)} variant="outline" size="sm" disabled={!inspection.userEmail}>
+          <Button
+            asChild={Boolean(inspection.userEmail)}
+            variant="outline"
+            size="sm"
+            disabled={!inspection.userEmail}
+          >
             {inspection.userEmail ? (
-              <a href={`mailto:${inspection.userEmail}`}><Mail /> Email</a>
+              <a href={`mailto:${inspection.userEmail}`}>
+                <Mail /> Email
+              </a>
             ) : (
-              <span><Mail /> Email</span>
+              <span>
+                <Mail /> Email
+              </span>
             )}
           </Button>
-          <Button asChild={Boolean(inspection.userPhone)} variant="outline" size="sm" disabled={!inspection.userPhone}>
+          <Button
+            asChild={Boolean(inspection.userPhone)}
+            variant="outline"
+            size="sm"
+            disabled={!inspection.userPhone}
+          >
             {inspection.userPhone ? (
-              <a href={`tel:${inspection.userPhone}`}><Phone /> Call</a>
+              <a href={`tel:${inspection.userPhone}`}>
+                <Phone /> Call
+              </a>
             ) : (
-              <span><Phone /> Call</span>
+              <span>
+                <Phone /> Call
+              </span>
             )}
           </Button>
         </div>
@@ -635,8 +830,12 @@ function InspectionDetails({
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{inspection.propertyName}</p>
-              <p className="truncate text-xs text-muted-foreground">{inspection.location}</p>
+              <p className="truncate text-sm font-semibold">
+                {inspection.propertyName}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                {inspection.location}
+              </p>
             </div>
           </div>
         </div>
@@ -644,7 +843,8 @@ function InspectionDetails({
         <div>
           <DetailLabel>Notes</DetailLabel>
           <div className="mt-2 rounded-lg border border-warning/20 bg-warning/10 p-3 text-sm leading-6">
-            {inspection.message ?? "No notes were provided with this inspection request."}
+            {inspection.message ??
+              "No notes were provided with this inspection request."}
           </div>
         </div>
 
@@ -654,21 +854,61 @@ function InspectionDetails({
             <TimelineItem
               active
               title={statusLabel(inspection.status)}
-              date={formatTimelineDate(inspection.updatedAt ?? inspection.inspectionDate)}
+              date={formatTimelineDate(
+                inspection.updatedAt ?? inspection.inspectionDate,
+              )}
             />
-            <TimelineItem title="Request sent" date={formatTimelineDate(inspection.requestSentAt)} />
+            <TimelineItem
+              title="Request sent"
+              date={formatTimelineDate(inspection.requestSentAt)}
+            />
           </div>
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex-col gap-2 bg-card pt-4">
+        {pending && (
+          <div className="grid w-full grid-cols-2 gap-2">
+            <Button
+              disabled={review.isPending}
+              onClick={() =>
+                review.mutate({
+                  inspectionId: inspection.id,
+                  status: "ACCEPTED",
+                })
+              }
+            >
+              {review.isPending ? (
+                <LoaderCircle
+                  data-icon="inline-start"
+                  className="animate-spin"
+                />
+              ) : (
+                <Check data-icon="inline-start" />
+              )}
+              Confirm
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={review.isPending}
+              onClick={() =>
+                review.mutate({
+                  inspectionId: inspection.id,
+                  status: "DECLINED",
+                  reason: "Declined by vendor",
+                })
+              }
+            >
+              <X data-icon="inline-start" />
+              Reject
+            </Button>
+          </div>
+        )}
         <Button
           className="w-full"
-          onClick={() =>
-            toast.info(
-              "Rescheduling is awaiting a vendor inspection update endpoint from the backend.",
-            )
-          }
+          variant={pending ? "outline" : "default"}
+          onClick={notifyRescheduleUnavailable}
         >
+          <CalendarClock data-icon="inline-start" />
           Reschedule Inspection
         </Button>
       </CardFooter>
@@ -749,7 +989,9 @@ function InspectionCalendar({
           size="icon"
           aria-label="Calendar filters"
           title="The filters above also apply to this calendar"
-          onClick={() => toast.info("The filters above are applied to the calendar.")}
+          onClick={() =>
+            toast.info("The filters above are applied to the calendar.")
+          }
         >
           <Filter />
         </Button>
@@ -777,7 +1019,8 @@ function InspectionCalendar({
                   className={cn(
                     "min-h-40 border-r border-b p-2.5 last:border-r-0",
                     !inMonth && "bg-surface/30 text-muted-foreground",
-                    today && "bg-primary/5 shadow-[inset_0_3px_0_var(--primary)]",
+                    today &&
+                      "bg-primary/5 shadow-[inset_0_3px_0_var(--primary)]",
                   )}
                 >
                   <p
@@ -801,7 +1044,8 @@ function InspectionCalendar({
                         onClick={() => onSelect(inspection.id)}
                       >
                         <span className="block truncate font-semibold">
-                          {formatInspectionTime(inspection)} · {inspection.userName}
+                          {formatInspectionTime(inspection)} ·{" "}
+                          {inspection.userName}
                         </span>
                         <span className="mt-1 block truncate text-[11px] opacity-75">
                           {inspection.propertyName}
@@ -843,7 +1087,9 @@ function FilterSelect({
       <SelectContent>
         <SelectGroup>
           {items.map(([itemValue, label]) => (
-            <SelectItem key={itemValue} value={itemValue}>{label}</SelectItem>
+            <SelectItem key={itemValue} value={itemValue}>
+              {label}
+            </SelectItem>
           ))}
         </SelectGroup>
       </SelectContent>
@@ -855,7 +1101,13 @@ function InspectionStatus({ status }: { status: string }) {
   const destructive = ["DECLINED", "REJECTED", "CANCELLED"].includes(status);
   return (
     <Badge
-      variant={destructive ? "destructive" : status === "PENDING" ? "outline" : "secondary"}
+      variant={
+        destructive
+          ? "destructive"
+          : status === "PENDING"
+            ? "outline"
+            : "secondary"
+      }
       className={cn(
         status === "ACCEPTED" && "bg-primary/10 text-primary",
         status === "COMPLETED" && "bg-success/10 text-success",
@@ -867,13 +1119,30 @@ function InspectionStatus({ status }: { status: string }) {
 }
 
 function DetailLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{children}</p>;
+  return (
+    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      {children}
+    </p>
+  );
 }
 
-function TimelineItem({ title, date, active = false }: { title: string; date: string; active?: boolean }) {
+function TimelineItem({
+  title,
+  date,
+  active = false,
+}: {
+  title: string;
+  date: string;
+  active?: boolean;
+}) {
   return (
     <div className="relative">
-      <span className={cn("absolute -left-[21px] top-1 size-2.5 rounded-full bg-muted", active && "bg-primary")} />
+      <span
+        className={cn(
+          "absolute -left-[21px] top-1 size-2.5 rounded-full bg-muted",
+          active && "bg-primary",
+        )}
+      />
       <p className="text-sm font-medium">{title}</p>
       <p className="text-xs text-muted-foreground">{date}</p>
     </div>
@@ -884,14 +1153,20 @@ function InspectionsSkeleton() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between">
-        <div className="space-y-2"><Skeleton className="h-9 w-72" /><Skeleton className="h-5 w-96 max-w-full" /></div>
+        <div className="space-y-2">
+          <Skeleton className="h-9 w-72" />
+          <Skeleton className="h-5 w-96 max-w-full" />
+        </div>
         <Skeleton className="h-11 w-48" />
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, index) => <Skeleton key={index} className="h-40" />)}
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Skeleton key={index} className="h-40" />
+        ))}
       </div>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_290px]">
-        <Skeleton className="h-[720px]" /><Skeleton className="h-[720px]" />
+        <Skeleton className="h-[720px]" />
+        <Skeleton className="h-[720px]" />
       </div>
     </div>
   );

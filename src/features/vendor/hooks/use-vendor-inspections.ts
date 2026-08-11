@@ -40,7 +40,10 @@ export function useReviewInspection() {
     },
     onError: (error) =>
       toast.error(
-        getApiErrorMessage(error, "The inspection request could not be updated."),
+        getApiErrorMessage(
+          error,
+          "The inspection request could not be updated.",
+        ),
       ),
   });
 }

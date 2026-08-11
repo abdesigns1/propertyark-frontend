@@ -44,11 +44,16 @@ function normalizeMediaItem(value: unknown): PropertyMediaResponse | null {
   const media = asRecord(value);
   const id = media.id ?? media._id ?? media.mediaId;
   const url =
-    media.url ?? media.fileUrl ?? media.secureUrl ?? media.path ?? media.location;
+    media.url ??
+    media.fileUrl ??
+    media.secureUrl ??
+    media.path ??
+    media.location;
   if (typeof id !== "string" || typeof url !== "string") return null;
 
-  const rawType = String(media.type ?? media.mediaType ?? media.resourceType ?? "")
-    .toUpperCase();
+  const rawType = String(
+    media.type ?? media.mediaType ?? media.resourceType ?? "",
+  ).toUpperCase();
   const type = rawType.includes("VIDEO") ? "VIDEO" : "IMAGE";
 
   return {
@@ -67,12 +72,12 @@ function normalizeMediaResponse(value: unknown): PropertyMediaResponse[] {
   const data = root.data ?? value;
   const source = Array.isArray(data)
     ? data
-    : [
+    : ([
         asRecord(data).media,
         asRecord(data).items,
         asRecord(data).results,
         root.media,
-      ].find(Array.isArray) ?? [];
+      ].find(Array.isArray) ?? []);
 
   return source
     .map(normalizeMediaItem)
@@ -82,7 +87,9 @@ function normalizeMediaResponse(value: unknown): PropertyMediaResponse[] {
 function normalizeVendorProperty(value: unknown): PropertyApiItem {
   const property = asRecord(value) as unknown as PropertyApiItem;
   const source = asRecord(value);
-  const pricing = asRecord(source.pricing ?? source.priceDetails ?? source.rates);
+  const pricing = asRecord(
+    source.pricing ?? source.priceDetails ?? source.rates,
+  );
   const embeddedMedia =
     [source.media, source.medias, source.photos, source.images].find(
       Array.isArray,
@@ -194,8 +201,11 @@ async function recoverPersistedProperty(error: unknown) {
   const { data } = await api.get<unknown>("/properties/my-properties", {
     params: { page: 1, limit: 1000 },
   });
-  const recovered = normalizeVendorPropertiesResponse(data, 1, 1000)
-    .properties.find((property) => property.id === propertyId);
+  const recovered = normalizeVendorPropertiesResponse(
+    data,
+    1,
+    1000,
+  ).properties.find((property) => property.id === propertyId);
 
   if (recovered) return recovered;
 
@@ -264,9 +274,9 @@ function normalizeVendorPropertiesResponse(
       return kind === "occupancy"
         ? Boolean(
             property.rentAmount != null ||
-              property.shortletAmount != null ||
-              listingType.includes("RENT") ||
-              listingType.includes("SHORTLET"),
+            property.shortletAmount != null ||
+            listingType.includes("RENT") ||
+            listingType.includes("SHORTLET"),
           )
         : Boolean(property.salePrice != null || listingType.includes("SALE"));
     });
@@ -275,8 +285,10 @@ function normalizeVendorPropertiesResponse(
       const source = asRecord(property);
       const status = String(
         kind === "occupancy"
-          ? source.occupancyStatus ?? source.availabilityStatus ?? source.status
-          : source.saleStatus ?? source.listingStatus ?? source.status,
+          ? (source.occupancyStatus ??
+              source.availabilityStatus ??
+              source.status)
+          : (source.saleStatus ?? source.listingStatus ?? source.status),
       ).toUpperCase();
       return kind === "occupancy"
         ? source.isOccupied === true || status === "OCCUPIED"
@@ -407,9 +419,8 @@ export const propertyService = {
   },
   remove: async (propertyId: string) => {
     if (propertyId.startsWith("draft:")) {
-      const { deletePropertyDraft } = await import(
-        "@/features/vendor/lib/property-drafts"
-      );
+      const { deletePropertyDraft } =
+        await import("@/features/vendor/lib/property-drafts");
       await deletePropertyDraft(propertyId.slice("draft:".length));
       return { success: true };
     }
@@ -417,9 +428,7 @@ export const propertyService = {
     return data;
   },
   getMedia: async (propertyId: string) => {
-    const { data } = await api.get<unknown>(
-      `/properties/${propertyId}/media`,
-    );
+    const { data } = await api.get<unknown>(`/properties/${propertyId}/media`);
     return normalizeMediaResponse(data);
   },
   uploadMedia: async (propertyId: string, payload: FormData) => {

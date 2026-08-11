@@ -37,7 +37,7 @@ export function normalizeLoginResponse(response: LoginResponse) {
 
   const hasProfile = Boolean(
     backendUser ||
-      candidates.some((item) => item.fullName || item.name || item.email),
+    candidates.some((item) => item.fullName || item.name || item.email),
   );
   const user: AuthUser | null = hasProfile
     ? {

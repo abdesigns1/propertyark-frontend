@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+.agents
+.codex
+public
+AGENTS.md
+skills-lock.json
+*.tsbuildinfo
+.env*

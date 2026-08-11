@@ -9,6 +9,17 @@ const ROLE_PREFIXES = {
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const publicAdminRoutes = [
+    "/admin/login",
+    "/admin/request-access",
+    "/admin/setup",
+    "/admin/redirecting",
+    "/admin/dashboard",
+  ];
+
+  if (publicAdminRoutes.some((route) => pathname === route)) {
+    return NextResponse.next();
+  }
   const session = request.cookies.get("session")?.value;
   const cookieRole = request.cookies.get("role")?.value.toLowerCase();
   const role = cookieRole === "user" ? "buyer" : cookieRole;
@@ -37,10 +48,10 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Buyer and vendor authentication currently lives in the client-side
-  // Zustand store as a bearer token, which Proxy cannot read. Keep those
-  // dashboards out of this cookie-based check until the backend exposes a
-  // server-readable session cookie contract. Protected API endpoints must
-  // continue enforcing their own role authorization.
+  // Admin authentication currently lives in the client-side Zustand store as
+  // a bearer token, which Proxy cannot read. Public admin routes are therefore
+  // guarded in their client components until the backend exposes a
+  // server-readable session-cookie contract. Protected API endpoints continue
+  // enforcing role authorization.
   matcher: ["/admin/:path*"],
 };

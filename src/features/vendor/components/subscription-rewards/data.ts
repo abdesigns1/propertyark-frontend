@@ -8,12 +8,7 @@ import {
   WalletCards,
 } from "lucide-react";
 
-import type {
-  Faq,
-  PaymentOption,
-  Reward,
-  SubscriptionPlan,
-} from "./types";
+import type { Faq, PaymentOption, Reward, SubscriptionPlan } from "./types";
 
 export const CURRENCY_FORMATTER = new Intl.NumberFormat("en-NG", {
   style: "currency",

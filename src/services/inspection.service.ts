@@ -14,6 +14,10 @@ export interface VendorInspection {
   propertyName: string;
   propertyReference: string | null;
   propertyImageUrl: string | null;
+  vendorName: string | null;
+  vendorEmail: string | null;
+  vendorPhone: string | null;
+  vendorAvatarUrl: string | null;
   inspectionDate: string;
   time: string | null;
   location: string;
@@ -69,17 +73,35 @@ function numberFrom(source: UnknownRecord, keys: string[]) {
   for (const key of keys) {
     const value = source[key];
     if (typeof value === "number" && Number.isFinite(value)) return value;
-    if (typeof value === "string" && value.trim() && !Number.isNaN(Number(value))) {
+    if (
+      typeof value === "string" &&
+      value.trim() &&
+      !Number.isNaN(Number(value))
+    ) {
       return Number(value);
     }
   }
   return 0;
 }
 
+function preferredDateFromMessage(message: string | null) {
+  if (!message) return null;
+  const match = message.match(/Preferred inspection time:\s*([^.]*)\.?/i);
+  if (!match?.[1]) return null;
+  const parsed = new Date(match[1].trim());
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
 function inspectionRows(value: unknown) {
   if (Array.isArray(value)) return value;
   const source = unwrap(value);
-  for (const key of ["inquiries", "inspections", "appointments", "items", "results"]) {
+  for (const key of [
+    "inquiries",
+    "inspections",
+    "appointments",
+    "items",
+    "results",
+  ]) {
     if (Array.isArray(source[key])) return source[key] as unknown[];
   }
   return [];
@@ -87,26 +109,67 @@ function inspectionRows(value: unknown) {
 
 function normalizeInspection(value: unknown, index: number): VendorInspection {
   const inquiry = record(value);
-  const user = record(inquiry.user ?? inquiry.buyer ?? inquiry.requester ?? inquiry.lead);
+  const user = record(
+    inquiry.user ?? inquiry.buyer ?? inquiry.requester ?? inquiry.lead,
+  );
   const property = record(inquiry.property);
+  const vendor = record(
+    inquiry.vendor ??
+      inquiry.propertyVendor ??
+      property.vendor ??
+      property.owner,
+  );
+  const vendorProfile = record(
+    vendor.profile ?? vendor.vendorProfile ?? vendor.business,
+  );
+  const schedule = record(
+    inquiry.schedule ??
+      inquiry.appointment ??
+      inquiry.inspection ??
+      inquiry.availability ??
+      inquiry.slot,
+  );
   const media = Array.isArray(property.media)
     ? property.media.map(record)
     : Array.isArray(property.images)
       ? property.images.map(record)
       : [];
   const primaryMedia =
-    media.find((item) => item.isPrimary === true || item.isCover === true) ?? media[0] ?? {};
+    media.find((item) => item.isPrimary === true || item.isCover === true) ??
+    media[0] ??
+    {};
   const requestSentAt =
     stringFrom(inquiry, ["createdAt", "requestedAt", "submittedAt"]) ??
     new Date(0).toISOString();
+  const message = stringFrom(inquiry, ["message", "notes"]);
   const date =
     stringFrom(inquiry, [
       "inspectionDate",
+      "proposedInspectionDate",
+      "proposedDate",
       "scheduledDate",
+      "scheduledAt",
       "appointmentDate",
+      "appointmentAt",
       "preferredDate",
-      "createdAt",
-    ]) ?? new Date(0).toISOString();
+      "preferredInspectionDate",
+      "confirmedDate",
+      "date",
+    ]) ??
+    stringFrom(schedule, [
+      "inspectionDate",
+      "proposedInspectionDate",
+      "proposedDate",
+      "scheduledDate",
+      "scheduledAt",
+      "appointmentDate",
+      "appointmentAt",
+      "startAt",
+      "startDateTime",
+      "date",
+    ]) ??
+    preferredDateFromMessage(message) ??
+    "";
   const propertyLocation = [
     stringFrom(property, ["address"]),
     stringFrom(property, ["city"]),
@@ -124,7 +187,8 @@ function normalizeInspection(value: unknown, index: number): VendorInspection {
       stringFrom(user, ["fullName", "name"]) ??
       "PropertyArk user",
     userEmail:
-      stringFrom(inquiry, ["email", "userEmail"]) ?? stringFrom(user, ["email"]),
+      stringFrom(inquiry, ["email", "userEmail"]) ??
+      stringFrom(user, ["email"]),
     userPhone:
       stringFrom(inquiry, ["phone", "phoneNumber", "userPhone"]) ??
       stringFrom(user, ["phone", "phoneNumber"]),
@@ -132,7 +196,8 @@ function normalizeInspection(value: unknown, index: number): VendorInspection {
       stringFrom(inquiry, ["avatar", "avatarUrl"]) ??
       stringFrom(user, ["avatar", "avatarUrl", "profilePicture"]),
     propertyId:
-      stringFrom(inquiry, ["propertyId"]) ?? stringFrom(property, ["id", "_id"]),
+      stringFrom(inquiry, ["propertyId"]) ??
+      stringFrom(property, ["id", "_id"]),
     propertyName:
       stringFrom(inquiry, ["propertyName", "propertyTitle"]) ??
       stringFrom(property, ["name", "title"]) ??
@@ -144,23 +209,60 @@ function normalizeInspection(value: unknown, index: number): VendorInspection {
       stringFrom(inquiry, ["propertyImage", "propertyImageUrl"]) ??
       stringFrom(property, ["image", "imageUrl", "thumbnail", "coverImage"]) ??
       stringFrom(primaryMedia, ["url", "imageUrl", "secureUrl"]),
+    vendorName:
+      stringFrom(inquiry, ["vendorName", "propertyVendorName"]) ??
+      stringFrom(vendor, ["fullName", "name", "companyName", "businessName"]) ??
+      stringFrom(vendorProfile, [
+        "fullName",
+        "name",
+        "companyName",
+        "businessName",
+      ]),
+    vendorEmail:
+      stringFrom(inquiry, ["vendorEmail"]) ??
+      stringFrom(vendor, ["email"]) ??
+      stringFrom(vendorProfile, ["email"]),
+    vendorPhone:
+      stringFrom(inquiry, ["vendorPhone", "vendorPhoneNumber"]) ??
+      stringFrom(vendor, ["phone", "phoneNumber"]) ??
+      stringFrom(vendorProfile, ["phone", "phoneNumber"]),
+    vendorAvatarUrl:
+      stringFrom(inquiry, ["vendorAvatar", "vendorAvatarUrl"]) ??
+      stringFrom(vendor, ["avatar", "avatarUrl", "profilePicture"]) ??
+      stringFrom(vendorProfile, ["avatar", "avatarUrl", "profilePicture"]),
     inspectionDate: date,
-    time: stringFrom(inquiry, ["time", "inspectionTime", "appointmentTime"]),
+    time:
+      stringFrom(inquiry, [
+        "time",
+        "inspectionTime",
+        "appointmentTime",
+        "proposedTime",
+      ]) ??
+      stringFrom(schedule, [
+        "time",
+        "startTime",
+        "inspectionTime",
+        "proposedTime",
+      ]),
     location:
       stringFrom(inquiry, ["location", "meetingLocation"]) ??
       (propertyLocation || "Location not provided"),
     status: (stringFrom(inquiry, ["status"]) ?? "PENDING").toUpperCase(),
     meetingType: stringFrom(inquiry, ["meetingType", "inspectionType"]),
-    message: stringFrom(inquiry, ["message", "notes"]),
+    message,
     requestSentAt,
     updatedAt: stringFrom(inquiry, ["updatedAt", "reviewedAt", "approvedAt"]),
   };
 }
 
-function normalizeStats(value: unknown, inspections: VendorInspection[]): VendorInspectionStats {
+function normalizeStats(
+  value: unknown,
+  inspections: VendorInspection[],
+): VendorInspectionStats {
   const source = unwrap(value);
   const count = (...statuses: string[]) =>
-    inspections.filter((inspection) => statuses.includes(inspection.status)).length;
+    inspections.filter((inspection) => statuses.includes(inspection.status))
+      .length;
 
   return {
     upcoming:
@@ -218,7 +320,9 @@ export const inspectionService = {
       api.get("/inquiries/vendor", { params: { page: 1, limit: 100 } }),
       api.get("/inquiries/vendor/stats"),
     ]);
-    const inspections = inspectionRows(listResponse.data).map(normalizeInspection);
+    const inspections = inspectionRows(listResponse.data).map(
+      normalizeInspection,
+    );
     return {
       inspections,
       stats: normalizeStats(statsResponse.data, inspections),
@@ -253,6 +357,7 @@ export const inspectionService = {
         location: input.location,
         message: `${input.message.trim()} ${scheduleNote}`.trim(),
         meetingType: input.meetingType,
+        proposedDate: new Date(`${input.date}T${input.time}`).toISOString(),
       });
       return data;
     } catch (error) {

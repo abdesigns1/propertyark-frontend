@@ -206,8 +206,7 @@ function normalizeInquiries(value: unknown): VendorInquiry[] {
           "submittedAt",
           "date",
           "updatedAt",
-        ]) ??
-        new Date(0).toISOString(),
+        ]) ?? new Date(0).toISOString(),
       status: stringFrom(inquiry, ["status"]) ?? "PENDING",
     };
   });

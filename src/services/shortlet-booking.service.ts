@@ -3,11 +3,7 @@ import { api } from "@/services/axios";
 type UnknownRecord = Record<string, unknown>;
 
 export type ShortletBookingStatus =
-  | "PENDING"
-  | "CONFIRMED"
-  | "CHECKED_IN"
-  | "COMPLETED"
-  | "CANCELLED";
+  "PENDING" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED";
 
 export interface ShortletBooking {
   id: string;
@@ -152,7 +148,8 @@ function normalizeStatus(value: unknown): ShortletBookingStatus {
 function calculateNights(checkIn: string, checkOut: string) {
   const start = new Date(checkIn).getTime();
   const end = new Date(checkOut).getTime();
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 0;
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start)
+    return 0;
   return Math.ceil((end - start) / 86_400_000);
 }
 
@@ -192,7 +189,8 @@ function normalizeBooking(value: unknown, index: number): ShortletBooking {
     checkIn;
 
   return {
-    id: stringFrom(booking, ["id", "_id", "bookingId", "reference"]) ??
+    id:
+      stringFrom(booking, ["id", "_id", "bookingId", "reference"]) ??
       `booking-${index}`,
     guestName: guestName || "PropertyArk guest",
     guestInitials: initials(guestName),
@@ -275,8 +273,11 @@ function normalizeDashboard(value: unknown): ShortletDashboardData {
           "pending",
         ]) || count("PENDING"),
       activeGuests:
-        numberFrom(statsSource, ["activeGuests", "checkedInGuests", "active"]) ||
-        count("CHECKED_IN"),
+        numberFrom(statsSource, [
+          "activeGuests",
+          "checkedInGuests",
+          "active",
+        ]) || count("CHECKED_IN"),
       completedBookings:
         numberFrom(statsSource, [
           "completedBookings",
@@ -298,8 +299,7 @@ function normalizeDashboard(value: unknown): ShortletDashboardData {
     bookings,
     properties,
     pricing: {
-      propertyId:
-        stringFrom(pricingSource, ["propertyId"]) ?? firstPropertyId,
+      propertyId: stringFrom(pricingSource, ["propertyId"]) ?? firstPropertyId,
       weekdayRate: numberFrom(pricingSource, [
         "weekdayRate",
         "baseRate",

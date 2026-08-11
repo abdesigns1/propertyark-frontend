@@ -4,12 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -141,7 +136,8 @@ export function AddPropertyWizard({
     // Draft metadata lives in localStorage, while File objects are restored from
     // IndexedDB because they cannot be serialized safely as JSON.
     void (async () => {
-      const draft = await getPropertyDraft<AddPropertyFormValues>(initialDraftId);
+      const draft =
+        await getPropertyDraft<AddPropertyFormValues>(initialDraftId);
       if (!draft) {
         toast.error("This draft expired or no longer exists.");
         router.replace("/vendor/properties/new");
@@ -197,10 +193,8 @@ export function AddPropertyWizard({
         zipCode: property.zipCode ?? "",
         size: property.size == null ? "" : String(property.size),
         sizeUnit: property.sizeUnit ?? "sqm",
-        bedrooms:
-          property.bedrooms == null ? "" : String(property.bedrooms),
-        bathrooms:
-          property.bathrooms == null ? "" : String(property.bathrooms),
+        bedrooms: property.bedrooms == null ? "" : String(property.bedrooms),
+        bathrooms: property.bathrooms == null ? "" : String(property.bathrooms),
         amenities: property.amenities ?? [],
       }),
     );
@@ -214,7 +208,12 @@ export function AddPropertyWizard({
         setExistingMedia(property.media ?? []);
       }
     })();
-  }, [initialPropertyId, router, vendorProperties.data, vendorProperties.isLoading]);
+  }, [
+    initialPropertyId,
+    router,
+    vendorProperties.data,
+    vendorProperties.isLoading,
+  ]);
   useEffect(() => {
     if (!draftId) return;
     // Debounce autosaves and restart the one-hour inactivity window after edits.
@@ -367,7 +366,10 @@ export function AddPropertyWizard({
       toast.success(`Property ${label} deleted.`);
     } catch (error) {
       toast.error(
-        getApiErrorMessage(error, `The property ${label} could not be deleted.`),
+        getApiErrorMessage(
+          error,
+          `The property ${label} could not be deleted.`,
+        ),
       );
     } finally {
       setDeletingMediaIds((current) => {
@@ -886,8 +888,8 @@ export function AddPropertyWizard({
               <CardTitle>Uploaded Media</CardTitle>
               <CardAction>
                 <Badge variant="outline">
-                  {existingMedia.filter((item) => item.type === "IMAGE").length +
-                    photos.length}{" "}
+                  {existingMedia.filter((item) => item.type === "IMAGE")
+                    .length + photos.length}{" "}
                   / 20 photos
                 </Badge>
               </CardAction>
@@ -1050,8 +1052,8 @@ export function AddPropertyWizard({
               <CardHeader>
                 <CardTitle>Legal Documents</CardTitle>
                 <CardDescription>
-                  Your previously submitted ownership and verification
-                  documents remain attached to this property.
+                  Your previously submitted ownership and verification documents
+                  remain attached to this property.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1062,81 +1064,84 @@ export function AddPropertyWizard({
               </CardContent>
             </Card>
           ) : (
-          <><div className="flex flex-col gap-6">
-            {(
-              [
-                {
-                  key: "ownership",
-                  title: "Proof of Ownership",
-                  copy: "Grant deed, warranty deed, or valid title record.",
-                  icon: FileCheck2,
-                },
-                {
-                  key: "identification",
-                  title: "Identification",
-                  copy: "Government-issued ID or passport for the primary owner.",
-                  icon: ShieldCheck,
-                },
-                {
-                  key: "tax",
-                  title: "Tax Records",
-                  copy: "Most recent property tax assessment or certificate.",
-                  icon: FileText,
-                },
-              ] as const
-            ).map(({ key, title, copy, icon }) => (
-              <Card key={key}>
-                <CardHeader>
-                  <CardTitle>{title}</CardTitle>
-                  <CardDescription>{copy}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-3">
-                  <PropertyUploadBox
-                    title={`Upload ${title}`}
-                    description="PDF, JPG, or PNG, up to 10 MB per file."
-                    accept="application/pdf,image/jpeg,image/png"
-                    icon={icon}
-                    onFiles={(files) => addDocuments(key, files)}
-                  />
-                  {errors[key] && (
-                    <p className="text-sm text-destructive">{errors[key]}</p>
-                  )}
-                  <PropertyFileList
-                    files={documents[key]}
-                    onRemove={(index) =>
-                      setDocuments((current) => ({
-                        ...current,
-                        [key]: current[key].filter(
-                          (_, currentIndex) => currentIndex !== index,
-                        ),
-                      }))
-                    }
-                  />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          <aside className="flex flex-col gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Uploaded Files</CardTitle>
-                <CardDescription>
-                  {Object.values(documents).flat().length} document(s) ready
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <PropertyFileList
-                  files={Object.values(documents).flat()}
-                  onRemove={() => {}}
-                />
-              </CardContent>
-            </Card>
-            <PropertyTipCard title="Secure upload">
-              Documents are sent through the authenticated endpoint and are only
-              listed as complete after the server accepts the property.
-            </PropertyTipCard>
-          </aside>
-          </>
+            <>
+              <div className="flex flex-col gap-6">
+                {(
+                  [
+                    {
+                      key: "ownership",
+                      title: "Proof of Ownership",
+                      copy: "Grant deed, warranty deed, or valid title record.",
+                      icon: FileCheck2,
+                    },
+                    {
+                      key: "identification",
+                      title: "Identification",
+                      copy: "Government-issued ID or passport for the primary owner.",
+                      icon: ShieldCheck,
+                    },
+                    {
+                      key: "tax",
+                      title: "Tax Records",
+                      copy: "Most recent property tax assessment or certificate.",
+                      icon: FileText,
+                    },
+                  ] as const
+                ).map(({ key, title, copy, icon }) => (
+                  <Card key={key}>
+                    <CardHeader>
+                      <CardTitle>{title}</CardTitle>
+                      <CardDescription>{copy}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-3">
+                      <PropertyUploadBox
+                        title={`Upload ${title}`}
+                        description="PDF, JPG, or PNG, up to 10 MB per file."
+                        accept="application/pdf,image/jpeg,image/png"
+                        icon={icon}
+                        onFiles={(files) => addDocuments(key, files)}
+                      />
+                      {errors[key] && (
+                        <p className="text-sm text-destructive">
+                          {errors[key]}
+                        </p>
+                      )}
+                      <PropertyFileList
+                        files={documents[key]}
+                        onRemove={(index) =>
+                          setDocuments((current) => ({
+                            ...current,
+                            [key]: current[key].filter(
+                              (_, currentIndex) => currentIndex !== index,
+                            ),
+                          }))
+                        }
+                      />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              <aside className="flex flex-col gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Uploaded Files</CardTitle>
+                    <CardDescription>
+                      {Object.values(documents).flat().length} document(s) ready
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <PropertyFileList
+                      files={Object.values(documents).flat()}
+                      onRemove={() => {}}
+                    />
+                  </CardContent>
+                </Card>
+                <PropertyTipCard title="Secure upload">
+                  Documents are sent through the authenticated endpoint and are
+                  only listed as complete after the server accepts the property.
+                </PropertyTipCard>
+              </aside>
+            </>
           )}
         </div>
       )}

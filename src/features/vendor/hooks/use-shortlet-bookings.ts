@@ -14,9 +14,7 @@ export function useShortletBookings() {
   const accountKey = useAccountKey();
 
   return useQuery({
-    queryKey: shortletBookingsQueryKey(
-      accountKey ?? "unresolved-session",
-    ),
+    queryKey: shortletBookingsQueryKey(accountKey ?? "unresolved-session"),
     queryFn: shortletBookingService.getDashboard,
     enabled: Boolean(accountKey),
     staleTime: 30_000,
@@ -40,9 +38,7 @@ export function useUpdateShortletBooking() {
       }[variables.action];
       toast.success(message);
       await queryClient.invalidateQueries({
-        queryKey: shortletBookingsQueryKey(
-          accountKey ?? "unresolved-session",
-        ),
+        queryKey: shortletBookingsQueryKey(accountKey ?? "unresolved-session"),
       });
     },
     onError: (error) =>

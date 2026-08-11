@@ -12,8 +12,8 @@ export function VisionMission() {
             Our Vision
           </h3>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            To become Africa&apos;s most trusted and innovative digital real estate
-            marketplace, transforming how people discover, invest in, and
+            To become Africa&apos;s most trusted and innovative digital real
+            estate marketplace, transforming how people discover, invest in, and
             transact property through technology, transparency and
             accessibility.
           </p>

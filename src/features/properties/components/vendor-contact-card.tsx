@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarCheck2, LoaderCircle, MessageSquare, Phone } from "lucide-react";
+import {
+  CalendarCheck2,
+  LoaderCircle,
+  MessageSquare,
+  Phone,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -15,7 +20,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -95,7 +105,9 @@ export function VendorContactCard({ property }: { property: Property }) {
         date,
         time,
       });
-      await queryClient.invalidateQueries({ queryKey: ["buyer", "inspections"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["buyer", "inspections"],
+      });
       toast.success("Inspection booked successfully", {
         description: "The vendor has received your preferred date and time.",
       });
@@ -174,11 +186,24 @@ export function VendorContactCard({ property }: { property: Property }) {
         </div>
         <div className="mt-4 flex gap-2">
           {isAuthenticated && property.vendorPhone ? (
-            <Button variant="outline" size="sm" className="flex-1 rounded-lg py-5" asChild>
-              <a href={`tel:${property.vendorPhone}`}><Phone data-icon="inline-start" /> Call Now</a>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 rounded-lg py-5"
+              asChild
+            >
+              <a href={`tel:${property.vendorPhone}`}>
+                <Phone data-icon="inline-start" /> Call Now
+              </a>
             </Button>
           ) : (
-            <Button variant="outline" size="sm" className="flex-1 rounded-lg py-5" disabled={isAuthenticated && !property.vendorPhone} onClick={() => requireAuthentication("view the vendor contact")}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 rounded-lg py-5"
+              disabled={isAuthenticated && !property.vendorPhone}
+              onClick={() => requireAuthentication("view the vendor contact")}
+            >
               <Phone data-icon="inline-start" /> Call Now
             </Button>
           )}
@@ -201,7 +226,10 @@ export function VendorContactCard({ property }: { property: Property }) {
         </Button>
       </div>
 
-      <Dialog open={mode !== null} onOpenChange={(open) => !open && setMode(null)}>
+      <Dialog
+        open={mode !== null}
+        onOpenChange={(open) => !open && setMode(null)}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Book an Inspection</DialogTitle>
@@ -212,46 +240,52 @@ export function VendorContactCard({ property }: { property: Property }) {
 
           <FieldGroup>
             <>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field data-invalid={submitted && !date}>
-                    <FieldLabel htmlFor="inspection-date">Date</FieldLabel>
-                    <Input
-                      id="inspection-date"
-                      type="date"
-                      min={new Date().toISOString().slice(0, 10)}
-                      value={date}
-                      aria-invalid={submitted && !date}
-                      onChange={(event) => setDate(event.target.value)}
-                    />
-                    {submitted && !date && <FieldError>Select a date.</FieldError>}
-                  </Field>
-                  <Field data-invalid={submitted && !time}>
-                    <FieldLabel htmlFor="inspection-time">Time</FieldLabel>
-                    <Input
-                      id="inspection-time"
-                      type="time"
-                      value={time}
-                      aria-invalid={submitted && !time}
-                      onChange={(event) => setTime(event.target.value)}
-                    />
-                    {submitted && !time && <FieldError>Select a time.</FieldError>}
-                  </Field>
-                </div>
-                <Field>
-                  <FieldLabel htmlFor="inspection-type">Inspection type</FieldLabel>
-                  <Select value={meetingType} onValueChange={setMeetingType}>
-                    <SelectTrigger id="inspection-type" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="IN_PERSON">Physical visit</SelectItem>
-                        <SelectItem value="VIDEO_CALL">Video call</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field data-invalid={submitted && !date}>
+                  <FieldLabel htmlFor="inspection-date">Date</FieldLabel>
+                  <Input
+                    id="inspection-date"
+                    type="date"
+                    min={new Date().toISOString().slice(0, 10)}
+                    value={date}
+                    aria-invalid={submitted && !date}
+                    onChange={(event) => setDate(event.target.value)}
+                  />
+                  {submitted && !date && (
+                    <FieldError>Select a date.</FieldError>
+                  )}
                 </Field>
-              </>
+                <Field data-invalid={submitted && !time}>
+                  <FieldLabel htmlFor="inspection-time">Time</FieldLabel>
+                  <Input
+                    id="inspection-time"
+                    type="time"
+                    value={time}
+                    aria-invalid={submitted && !time}
+                    onChange={(event) => setTime(event.target.value)}
+                  />
+                  {submitted && !time && (
+                    <FieldError>Select a time.</FieldError>
+                  )}
+                </Field>
+              </div>
+              <Field>
+                <FieldLabel htmlFor="inspection-type">
+                  Inspection type
+                </FieldLabel>
+                <Select value={meetingType} onValueChange={setMeetingType}>
+                  <SelectTrigger id="inspection-type" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="IN_PERSON">Physical visit</SelectItem>
+                      <SelectItem value="VIDEO_CALL">Video call</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </>
             <Field>
               <FieldLabel htmlFor="vendor-message">Additional note</FieldLabel>
               <Textarea
@@ -270,7 +304,12 @@ export function VendorContactCard({ property }: { property: Property }) {
               Cancel
             </Button>
             <Button disabled={submitting} onClick={submitInquiry}>
-              {submitting && <LoaderCircle data-icon="inline-start" className="animate-spin" />}
+              {submitting && (
+                <LoaderCircle
+                  data-icon="inline-start"
+                  className="animate-spin"
+                />
+              )}
               Book Inspection
             </Button>
           </DialogFooter>

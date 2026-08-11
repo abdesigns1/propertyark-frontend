@@ -45,12 +45,21 @@ interface NavbarProps {
   reserveSpace?: boolean;
 }
 
-function MainNavLink({ link, mobile = false, onNavigate }: { link: { label: string; href: string }; mobile?: boolean; onNavigate?: () => void }) {
+function MainNavLink({
+  link,
+  mobile = false,
+  onNavigate,
+}: {
+  link: { label: string; href: string };
+  mobile?: boolean;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [linkPath, query = ""] = link.href.split("?");
   const linkPurpose = new URLSearchParams(query).get("purpose");
-  const currentPurpose = searchParams.get("purpose") ?? searchParams.get("type");
+  const currentPurpose =
+    searchParams.get("purpose") ?? searchParams.get("type");
   const isActive =
     pathname === linkPath &&
     (linkPurpose
@@ -123,7 +132,17 @@ export function Navbar({ reserveSpace = false }: NavbarProps) {
           {/* Links */}
           <div className="hidden items-center gap-6 lg:flex">
             {MAIN_NAV_LINKS.map((link) => (
-              <Suspense key={link.href} fallback={<Link href={link.href} className="text-sm font-medium text-navbar-foreground/80">{link.label}</Link>}>
+              <Suspense
+                key={link.href}
+                fallback={
+                  <Link
+                    href={link.href}
+                    className="text-sm font-medium text-navbar-foreground/80"
+                  >
+                    {link.label}
+                  </Link>
+                }
+              >
                 <MainNavLink link={link} />
               </Suspense>
             ))}
@@ -159,7 +178,9 @@ export function Navbar({ reserveSpace = false }: NavbarProps) {
                 variant="ghost"
                 size="icon"
                 className="relative text-navbar-foreground hover:bg-white/10 hover:text-navbar-foreground lg:hidden"
-                aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+                aria-label={
+                  mobileOpen ? "Close navigation menu" : "Open navigation menu"
+                }
                 aria-expanded={mobileOpen}
               >
                 <Menu
@@ -192,8 +213,23 @@ export function Navbar({ reserveSpace = false }: NavbarProps) {
               <div className="flex flex-col gap-4 px-4 pb-4">
                 <nav className="flex flex-col gap-3">
                   {MAIN_NAV_LINKS.map((link) => (
-                    <Suspense key={link.href} fallback={<Link href={link.href} onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground">{link.label}</Link>}>
-                      <MainNavLink link={link} mobile onNavigate={() => setMobileOpen(false)} />
+                    <Suspense
+                      key={link.href}
+                      fallback={
+                        <Link
+                          href={link.href}
+                          onClick={() => setMobileOpen(false)}
+                          className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground"
+                        >
+                          {link.label}
+                        </Link>
+                      }
+                    >
+                      <MainNavLink
+                        link={link}
+                        mobile
+                        onNavigate={() => setMobileOpen(false)}
+                      />
                     </Suspense>
                   ))}
 

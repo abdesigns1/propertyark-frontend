@@ -5,7 +5,6 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PageBanner } from "@/components/shared/page-banner";
-import { PropertySearchForm } from "@/components/shared/property-search-form";
 import {
   PropertyFilters,
   PropertyFilterState,

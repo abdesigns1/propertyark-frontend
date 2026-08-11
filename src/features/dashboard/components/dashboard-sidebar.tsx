@@ -48,6 +48,7 @@ const vendorNavigation = [
   },
   { label: "Inspections", icon: FileText, href: "/vendor/inspections" },
   { label: "Mortgage", icon: Landmark, href: "/vendor/mortgage" },
+  { label: "Finance", icon: WalletCards, href: "/vendor/finance" },
 
   {
     label: "Subscription & Rewards",
@@ -84,10 +85,7 @@ export function DashboardNavigation({
   return (
     <nav
       aria-label="Dashboard navigation"
-      className={cn(
-        "flex flex-col gap-1",
-        compactVendorNavigation && "gap-2",
-      )}
+      className={cn("flex flex-col gap-1", compactVendorNavigation && "gap-2")}
     >
       {navigation.map(({ label, icon: Icon, href }) => {
         const [itemPathname, itemHash = ""] = href.split("#");

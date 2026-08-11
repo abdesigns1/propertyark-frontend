@@ -8,10 +8,7 @@ export type TransactionStatus =
   | "cancelled";
 
 export type PaymentMethod =
-  | "paystack"
-  | "flutterwave"
-  | "bank-transfer"
-  | "wallet";
+  "paystack" | "flutterwave" | "bank-transfer" | "wallet";
 
 export type TransactionPurpose =
   | "property-purchase"

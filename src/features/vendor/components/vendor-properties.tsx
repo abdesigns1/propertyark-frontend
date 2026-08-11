@@ -76,9 +76,7 @@ import { vendorDashboardQueryKey } from "@/features/vendor/hooks/use-vendor-dash
 import { useAccountKey } from "@/lib/account-identity";
 import { getApiErrorMessage } from "@/services/api-error";
 import { propertyService } from "@/services/property.service";
-import {
-  getPropertyDrafts,
-} from "@/features/vendor/lib/property-drafts";
+import { getPropertyDrafts } from "@/features/vendor/lib/property-drafts";
 import {
   draftAsProperty,
   formatPropertyPrice,
@@ -299,9 +297,7 @@ export function VendorProperties() {
               : (query.data?.metrics.soldRate ?? 0),
           )}%`}
           note={
-            rateMetric === "occupancy"
-              ? "Current occupancy"
-              : "Completed sales"
+            rateMetric === "occupancy" ? "Current occupancy" : "Completed sales"
           }
           icon={Percent}
         />

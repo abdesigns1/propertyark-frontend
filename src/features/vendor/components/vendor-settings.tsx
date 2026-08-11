@@ -48,12 +48,7 @@ import { useAccountKey } from "@/lib/account-identity";
 import { cn } from "@/lib/utils";
 
 type Section =
-  | "profile"
-  | "business"
-  | "password"
-  | "notifications"
-  | "payment"
-  | "account";
+  "profile" | "business" | "password" | "notifications" | "payment" | "account";
 const sections: Array<{
   id: Section;
   label: string;
@@ -218,8 +213,7 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
       updateUser({ avatarUrl: next });
       queryClient.setQueryData<VendorSettingsProfile>(
         profileQueryKey,
-        (current) =>
-          current ? { ...current, avatarUrl: next } : updated,
+        (current) => (current ? { ...current, avatarUrl: next } : updated),
       );
       queryClient.invalidateQueries({ queryKey: ["vendor", "dashboard"] });
       toast.success("Profile photo updated.");

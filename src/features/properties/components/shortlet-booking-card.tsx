@@ -78,7 +78,9 @@ export function ShortletBookingCard({ property }: { property: Property }) {
   const nights = Math.max(1, differenceInCalendarDays(checkOut, checkIn));
 
   function isUnavailable(day: Date) {
-    return unavailableDates.some((unavailableDay) => isSameDay(day, unavailableDay));
+    return unavailableDates.some((unavailableDay) =>
+      isSameDay(day, unavailableDay),
+    );
   }
 
   function rangeContainsUnavailable(start: Date, end: Date) {
@@ -95,7 +97,10 @@ export function ShortletBookingCard({ property }: { property: Property }) {
     }
     setCheckIn(nextDate);
     setVisibleMonth(startOfMonth(nextDate));
-    if (!isBefore(nextDate, checkOut) || rangeContainsUnavailable(nextDate, checkOut)) {
+    if (
+      !isBefore(nextDate, checkOut) ||
+      rangeContainsUnavailable(nextDate, checkOut)
+    ) {
       setCheckOut(nextDate);
       setSelectingCheckout(true);
     }
@@ -108,7 +113,10 @@ export function ShortletBookingCard({ property }: { property: Property }) {
       toast.error("Check-out must be after check-in.");
       return;
     }
-    if (isUnavailable(nextDate) || rangeContainsUnavailable(checkIn, nextDate)) {
+    if (
+      isUnavailable(nextDate) ||
+      rangeContainsUnavailable(checkIn, nextDate)
+    ) {
       toast.error("Your stay includes an unavailable date.");
       return;
     }
@@ -168,12 +176,23 @@ export function ShortletBookingCard({ property }: { property: Property }) {
 
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary">Short Let</Badge>
-          <span className="flex items-center gap-0.5 text-warning" aria-label={`${property.rating ?? 5} out of 5 stars`}>
+          <span
+            className="flex items-center gap-0.5 text-warning"
+            aria-label={`${property.rating ?? 5} out of 5 stars`}
+          >
             {Array.from({ length: 5 }).map((_, index) => (
-              <Star key={index} className={cn("size-3.5", index < Math.round(property.rating ?? 5) && "fill-warning")} />
+              <Star
+                key={index}
+                className={cn(
+                  "size-3.5",
+                  index < Math.round(property.rating ?? 5) && "fill-warning",
+                )}
+              />
             ))}
           </span>
-          <span className="text-xs text-muted-foreground">({property.reviewCount ?? 2} Reviews)</span>
+          <span className="text-xs text-muted-foreground">
+            ({property.reviewCount ?? 2} Reviews)
+          </span>
         </div>
 
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -182,7 +201,11 @@ export function ShortletBookingCard({ property }: { property: Property }) {
         </p>
 
         <div className="flex items-end gap-1 pt-2">
-          <Price amount={property.price} currency={property.currency} className="text-2xl font-bold text-primary" />
+          <Price
+            amount={property.price}
+            currency={property.currency}
+            className="text-2xl font-bold text-primary"
+          />
           <span className="pb-1 text-xs text-muted-foreground">/Night</span>
         </div>
       </CardHeader>
@@ -192,46 +215,112 @@ export function ShortletBookingCard({ property }: { property: Property }) {
 
         <div className="overflow-hidden rounded-lg border border-primary/25">
           <div className="grid grid-cols-2 bg-primary/5">
-            <label className="cursor-pointer border-r border-primary/20 p-3" htmlFor="shortlet-check-in">
-              <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Check-in</span>
-              <Input id="shortlet-check-in" type="date" min={format(new Date(), "yyyy-MM-dd")} value={format(checkIn, "yyyy-MM-dd")} onChange={(event) => updateCheckIn(event.target.value)} className="mt-1 h-auto border-0 bg-transparent p-0 text-xs font-semibold shadow-none focus-visible:ring-0" />
+            <label
+              className="cursor-pointer border-r border-primary/20 p-3"
+              htmlFor="shortlet-check-in"
+            >
+              <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Check-in
+              </span>
+              <Input
+                id="shortlet-check-in"
+                type="date"
+                min={format(new Date(), "yyyy-MM-dd")}
+                value={format(checkIn, "yyyy-MM-dd")}
+                onChange={(event) => updateCheckIn(event.target.value)}
+                className="mt-1 h-auto border-0 bg-transparent p-0 text-xs font-semibold shadow-none focus-visible:ring-0"
+              />
             </label>
             <label className="cursor-pointer p-3" htmlFor="shortlet-check-out">
-              <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Check-out</span>
-              <Input id="shortlet-check-out" type="date" min={format(addMonths(checkIn, 0), "yyyy-MM-dd")} value={format(checkOut, "yyyy-MM-dd")} onChange={(event) => updateCheckOut(event.target.value)} className="mt-1 h-auto border-0 bg-transparent p-0 text-xs font-semibold shadow-none focus-visible:ring-0" />
+              <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Check-out
+              </span>
+              <Input
+                id="shortlet-check-out"
+                type="date"
+                min={format(addMonths(checkIn, 0), "yyyy-MM-dd")}
+                value={format(checkOut, "yyyy-MM-dd")}
+                onChange={(event) => updateCheckOut(event.target.value)}
+                className="mt-1 h-auto border-0 bg-transparent p-0 text-xs font-semibold shadow-none focus-visible:ring-0"
+              />
             </label>
           </div>
-          <button type="button" className="w-full border-t border-primary/20 p-3 text-left hover:bg-primary/5" onClick={() => setGuestPickerOpen((open) => !open)} aria-expanded={guestPickerOpen}>
-            <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Guests</span>
-            <span className="mt-1 block text-xs">{adults} {adults === 1 ? "Adult" : "Adults"}, {children} {children === 1 ? "Child" : "Children"}</span>
+          <button
+            type="button"
+            className="w-full border-t border-primary/20 p-3 text-left hover:bg-primary/5"
+            onClick={() => setGuestPickerOpen((open) => !open)}
+            aria-expanded={guestPickerOpen}
+          >
+            <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Guests
+            </span>
+            <span className="mt-1 block text-xs">
+              {adults} {adults === 1 ? "Adult" : "Adults"}, {children}{" "}
+              {children === 1 ? "Child" : "Children"}
+            </span>
           </button>
           {guestPickerOpen && (
             <div className="flex flex-col gap-3 border-t border-primary/20 bg-background p-3">
-              <GuestCounter label="Adults" description="Age 13+" value={adults} minimum={1} onChange={setAdults} />
-              <GuestCounter label="Children" description="Ages 0–12" value={children} minimum={0} onChange={setChildren} />
+              <GuestCounter
+                label="Adults"
+                description="Age 13+"
+                value={adults}
+                minimum={1}
+                onChange={setAdults}
+              />
+              <GuestCounter
+                label="Children"
+                description="Ages 0–12"
+                value={children}
+                minimum={0}
+                onChange={setChildren}
+              />
             </div>
           )}
         </div>
 
         <div className="flex flex-col gap-4" aria-label="Choose booking dates">
           <div className="flex items-center justify-between">
-            <Button type="button" variant="outline" size="icon-sm" className="rounded-full" aria-label="Previous month" onClick={() => setVisibleMonth((month) => addMonths(month, -1))}>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              className="rounded-full"
+              aria-label="Previous month"
+              onClick={() => setVisibleMonth((month) => addMonths(month, -1))}
+            >
               <ChevronLeft />
             </Button>
-            <p className="text-xs font-medium">{format(visibleMonth, "MMMM yyyy")}</p>
-            <Button type="button" variant="outline" size="icon-sm" className="rounded-full" aria-label="Next month" onClick={() => setVisibleMonth((month) => addMonths(month, 1))}>
+            <p className="text-xs font-medium">
+              {format(visibleMonth, "MMMM yyyy")}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              className="rounded-full"
+              aria-label="Next month"
+              onClick={() => setVisibleMonth((month) => addMonths(month, 1))}
+            >
               <ChevronRight />
             </Button>
           </div>
 
           <div className="grid grid-cols-7 text-center">
-            {WEEKDAYS.map((day) => <span key={day} className="pb-2 text-[10px] font-medium">{day}</span>)}
+            {WEEKDAYS.map((day) => (
+              <span key={day} className="pb-2 text-[10px] font-medium">
+                {day}
+              </span>
+            ))}
             {calendarDays.map((day) => {
               const selectedStart = isSameDay(day, checkIn);
               const selectedEnd = isSameDay(day, checkOut);
-              const inRange = !isSameDay(checkIn, checkOut) && isWithinInterval(day, { start: checkIn, end: checkOut });
+              const inRange =
+                !isSameDay(checkIn, checkOut) &&
+                isWithinInterval(day, { start: checkIn, end: checkOut });
               const unavailable = isUnavailable(day);
-              const disabled = isBefore(day, startOfDay(new Date())) || unavailable;
+              const disabled =
+                isBefore(day, startOfDay(new Date())) || unavailable;
               return (
                 <button
                   key={day.toISOString()}
@@ -240,13 +329,21 @@ export function ShortletBookingCard({ property }: { property: Property }) {
                   onClick={() => selectDay(day)}
                   className={cn(
                     "relative flex h-9 items-center justify-center text-[10px] transition-colors disabled:cursor-not-allowed disabled:text-muted-foreground/25",
-                    unavailable && "text-muted-foreground line-through decoration-2 disabled:text-muted-foreground/60",
-                    !isSameMonth(day, visibleMonth) && "text-muted-foreground/40",
+                    unavailable &&
+                      "text-muted-foreground line-through decoration-2 disabled:text-muted-foreground/60",
+                    !isSameMonth(day, visibleMonth) &&
+                      "text-muted-foreground/40",
                     inRange && "bg-primary/10 text-foreground",
-                    selectedStart && "rounded-l-md bg-primary font-semibold text-primary-foreground",
-                    selectedEnd && "rounded-r-md bg-primary font-semibold text-primary-foreground",
+                    selectedStart &&
+                      "rounded-l-md bg-primary font-semibold text-primary-foreground",
+                    selectedEnd &&
+                      "rounded-r-md bg-primary font-semibold text-primary-foreground",
                     selectedStart && selectedEnd && "rounded-md",
-                    !disabled && !inRange && !selectedStart && !selectedEnd && "hover:rounded-md hover:bg-muted",
+                    !disabled &&
+                      !inRange &&
+                      !selectedStart &&
+                      !selectedEnd &&
+                      "hover:rounded-md hover:bg-muted",
                   )}
                   aria-label={`${format(day, "MMMM d, yyyy")}${unavailable ? ", unavailable" : ""}`}
                   aria-pressed={selectedStart || selectedEnd}
@@ -264,7 +361,14 @@ export function ShortletBookingCard({ property }: { property: Property }) {
             Struck-through dates are unavailable
           </div>
         )}
-        <Button size="lg" className="h-11 w-full" onClick={continueToBooking} disabled={selectingCheckout || nights < 1}>Book Now</Button>
+        <Button
+          size="lg"
+          className="h-11 w-full"
+          onClick={continueToBooking}
+          disabled={selectingCheckout || nights < 1}
+        >
+          Book Now
+        </Button>
       </CardContent>
 
       <Separator />
@@ -274,46 +378,111 @@ export function ShortletBookingCard({ property }: { property: Property }) {
         <div className="flex flex-col gap-3 rounded-xl bg-muted p-4">
           <div className="flex items-center gap-3">
             <Avatar size="lg">
-              {property.vendorAvatarUrl && <AvatarImage src={property.vendorAvatarUrl} alt={property.vendorName ?? "Vendor"} />}
-              <AvatarFallback className="bg-primary/10 font-semibold text-primary">{property.vendorName?.split(" ").map((name) => name[0]).join("").slice(0, 2) ?? "V"}</AvatarFallback>
+              {property.vendorAvatarUrl && (
+                <AvatarImage
+                  src={property.vendorAvatarUrl}
+                  alt={property.vendorName ?? "Vendor"}
+                />
+              )}
+              <AvatarFallback className="bg-primary/10 font-semibold text-primary">
+                {property.vendorName
+                  ?.split(" ")
+                  .map((name) => name[0])
+                  .join("")
+                  .slice(0, 2) ?? "V"}
+              </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{property.vendorName ?? "PropertyArk Vendor"}</p>
+              <p className="truncate text-sm font-semibold">
+                {property.vendorName ?? "PropertyArk Vendor"}
+              </p>
               <p className="mt-1 flex items-center gap-1.5 text-xs text-primary">
                 <Phone className="size-3.5" />
-                {isAuthenticated ? (property.vendorPhone ?? "Contact unavailable") : "••••••••••"}
+                {isAuthenticated
+                  ? (property.vendorPhone ?? "Contact unavailable")
+                  : "••••••••••"}
               </p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {isAuthenticated && property.vendorPhone ? (
               <Button variant="outline" size="sm" asChild>
-                <a href={`tel:${property.vendorPhone}`}><Phone data-icon="inline-start" /> Call Now</a>
+                <a href={`tel:${property.vendorPhone}`}>
+                  <Phone data-icon="inline-start" /> Call Now
+                </a>
               </Button>
             ) : (
-              <Button variant="outline" size="sm" onClick={() => requireAuthentication("call")} disabled={isAuthenticated && !property.vendorPhone}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => requireAuthentication("call")}
+                disabled={isAuthenticated && !property.vendorPhone}
+              >
                 <Phone data-icon="inline-start" /> Call Now
               </Button>
             )}
-            <Button size="sm" className="shadow-md shadow-primary/20" onClick={openVendorChat}>
+            <Button
+              size="sm"
+              className="shadow-md shadow-primary/20"
+              onClick={openVendorChat}
+            >
               <MessageSquare data-icon="inline-start" /> Send Message
             </Button>
           </div>
-          {!isAuthenticated && <p className="text-center text-[10px] text-muted-foreground">Log in to reveal the vendor&apos;s contact details.</p>}
+          {!isAuthenticated && (
+            <p className="text-center text-[10px] text-muted-foreground">
+              Log in to reveal the vendor&apos;s contact details.
+            </p>
+          )}
         </div>
       </CardFooter>
     </Card>
   );
 }
 
-function GuestCounter({ label, description, value, minimum, onChange }: { label: string; description: string; value: number; minimum: number; onChange: (value: number) => void }) {
+function GuestCounter({
+  label,
+  description,
+  value,
+  minimum,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  value: number;
+  minimum: number;
+  onChange: (value: number) => void;
+}) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <div><p className="text-xs font-semibold">{label}</p><p className="text-[10px] text-muted-foreground">{description}</p></div>
+      <div>
+        <p className="text-xs font-semibold">{label}</p>
+        <p className="text-[10px] text-muted-foreground">{description}</p>
+      </div>
       <div className="flex items-center gap-2">
-        <Button type="button" variant="outline" size="icon-xs" className="rounded-full" disabled={value <= minimum} aria-label={`Remove ${label.toLowerCase()}`} onClick={() => onChange(Math.max(minimum, value - 1))}><Minus /></Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-xs"
+          className="rounded-full"
+          disabled={value <= minimum}
+          aria-label={`Remove ${label.toLowerCase()}`}
+          onClick={() => onChange(Math.max(minimum, value - 1))}
+        >
+          <Minus />
+        </Button>
         <span className="w-5 text-center text-xs font-semibold">{value}</span>
-        <Button type="button" variant="outline" size="icon-xs" className="rounded-full" disabled={value >= 10} aria-label={`Add ${label.toLowerCase()}`} onClick={() => onChange(Math.min(10, value + 1))}><Plus /></Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-xs"
+          className="rounded-full"
+          disabled={value >= 10}
+          aria-label={`Add ${label.toLowerCase()}`}
+          onClick={() => onChange(Math.min(10, value + 1))}
+        >
+          <Plus />
+        </Button>
       </div>
     </div>
   );

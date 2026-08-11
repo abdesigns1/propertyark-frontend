@@ -32,10 +32,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Property } from "@/features/properties/types";
 import { getApiErrorMessage } from "@/services/api-error";
 import {
@@ -90,7 +87,8 @@ export function ShortletBookingForm({
     onError: (error) => {
       const isUncertainServerResponse =
         axios.isAxiosError(error) &&
-        (!error.response || (error.response.status >= 500 && error.response.status < 600));
+        (!error.response ||
+          (error.response.status >= 500 && error.response.status < 600));
 
       if (isUncertainServerResponse) {
         setSubmissionState("confirmation-delayed");
@@ -185,8 +183,14 @@ export function ShortletBookingForm({
               <CardTitle>Your trip</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-5 sm:grid-cols-3">
-              <TripDetail label="Check-in" value={format(new Date(checkIn), "MMM d, yyyy")} />
-              <TripDetail label="Check-out" value={format(new Date(checkOut), "MMM d, yyyy")} />
+              <TripDetail
+                label="Check-in"
+                value={format(new Date(checkIn), "MMM d, yyyy")}
+              />
+              <TripDetail
+                label="Check-out"
+                value={format(new Date(checkOut), "MMM d, yyyy")}
+              />
               <TripDetail
                 label="Guests"
                 value={`${guests} ${guests === 1 ? "guest" : "guests"}`}
@@ -206,19 +210,41 @@ export function ShortletBookingForm({
             <div className="grid gap-5 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="first-name">First name</FieldLabel>
-                <Input id="first-name" name="firstName" required placeholder="Emilly" />
+                <Input
+                  id="first-name"
+                  name="firstName"
+                  required
+                  placeholder="Emilly"
+                />
               </Field>
               <Field>
                 <FieldLabel htmlFor="last-name">Last name</FieldLabel>
-                <Input id="last-name" name="lastName" required placeholder="Morgan" />
+                <Input
+                  id="last-name"
+                  name="lastName"
+                  required
+                  placeholder="Morgan"
+                />
               </Field>
               <Field>
                 <FieldLabel htmlFor="email">Email address</FieldLabel>
-                <Input id="email" name="email" type="email" required placeholder="you@example.com" />
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="you@example.com"
+                />
               </Field>
               <Field>
                 <FieldLabel htmlFor="phone">Phone number</FieldLabel>
-                <Input id="phone" name="phone" type="tel" required placeholder="+234 800 000 0000" />
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  required
+                  placeholder="+234 800 000 0000"
+                />
               </Field>
               <Field>
                 <FieldLabel htmlFor="adult-guests">Adults</FieldLabel>
@@ -290,7 +316,12 @@ export function ShortletBookingForm({
         <CardContent className="flex flex-col gap-5">
           <div className="flex gap-4">
             <div className="relative size-24 shrink-0 overflow-hidden rounded-xl">
-              <Image src={property.images[0]} alt="" fill className="object-cover" />
+              <Image
+                src={property.images[0]}
+                alt=""
+                fill
+                className="object-cover"
+              />
             </div>
             <div className="min-w-0">
               <h2 className="font-semibold leading-snug">{property.title}</h2>
@@ -308,8 +339,14 @@ export function ShortletBookingForm({
           </div>
           <Separator />
           <div className="grid grid-cols-2 gap-4 rounded-xl bg-muted/60 p-4 text-sm">
-            <TripDetail label="Check-in" value={format(new Date(checkIn), "MMM d, yyyy")} />
-            <TripDetail label="Check-out" value={format(new Date(checkOut), "MMM d, yyyy")} />
+            <TripDetail
+              label="Check-in"
+              value={format(new Date(checkIn), "MMM d, yyyy")}
+            />
+            <TripDetail
+              label="Check-out"
+              value={format(new Date(checkOut), "MMM d, yyyy")}
+            />
           </div>
           <div className="flex flex-col gap-3 text-sm">
             <SummaryLine

@@ -257,7 +257,9 @@ function BookingsTable({
                           aria-label={`Message ${booking.guestName}`}
                           onClick={(event) => {
                             event.stopPropagation();
-                            toast.info(`Opening conversation with ${booking.guestName}.`);
+                            toast.info(
+                              `Opening conversation with ${booking.guestName}.`,
+                            );
                           }}
                         >
                           <MessageSquareText />
@@ -266,9 +268,7 @@ function BookingsTable({
                           variant="ghost"
                           size="icon-sm"
                           aria-label={`Confirm booking ${booking.id}`}
-                          disabled={
-                            booking.status !== "PENDING" || isUpdating
-                          }
+                          disabled={booking.status !== "PENDING" || isUpdating}
                           onClick={(event) => {
                             event.stopPropagation();
                             onConfirm(booking.id);
@@ -345,7 +345,10 @@ function BookingDetailsSheet({
                 Guest · {booking.completedStays ?? 0} completed stays
               </p>
               {booking.membership ? (
-                <Badge variant="secondary" className="mt-3 text-[10px] uppercase">
+                <Badge
+                  variant="secondary"
+                  className="mt-3 text-[10px] uppercase"
+                >
                   {booking.membership}
                 </Badge>
               ) : null}
@@ -354,7 +357,9 @@ function BookingDetailsSheet({
 
           <section className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-xl border bg-surface/50 p-4">
-              <p className="text-sm uppercase text-muted-foreground">Check-in</p>
+              <p className="text-sm uppercase text-muted-foreground">
+                Check-in
+              </p>
               <p className="mt-2 font-semibold">
                 {dateFormatter.format(new Date(booking.checkIn))}
               </p>
@@ -363,7 +368,9 @@ function BookingDetailsSheet({
               </p>
             </div>
             <div className="rounded-xl border bg-surface/50 p-4">
-              <p className="text-sm uppercase text-muted-foreground">Check-out</p>
+              <p className="text-sm uppercase text-muted-foreground">
+                Check-out
+              </p>
               <p className="mt-2 font-semibold">
                 {dateFormatter.format(new Date(booking.checkOut))}
               </p>
@@ -379,7 +386,10 @@ function BookingDetailsSheet({
             </h3>
             <dl className="flex flex-col gap-4">
               <BookingDetailRow label="Property" value={booking.propertyName} />
-              <BookingDetailRow label="Rate per night" value={currency.format(nightlyRate)} />
+              <BookingDetailRow
+                label="Rate per night"
+                value={currency.format(nightlyRate)}
+              />
               <BookingDetailRow
                 label={`Subtotal (${booking.nights} ${booking.nights === 1 ? "night" : "nights"})`}
                 value={currency.format(booking.amount)}
@@ -459,7 +469,9 @@ function BookingDetailsSheet({
             </div>
           ) : (
             <div className="col-span-full flex items-center justify-between gap-3">
-              <span className="text-sm text-muted-foreground">Current status</span>
+              <span className="text-sm text-muted-foreground">
+                Current status
+              </span>
               <BookingStatusBadge status={booking.status} />
             </div>
           )}
@@ -510,7 +522,9 @@ function TimelineEntry({
           active && "bg-primary",
         )}
       />
-      <p className={cn("font-medium", !active && "text-muted-foreground")}>{title}</p>
+      <p className={cn("font-medium", !active && "text-muted-foreground")}>
+        {title}
+      </p>
       <p className="mt-1 text-sm text-muted-foreground">{detail}</p>
     </div>
   );
@@ -627,7 +641,9 @@ export function ShortletBookingManagement() {
   const [availabilityProperty, setAvailabilityProperty] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
+    null,
+  );
   const bookings = useMemo(
     () => dashboard.data?.bookings ?? [],
     [dashboard.data?.bookings],

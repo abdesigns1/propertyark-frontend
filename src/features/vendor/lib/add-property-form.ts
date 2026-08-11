@@ -1,15 +1,7 @@
-export type ListingType =
-  | "FOR_SALE"
-  | "FOR_RENT"
-  | "FOR_LAND"
-  | "FOR_SHORTLET";
+export type ListingType = "FOR_SALE" | "FOR_RENT" | "FOR_LAND" | "FOR_SHORTLET";
 
 export type PropertyType =
-  | "RESIDENTIAL"
-  | "COMMERCIAL"
-  | "INDUSTRIAL"
-  | "LAND"
-  | "MIXED_USE";
+  "RESIDENTIAL" | "COMMERCIAL" | "INDUSTRIAL" | "LAND" | "MIXED_USE";
 
 export interface AddPropertyFormValues {
   name: string;

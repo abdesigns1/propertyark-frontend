@@ -7,8 +7,7 @@ export function getApiErrorMessage(
   if (!axios.isAxiosError(error)) return fallback;
 
   const data = error.response?.data as
-    | { message?: string; error?: string; details?: string }
-    | undefined;
+    { message?: string; error?: string; details?: string } | undefined;
 
   return data?.message ?? data?.error ?? data?.details ?? fallback;
 }

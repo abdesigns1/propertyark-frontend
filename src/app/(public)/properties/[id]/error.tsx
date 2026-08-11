@@ -16,7 +16,9 @@ export default function PropertyDetailError({
           <AlertTriangle className="size-7" />
         </span>
         <div>
-          <h1 className="text-2xl font-semibold">Property temporarily unavailable</h1>
+          <h1 className="text-2xl font-semibold">
+            Property temporarily unavailable
+          </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             We could not reach the property service. Please try loading this
             listing again in a moment.

@@ -43,6 +43,16 @@ export interface LoginResponse {
   message?: string;
 }
 
+export interface StaffRegistrationPayload {
+  fullName: string;
+  email: string;
+  password: string;
+  employeeId: string;
+  department: string;
+  location: string;
+  phone: string;
+}
+
 function registrationFields(
   values: BuyerRegisterValues | VendorRegisterValues,
 ) {
@@ -81,6 +91,9 @@ export const authService = {
     api
       .post<LoginResponse>("/auth/login", { email, password })
       .then(({ data }) => data),
+
+  registerStaff: (payload: StaffRegistrationPayload) =>
+    api.post("/auth/reg/staff", payload).then(({ data }) => data),
 
   verify: (payload: { email: string; verificationCode: string }) =>
     api.put("/auth/verify", payload),

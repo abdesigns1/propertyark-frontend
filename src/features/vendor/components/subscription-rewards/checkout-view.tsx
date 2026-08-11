@@ -259,7 +259,13 @@ function SelectedPlanSummary({
   );
 }
 
-function PaymentSummary({ price, onPay }: { price: number; onPay: () => void }) {
+function PaymentSummary({
+  price,
+  onPay,
+}: {
+  price: number;
+  onPay: () => void;
+}) {
   return (
     <Card>
       <CardHeader>

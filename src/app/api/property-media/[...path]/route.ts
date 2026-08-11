@@ -13,7 +13,10 @@ export async function GET(
 ) {
   const { path } = await params;
   if (!path.length) {
-    return Response.json({ message: "Media path is required." }, { status: 400 });
+    return Response.json(
+      { message: "Media path is required." },
+      { status: 400 },
+    );
   }
 
   const upstreamUrl = new URL(

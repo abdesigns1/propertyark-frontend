@@ -138,11 +138,7 @@ function CurrentPlanCard({ onPlans }: Pick<ManageViewProps, "onPlans">) {
         </p>
       </CardContent>
       <CardFooter className="bg-transparent pt-0">
-        <Button
-          className="w-full"
-          variant="secondary"
-          onClick={onPlans}
-        >
+        <Button className="w-full" variant="secondary" onClick={onPlans}>
           Change subscription plan
         </Button>
       </CardFooter>

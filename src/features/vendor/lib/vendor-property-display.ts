@@ -91,7 +91,10 @@ export function propertyStatus(property: PropertyApiItem): {
   ) {
     return { key: "published", label: "Published" };
   }
-  if (rawStatus.includes("DRAFT") || property.status?.toUpperCase() === "DRAFT") {
+  if (
+    rawStatus.includes("DRAFT") ||
+    property.status?.toUpperCase() === "DRAFT"
+  ) {
     return { key: "draft", label: "Draft" };
   }
   if (["REJECTED", "DECLINED"].includes(rawStatus)) {
@@ -104,7 +107,9 @@ export function propertyImage(property: PropertyApiItem) {
   // Primary media wins; the bundled image keeps incomplete drafts presentable.
   return (
     [...(property.media ?? [])]
-      .sort((first, second) => Number(second.isPrimary) - Number(first.isPrimary))
+      .sort(
+        (first, second) => Number(second.isPrimary) - Number(first.isPrimary),
+      )
       .find((item) => item.type === "IMAGE")?.url ??
     "/assets/images/hero-property.jpeg"
   );

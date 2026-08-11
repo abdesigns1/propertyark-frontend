@@ -42,10 +42,11 @@ function normalizeProfile(value: unknown): VendorSettingsProfile {
       : root;
   const text = (...keys: string[]) =>
     keys.map((key) => source[key]).find((item) => typeof item === "string") as
-      | string
-      | undefined;
+      string | undefined;
   const boolean = (...keys: string[]) => {
-    const candidate = keys.map((key) => source[key]).find((item) => typeof item === "boolean");
+    const candidate = keys
+      .map((key) => source[key])
+      .find((item) => typeof item === "boolean");
     return typeof candidate === "boolean" ? candidate : null;
   };
   return {
@@ -56,14 +57,24 @@ function normalizeProfile(value: unknown): VendorSettingsProfile {
     location: text("location", "address") ?? "",
     avatarUrl: text("avatarUrl", "avatar", "profilePicture") ?? null,
     businessName: text("businessName", "companyName", "agencyName") ?? "",
-    businessDescription: text("businessDescription", "companyDescription", "bio", "about") ?? "",
-    cacRegistrationNumber: text("cacRegistrationNumber", "cacNumber", "registrationNumber") ?? "",
+    businessDescription:
+      text("businessDescription", "companyDescription", "bio", "about") ?? "",
+    cacRegistrationNumber:
+      text("cacRegistrationNumber", "cacNumber", "registrationNumber") ?? "",
     taxId: text("taxId", "tin", "taxIdentificationNumber") ?? "",
     createdAt: text("createdAt", "joinedAt") ?? null,
-    identityVerificationStatus: text("ninStatus", "identityVerificationStatus", "verificationStatus") ?? "PENDING",
-    businessLicenseStatus: text("businessLicenseStatus", "licenseStatus") ?? "UNAVAILABLE",
-    taxCertificationStatus: text("taxCertificationStatus", "taxStatus") ?? "UNAVAILABLE",
-    twoFactorEnabled: boolean("twoFactorEnabled", "isTwoFactorEnabled", "twoFAEnabled"),
+    identityVerificationStatus:
+      text("ninStatus", "identityVerificationStatus", "verificationStatus") ??
+      "PENDING",
+    businessLicenseStatus:
+      text("businessLicenseStatus", "licenseStatus") ?? "UNAVAILABLE",
+    taxCertificationStatus:
+      text("taxCertificationStatus", "taxStatus") ?? "UNAVAILABLE",
+    twoFactorEnabled: boolean(
+      "twoFactorEnabled",
+      "isTwoFactorEnabled",
+      "twoFAEnabled",
+    ),
     emailAlerts: boolean("emailAlerts", "emailNotifications"),
     smsNotifications: boolean("smsNotifications", "smsAlerts"),
     pushNotifications: boolean("pushNotifications", "mobilePushNotifications"),

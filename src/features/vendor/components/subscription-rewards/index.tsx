@@ -99,10 +99,7 @@ export function VendorSubscriptionRewards() {
       )}
 
       {view === "plans" && (
-        <PlansView
-          onChoose={choosePlan}
-          onBack={() => showView("manage")}
-        />
+        <PlansView onChoose={choosePlan} onBack={() => showView("manage")} />
       )}
 
       {view === "checkout" && (

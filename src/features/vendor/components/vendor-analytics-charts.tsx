@@ -126,11 +126,7 @@ function PerformanceChart({
   const [range, setRange] = useState("30");
   const data = useMemo(() => {
     const pointCount = range === "7" ? 2 : range === "90" ? 12 : 4;
-    const inquirySeries = derivePerformance(
-      inquiries,
-      totalViews,
-      pointCount,
-    );
+    const inquirySeries = derivePerformance(inquiries, totalViews, pointCount);
     const backendSeries = performance.slice(-pointCount);
 
     // Inquiry records are fresher than the aggregated vendor-stats response.
@@ -177,10 +173,7 @@ function PerformanceChart({
         </CardAction>
       </CardHeader>
       <CardContent>
-        <ChartContainer
-          config={performanceConfig}
-          className="h-[410px] w-full"
-        >
+        <ChartContainer config={performanceConfig} className="h-[410px] w-full">
           <BarChart
             data={data}
             margin={{ top: 18, right: 12, bottom: 8, left: 0 }}
@@ -188,10 +181,7 @@ function PerformanceChart({
             barCategoryGap="34%"
             barGap={6}
           >
-            <CartesianGrid
-              vertical={false}
-              stroke="var(--border)"
-            />
+            <CartesianGrid vertical={false} stroke="var(--border)" />
             <XAxis
               dataKey="label"
               tickLine={false}

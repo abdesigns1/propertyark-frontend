@@ -15,6 +15,7 @@ export interface VendorInspection {
   propertyReference: string | null;
   propertyImageUrl: string | null;
   vendorName: string | null;
+  vendorId: string | null;
   vendorEmail: string | null;
   vendorPhone: string | null;
   vendorAvatarUrl: string | null;
@@ -218,6 +219,10 @@ function normalizeInspection(value: unknown, index: number): VendorInspection {
         "companyName",
         "businessName",
       ]),
+    vendorId:
+      stringFrom(inquiry, ["vendorId"]) ??
+      stringFrom(vendor, ["id", "_id"]) ??
+      stringFrom(property, ["vendorId"]),
     vendorEmail:
       stringFrom(inquiry, ["vendorEmail"]) ??
       stringFrom(vendor, ["email"]) ??
@@ -327,6 +332,78 @@ export const inspectionService = {
       inspections,
       stats: normalizeStats(statsResponse.data, inspections),
     };
+  },
+  async getInspectionsForVendor({
+    vendorId,
+    email,
+    propertyIds,
+  }: {
+    vendorId: string;
+    email: string;
+    propertyIds: string[];
+  }): Promise<VendorInspection[]> {
+    const { data } = await api.get("/inquiries/vendor", {
+      params: { vendorId, page: 1, limit: 1000 },
+    });
+    const propertyIdSet = new Set(propertyIds);
+    const normalizedEmail = email.trim().toLowerCase();
+
+    return inspectionRows(data)
+      .map(normalizeInspection)
+      .filter(
+        (inspection) =>
+          (inspection.propertyId && propertyIdSet.has(inspection.propertyId)) ||
+          inspection.vendorEmail?.trim().toLowerCase() === normalizedEmail ||
+          inspection.vendorId === vendorId,
+      );
+  },
+  async getInspectionsForUser({
+    userId,
+    email,
+  }: {
+    userId: string;
+    email: string;
+  }): Promise<VendorInspection[]> {
+    const responses = await Promise.allSettled([
+      // The general collection is the correct administrator view. Supplying
+      // userId lets supporting API versions filter before returning records.
+      api.get("/inquiries", {
+        params: { userId, page: 1, limit: 1000 },
+      }),
+      // Keep compatibility with API versions that expose inquiry lists only
+      // through the vendor collection, then enforce the user filter locally.
+      api.get("/inquiries/vendor", {
+        params: { page: 1, limit: 1000 },
+      }),
+    ]);
+    const responsePayloads = responses.flatMap((response) =>
+      response.status === "fulfilled" ? [response.value.data] : [],
+    );
+
+    if (!responsePayloads.length) {
+      const rejection = responses.find(
+        (response): response is PromiseRejectedResult =>
+          response.status === "rejected",
+      );
+      throw rejection?.reason ?? new Error("Inspection records unavailable");
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const uniqueInspections = new Map<string, VendorInspection>();
+
+    responsePayloads.forEach((payload) => {
+      inspectionRows(payload)
+        .map(normalizeInspection)
+        .forEach((inspection) =>
+          uniqueInspections.set(inspection.id, inspection),
+        );
+    });
+
+    return [...uniqueInspections.values()].filter(
+      (inspection) =>
+        inspection.userId === userId ||
+        inspection.userEmail?.trim().toLowerCase() === normalizedEmail,
+    );
   },
   review: async ({
     inspectionId,

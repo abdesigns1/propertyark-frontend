@@ -7,12 +7,16 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  CircleAlert,
   Download,
   Ellipsis,
   HelpCircle,
+  House,
+  LayoutDashboard,
+  LogOut,
   Menu,
   Search,
+  Settings,
+  UserRound,
   UserPlus,
 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
@@ -33,6 +37,7 @@ import type {
 } from "@/services/admin.service";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { AdminRoleBadge } from "@/features/admin/components/admin-role-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -50,6 +55,15 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Pagination,
   PaginationContent,
@@ -95,7 +109,23 @@ const userTabs = [
 
 function DashboardHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const role = useAuthStore((state) => state.role);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
+  const initials =
+    user?.fullName
+      ?.split(" ")
+      .map((part) => part[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "SY";
+
+  function handleLogout() {
+    clearAuth();
+    router.replace("/admin/login");
+  }
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur sm:px-6">
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -135,12 +165,61 @@ function DashboardHeader() {
           <HelpCircle />
         </Button>
         <div className="mx-2 hidden h-8 w-px bg-border sm:block" />
-        <Avatar className="size-9">
-          <AvatarFallback>
-            {user?.fullName?.slice(0, 2).toUpperCase() || "AV"}
-          </AvatarFallback>
-        </Avatar>
-        <ChevronDown className="hidden size-4 text-muted-foreground sm:block" />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Open administrator menu"
+              className="group flex items-center gap-2 rounded-full p-1 pr-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Avatar className="size-9">
+                <AvatarFallback>{initials}</AvatarFallback>
+              </Avatar>
+              <ChevronDown className="hidden size-4 transition-transform group-data-[state=open]:rotate-180 sm:block" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" sideOffset={8} className="w-64">
+            <DropdownMenuLabel className="p-3">
+              <span className="block truncate text-sm font-semibold text-foreground">
+                {user?.fullName || "System Administrator"}
+              </span>
+              <span className="mt-0.5 block truncate font-normal text-muted-foreground">
+                {user?.email || "PropertyArk administrator"}
+              </span>
+              <Badge variant="secondary" className="mt-2 capitalize">
+                {role === "staff" ? "Staff" : "Super Admin"}
+              </Badge>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuItem onSelect={() => router.push("/")}>
+                <House />
+                Go to Home
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => router.push("/admin/dashboard")}
+              >
+                <LayoutDashboard />
+                Dashboard
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => router.push("#users")}>
+                <UserRound />
+                User management
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => router.push("#settings")}>
+                <Settings />
+                System settings
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuItem variant="destructive" onSelect={handleLogout}>
+                <LogOut />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
@@ -625,9 +704,7 @@ function UsersTable({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="capitalize">
-                      {user.role.toLowerCase()}
-                    </Badge>
+                    <AdminRoleBadge role={user.role} />
                   </TableCell>
                   <TableCell>
                     <span

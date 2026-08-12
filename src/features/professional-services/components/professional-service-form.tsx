@@ -202,7 +202,7 @@ export function ProfessionalServiceForm({
               >
                 {files.map((file, index) => (
                   <li
-                    key={`${file.name}-${file.lastModified}`}
+                    key={`${file.name}-${file.lastModified}-${file.size}-${index}`}
                     className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm"
                   >
                     <FileText className="size-4 shrink-0 text-primary" />

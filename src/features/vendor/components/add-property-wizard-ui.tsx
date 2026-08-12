@@ -137,7 +137,7 @@ export function PropertyFileList({
     <div className="flex flex-col gap-2">
       {files.map((file, index) => (
         <div
-          key={`${file.name}-${file.lastModified}`}
+          key={`${file.name}-${file.lastModified}-${file.size}-${index}`}
           className="flex items-center gap-3 rounded-lg border p-3"
         >
           <FileText className="size-5 text-primary" />

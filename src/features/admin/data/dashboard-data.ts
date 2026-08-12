@@ -16,8 +16,8 @@ import {
 
 export const adminNavigation = [
   { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-  { label: "Users", href: "#users", icon: Users },
-  { label: "Properties", href: "#properties", icon: Building2 },
+  { label: "Users", href: "/admin/users", icon: Users },
+  { label: "Properties", href: "/admin/properties", icon: Building2 },
   { label: "KYC Verification", href: "#kyc", icon: BadgeCheck },
   { label: "Documents Review", href: "#documents", icon: FileCheck2 },
   { label: "Transactions", href: "#transactions", icon: FileText },

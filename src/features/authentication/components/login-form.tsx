@@ -60,8 +60,19 @@ export function LoginForm() {
         onSubmit={handleSubmit((values) =>
           login.mutate(values, {
             onSuccess: (response) => {
-              queryClient.clear();
               const auth = normalizeLoginResponse(response);
+
+              // Administrative accounts must only establish a session through
+              // the dedicated admin portal, even when the shared backend login
+              // endpoint accepts their credentials.
+              if (auth.role === "admin" || auth.role === "staff") {
+                toast.error(
+                  "Administrative accounts must sign in through the admin portal.",
+                );
+                return;
+              }
+
+              queryClient.clear();
               const registeredProfile = getLocalRegistrationProfile(
                 values.email,
               );

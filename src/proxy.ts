@@ -16,8 +16,14 @@ export function proxy(request: NextRequest) {
     "/admin/redirecting",
     "/admin/dashboard",
   ];
+  const clientGuardedAdminPrefixes = ["/admin/users", "/admin/properties"];
 
-  if (publicAdminRoutes.some((route) => pathname === route)) {
+  if (
+    publicAdminRoutes.some((route) => pathname === route) ||
+    clientGuardedAdminPrefixes.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    )
+  ) {
     return NextResponse.next();
   }
   const session = request.cookies.get("session")?.value;

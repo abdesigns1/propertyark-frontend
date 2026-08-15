@@ -28,6 +28,17 @@ export interface PropertyApiItem {
   bedrooms: number;
   bathrooms: number;
   amenities?: string[];
+  condition?: string;
+  yearBuilt?: number;
+  documents?: Array<{
+    id: string;
+    name?: string;
+    fileName?: string;
+    url?: string;
+    fileUrl?: string;
+    type?: string;
+    status?: string;
+  }>;
   vendorId: string;
   createdAt: string;
   updatedAt?: string;
@@ -35,6 +46,7 @@ export interface PropertyApiItem {
   priceDisplay?: string;
   approvalStatus?: string;
   reviewStatus?: string;
+  rejectionReason?: string | null;
   verificationStatus?: string;
   isApproved?: boolean;
   approved?: boolean;

@@ -3,17 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Check,
-  Download,
-  Eye,
-  MoreVertical,
-  Pencil,
-  Plus,
-  Search,
-} from "lucide-react";
-import { toast } from "sonner";
+import { Download, Eye, Plus, Search } from "lucide-react";
 import { AdminPropertyStats } from "@/features/admin/components/admin-property-stats";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
 import { useAdminProperties } from "@/features/admin/hooks/use-admin-dashboard";
@@ -26,13 +16,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -52,7 +35,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { AdminManagedProperty } from "@/services/admin.service";
-import { adminService } from "@/services/admin.service";
 import { cn } from "@/lib/utils";
 
 export function AdminPropertiesPage() {
@@ -289,17 +271,6 @@ function PropertiesTable({
 }
 
 function PropertyRow({ property }: { property: AdminManagedProperty }) {
-  const queryClient = useQueryClient();
-  const approve = useMutation({
-    mutationFn: () => adminService.approveProperty(property.id),
-    onSuccess: async () => {
-      toast.success("Property approved");
-      await queryClient.invalidateQueries({
-        queryKey: ["admin", "properties"],
-      });
-    },
-    onError: () => toast.error("Property approval failed"),
-  });
   const status = (property.listingStatus || property.status).toUpperCase();
   return (
     <TableRow className="h-[110px]">
@@ -347,56 +318,12 @@ function PropertyRow({ property }: { property: AdminManagedProperty }) {
         <StatusBadge status={status} />
       </TableCell>
       <TableCell className="pr-6 text-right">
-        {status === "PENDING" ? (
-          <Button
-            size="sm"
-            disabled={approve.isPending}
-            onClick={() => approve.mutate()}
-          >
-            <Check data-icon="inline-start" />
-            Approve
-          </Button>
-        ) : (
-          <div className="flex justify-end gap-1">
-            <Button variant="ghost" size="icon-sm" asChild>
-              <Link
-                href={`/properties/${property.id}`}
-                aria-label={`View ${property.name}`}
-              >
-                <Eye />
-              </Link>
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              disabled
-              aria-label="Edit property"
-            >
-              <Pencil />
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="More property actions"
-                >
-                  <MoreVertical />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuGroup>
-                  <DropdownMenuItem asChild>
-                    <Link href={`/properties/${property.id}`}>
-                      <Eye />
-                      View details
-                    </Link>
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/admin/properties/${property.id}`}>
+            <Eye data-icon="inline-start" />
+            View Details
+          </Link>
+        </Button>
       </TableCell>
     </TableRow>
   );

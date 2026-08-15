@@ -16,7 +16,12 @@ export function proxy(request: NextRequest) {
     "/admin/redirecting",
     "/admin/dashboard",
   ];
-  const clientGuardedAdminPrefixes = ["/admin/users", "/admin/properties"];
+  const clientGuardedAdminPrefixes = [
+    "/admin/users",
+    "/admin/properties",
+    "/admin/kyc",
+    "/admin/notifications",
+  ];
 
   if (
     publicAdminRoutes.some((route) => pathname === route) ||

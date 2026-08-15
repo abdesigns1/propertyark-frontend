@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { MoreHorizontal } from "lucide-react";
+import { Eye } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AdminRoleBadge } from "@/features/admin/components/admin-role-badge";
 import { Button } from "@/components/ui/button";
@@ -66,16 +66,11 @@ export function AdminUsersTable({
         <TableBody>
           {users.map((user) => {
             const verification = getVerificationLabel(user);
+            const isVendor = user.role.toUpperCase() === "VENDOR";
+            const actionLabel = isVendor ? "View Vendor" : "View User";
             return (
-              <TableRow
-                key={user.id}
-                className="h-[76px] cursor-pointer"
-                onClick={() => router.push(`/admin/users/${user.id}`)}
-              >
-                <TableCell
-                  className="pl-6"
-                  onClick={(event) => event.stopPropagation()}
-                >
+              <TableRow key={user.id} className="h-[76px]">
+                <TableCell className="pl-6">
                   <Checkbox aria-label={`Select ${user.fullName}`} />
                 </TableCell>
                 <TableCell>
@@ -124,17 +119,15 @@ export function AdminUsersTable({
                     {user.isVerified ? "Active" : "Pending"}
                   </span>
                 </TableCell>
-                <TableCell
-                  className="pr-6 text-right"
-                  onClick={(event) => event.stopPropagation()}
-                >
+                <TableCell className="pr-6 text-right">
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Actions for ${user.fullName}`}
+                    variant="outline"
+                    size="sm"
+                    aria-label={`${actionLabel}: ${user.fullName}`}
                     onClick={() => router.push(`/admin/users/${user.id}`)}
                   >
-                    <MoreHorizontal />
+                    <Eye data-icon="inline-start" />
+                    {actionLabel}
                   </Button>
                 </TableCell>
               </TableRow>

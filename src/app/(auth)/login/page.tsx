@@ -1,4 +1,5 @@
 import { AuthImagePanel } from "@/components/shared/auth-image-panel";
+import { AuthMobileBrand } from "@/components/shared/auth-mobile-brand";
 import { LoginForm } from "@/features/authentication/components/login-form";
 
 const slides = [
@@ -31,8 +32,11 @@ export default function LoginPage() {
   return (
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
       <AuthImagePanel slides={slides} />
-      <div className="flex items-center justify-center px-6 py-12 sm:px-12">
-        <LoginForm />
+      <div className="flex items-center justify-center px-6 py-8 sm:px-12 sm:py-12">
+        <div className="w-full max-w-md">
+          <AuthMobileBrand />
+          <LoginForm />
+        </div>
       </div>
     </div>
   );

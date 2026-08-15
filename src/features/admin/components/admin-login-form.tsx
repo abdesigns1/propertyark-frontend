@@ -65,7 +65,7 @@ export function AdminLoginForm() {
   }
 
   return (
-    <Card className="w-full border-white/70 bg-white/85 py-0 shadow-2xl backdrop-blur-xl">
+    <Card className="w-full border-white/45 bg-white/35 py-0 shadow-2xl ring-1 ring-white/30 backdrop-blur-2xl">
       <CardContent className="p-7 sm:p-10">
         <form onSubmit={handleSubmit(onSubmit)}>
           <FieldGroup>
@@ -79,7 +79,7 @@ export function AdminLoginForm() {
                 placeholder="Work email"
                 autoComplete="username"
                 aria-invalid={Boolean(errors.email)}
-                className="h-12 bg-white"
+                className="h-12 border-white/35 bg-white/90 shadow-sm"
                 {...register("email")}
               />
               <FieldError errors={[errors.email]} />
@@ -95,7 +95,7 @@ export function AdminLoginForm() {
                   placeholder="Password"
                   autoComplete="current-password"
                   aria-invalid={Boolean(errors.password)}
-                  className="h-12 bg-white pr-12"
+                  className="h-12 border-white/35 bg-white/90 pr-12 shadow-sm"
                   {...register("password")}
                 />
                 <Button
@@ -111,7 +111,7 @@ export function AdminLoginForm() {
               </div>
               <FieldError errors={[errors.password]} />
             </Field>
-            <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center justify-between gap-4 text-sm text-white/85">
               <Controller
                 control={control}
                 name="rememberMe"
@@ -134,11 +134,11 @@ export function AdminLoginForm() {
             </Button>
           </FieldGroup>
         </form>
-        <p className="mt-6 text-center text-sm text-muted-foreground">
+        <p className="mt-6 text-center text-sm text-white/85">
           New staff?{" "}
           <Link
             href="/admin/request-access"
-            className="font-semibold text-primary underline underline-offset-4"
+            className="font-semibold text-white underline underline-offset-4"
           >
             Request access
           </Link>

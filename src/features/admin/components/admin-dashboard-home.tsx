@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -8,7 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  Ellipsis,
   HelpCircle,
   House,
   LayoutDashboard,
@@ -94,7 +94,7 @@ import { cn } from "@/lib/utils";
 const chartConfig = {
   users: { label: "User Growth", color: "var(--primary)" },
   listings: { label: "Listings", color: "var(--secondary)" },
-  revenue: { label: "Revenue", color: "var(--primary-hover)" },
+  revenue: { label: "Revenue", color: "var(--success)" },
 } satisfies ChartConfig;
 
 const userTabClassName =
@@ -466,8 +466,8 @@ function PropertiesTable({
       <CardHeader className="border-b py-5">
         <CardTitle className="text-xl">Property Management</CardTitle>
         <CardAction>
-          <Button variant="link" className="px-0">
-            View All Listings
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/properties">View All Listings</Link>
           </Button>
         </CardAction>
       </CardHeader>
@@ -518,8 +518,10 @@ function PropertiesTable({
                     </Badge>
                   </TableCell>
                   <TableCell className="pr-5 text-right">
-                    <Button variant="link" size="sm">
-                      {pending ? "Review" : "View"}
+                    <Button size="sm" asChild>
+                      <Link href={`/admin/properties/${property.id}`}>
+                        {pending ? "Review" : "View"}
+                      </Link>
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -675,12 +677,13 @@ function UsersTable({
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Joined date</TableHead>
-              <TableHead className="pr-5 text-right">Settings</TableHead>
+              <TableHead className="pr-5 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.map((user) => {
               const verified = user.isVerified;
+              const isVendor = user.role.toUpperCase() === "VENDOR";
               const initials = user.fullName
                 .split(" ")
                 .map((part) => part[0])
@@ -724,8 +727,10 @@ function UsersTable({
                     }).format(new Date(user.createdAt))}
                   </TableCell>
                   <TableCell className="pr-5 text-right">
-                    <Button variant="ghost" size="icon">
-                      <Ellipsis />
+                    <Button size="sm" asChild>
+                      <Link href={`/admin/users/${user.id}`}>
+                        {isVendor ? "View Vendor" : "View User"}
+                      </Link>
                     </Button>
                   </TableCell>
                 </TableRow>

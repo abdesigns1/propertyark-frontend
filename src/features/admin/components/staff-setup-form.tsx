@@ -99,7 +99,7 @@ export function StaffSetupForm() {
         id={name}
         type={type}
         aria-invalid={Boolean(errors[name])}
-        className="h-12 bg-white"
+        className="h-12 border-white/35 bg-white/90 text-foreground shadow-sm"
         {...register(name)}
       />
       <FieldError errors={[errors[name]]} />
@@ -107,7 +107,7 @@ export function StaffSetupForm() {
   );
 
   return (
-    <Card className="w-full border-white/70 bg-white/85 py-0 shadow-2xl backdrop-blur-xl">
+    <Card className="w-full border-white/45 bg-white/35 py-0 text-white shadow-2xl ring-1 ring-white/30 backdrop-blur-2xl">
       <CardContent className="p-7 sm:p-9">
         <form onSubmit={handleSubmit(onSubmit)}>
           <FieldGroup>
@@ -123,7 +123,7 @@ export function StaffSetupForm() {
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger
-                        className="h-12 w-full bg-white"
+                        className="h-12 w-full border-white/35 bg-white/90 text-foreground shadow-sm"
                         aria-invalid={Boolean(errors.department)}
                       >
                         <SelectValue placeholder="Select department" />
@@ -154,7 +154,7 @@ export function StaffSetupForm() {
                   type={visible ? "text" : "password"}
                   autoComplete="new-password"
                   aria-invalid={Boolean(errors.password)}
-                  className="h-12 bg-white pr-12"
+                  className="h-12 border-white/35 bg-white/90 pr-12 text-foreground shadow-sm"
                   {...register("password")}
                 />
                 <Button
@@ -187,7 +187,7 @@ export function StaffSetupForm() {
                 type={visible ? "text" : "password"}
                 autoComplete="new-password"
                 aria-invalid={Boolean(errors.confirmPassword)}
-                className="h-12 bg-white"
+                className="h-12 border-white/35 bg-white/90 text-foreground shadow-sm"
                 {...register("confirmPassword")}
               />
               <FieldError errors={[errors.confirmPassword]} />
@@ -197,7 +197,7 @@ export function StaffSetupForm() {
               name="acceptedTerms"
               render={({ field }) => (
                 <Field data-invalid={Boolean(errors.acceptedTerms)}>
-                  <label className="flex items-start gap-3 text-sm leading-6 text-muted-foreground">
+                  <label className="flex items-start gap-3 text-sm leading-6 text-white/85">
                     <Checkbox
                       checked={field.value}
                       onCheckedChange={field.onChange}

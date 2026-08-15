@@ -34,7 +34,9 @@ export const vendorRegisterSchema = z
   .object({
     ...baseFields,
     kycDocument: z
-      .instanceof(File, { message: "KYC document is required for vendors" })
+      .instanceof(File, {
+        message: "A valid government-issued ID is required for vendors",
+      })
       .refine((f) => f.size <= MAX_FILE_SIZE_MB * 1024 * 1024, {
         message: `File must be under ${MAX_FILE_SIZE_MB}MB`,
       })

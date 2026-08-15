@@ -35,7 +35,7 @@ export function KycUploadField<T extends FieldValues>({
         return (
           <Field>
             <FieldLabel>
-              Upload NIN / KYC document (required for vendors)
+              Upload a valid government-issued ID (required for vendors)
             </FieldLabel>
             <div
               onDragOver={(e: DragEvent) => {
@@ -62,6 +62,7 @@ export function KycUploadField<T extends FieldValues>({
                   {file ? file.name : "Choose a file or drag & drop it here."}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
+                  National ID, Driver&apos;s Licence, or International Passport.
                   JPEG, PNG, and PDF formats, up to 50 MB.
                 </p>
               </div>

@@ -54,6 +54,13 @@ function normalizeMediaItem(value: unknown): PropertyMediaResponse | null {
   const rawType = String(
     media.type ?? media.mediaType ?? media.resourceType ?? "",
   ).toUpperCase();
+  if (
+    rawType.includes("DOCUMENT") ||
+    rawType.includes("PDF") ||
+    /\.(pdf|doc|docx)(?:\?|$)/i.test(url)
+  ) {
+    return null;
+  }
   const type = rawType.includes("VIDEO") ? "VIDEO" : "IMAGE";
 
   return {
@@ -66,22 +73,94 @@ function normalizeMediaItem(value: unknown): PropertyMediaResponse | null {
   };
 }
 
-/** Handles both `{ data: [] }` and `{ data: { media: [] } }` API envelopes. */
-function normalizeMediaResponse(value: unknown): PropertyMediaResponse[] {
+type PropertyDocument = NonNullable<PropertyApiItem["documents"]>[number];
+
+function fileNameFromUrl(url: string) {
+  const path = url.split("?")[0];
+  return decodeURIComponent(path.split("/").pop() || "Property document");
+}
+
+function normalizeDocumentItem(
+  value: unknown,
+  knownDocument = false,
+): PropertyDocument | null {
+  const document = asRecord(value);
+  const url =
+    typeof value === "string"
+      ? value
+      : (document.url ??
+        document.fileUrl ??
+        document.secureUrl ??
+        document.path ??
+        document.location);
+  if (typeof url !== "string" || !url.trim()) return null;
+
+  const rawType = String(
+    document.type ?? document.mediaType ?? document.resourceType ?? "",
+  ).toUpperCase();
+  const isDocument =
+    rawType.includes("DOCUMENT") ||
+    rawType.includes("PDF") ||
+    /\.(pdf|doc|docx)(?:\?|$)/i.test(url);
+  if (!knownDocument && !isDocument) return null;
+
+  return {
+    id: String(document.id ?? document._id ?? document.mediaId ?? url),
+    name: String(
+      document.name ??
+        document.fileName ??
+        document.originalName ??
+        fileNameFromUrl(url),
+    ),
+    // Keep the source URL for documents. The visual-media proxy can return an
+    // image-style error response when it is asked to stream a PDF.
+    url,
+    type: rawType || "DOCUMENT",
+    status: String(document.status ?? "UPLOADED"),
+  };
+}
+
+function mediaSource(value: unknown): unknown[] {
   const root = asRecord(value);
   const data = root.data ?? value;
-  const source = Array.isArray(data)
-    ? data
-    : ([
-        asRecord(data).media,
-        asRecord(data).items,
-        asRecord(data).results,
-        root.media,
-      ].find(Array.isArray) ?? []);
+  if (Array.isArray(data)) return data;
 
-  return source
-    .map(normalizeMediaItem)
-    .filter((item): item is PropertyMediaResponse => Boolean(item));
+  const dataRecord = asRecord(data);
+  const collections = [
+    dataRecord.media,
+    dataRecord.items,
+    dataRecord.results,
+    dataRecord.photos,
+    dataRecord.videos,
+    root.media,
+  ].filter(Array.isArray) as unknown[][];
+
+  return collections.flat();
+}
+
+function normalizePropertyAssets(value: unknown) {
+  const root = asRecord(value);
+  const data = asRecord(root.data ?? value);
+  const source = mediaSource(value);
+  const explicitDocuments = [data.documents, root.documents]
+    .filter(Array.isArray)
+    .flat() as unknown[];
+  const documents = [
+    ...explicitDocuments.map((item) => normalizeDocumentItem(item, true)),
+    ...source.map((item) => normalizeDocumentItem(item)),
+  ].filter((item): item is PropertyDocument => Boolean(item));
+
+  return {
+    media: source
+      .map(normalizeMediaItem)
+      .filter((item): item is PropertyMediaResponse => Boolean(item)),
+    documents: [...new Map(documents.map((item) => [item.id, item])).values()],
+  };
+}
+
+/** Handles both `{ data: [] }` and `{ data: { media: [] } }` API envelopes. */
+function normalizeMediaResponse(value: unknown): PropertyMediaResponse[] {
+  return normalizePropertyAssets(value).media;
 }
 
 function normalizeVendorProperty(value: unknown): PropertyApiItem {
@@ -94,6 +173,13 @@ function normalizeVendorProperty(value: unknown): PropertyApiItem {
     [source.media, source.medias, source.photos, source.images].find(
       Array.isArray,
     ) ?? [];
+  const embeddedDocuments = Array.isArray(source.documents)
+    ? source.documents
+    : [];
+  const documents = [
+    ...embeddedDocuments.map((item) => normalizeDocumentItem(item, true)),
+    ...embeddedMedia.map((item) => normalizeDocumentItem(item)),
+  ].filter((item): item is PropertyDocument => Boolean(item));
   const amountFrom = (...values: unknown[]) => {
     for (const candidate of values) {
       if (typeof candidate === "number" && Number.isFinite(candidate)) {
@@ -159,6 +245,7 @@ function normalizeVendorProperty(value: unknown): PropertyApiItem {
       listingType === "FOR_SHORTLET" ? commonPrice : null,
     ),
     media: normalizeMediaResponse({ data: embeddedMedia }),
+    documents: [...new Map(documents.map((item) => [item.id, item])).values()],
   };
 }
 
@@ -430,6 +517,10 @@ export const propertyService = {
   getMedia: async (propertyId: string) => {
     const { data } = await api.get<unknown>(`/properties/${propertyId}/media`);
     return normalizeMediaResponse(data);
+  },
+  getAssets: async (propertyId: string) => {
+    const { data } = await api.get<unknown>(`/properties/${propertyId}/media`);
+    return normalizePropertyAssets(data);
   },
   uploadMedia: async (propertyId: string, payload: FormData) => {
     const { data } = await api.post<unknown>(

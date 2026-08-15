@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { AuthImagePanel } from "@/components/shared/auth-image-panel";
+import { AuthMobileBrand } from "@/components/shared/auth-mobile-brand";
 import { VerifyForm } from "@/features/authentication/components/verify-form";
 
 const slides = [
@@ -33,10 +34,13 @@ export default function VerifyPage() {
   return (
     <main className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
       <AuthImagePanel slides={slides} />
-      <div className="flex items-center justify-center px-6 py-12 sm:px-12">
-        <Suspense fallback={<div className="min-h-80 w-full max-w-md" />}>
-          <VerifyForm />
-        </Suspense>
+      <div className="flex items-center justify-center px-6 py-8 sm:px-12 sm:py-12">
+        <div className="w-full max-w-md">
+          <AuthMobileBrand />
+          <Suspense fallback={<div className="min-h-80 w-full" />}>
+            <VerifyForm />
+          </Suspense>
+        </div>
       </div>
     </main>
   );

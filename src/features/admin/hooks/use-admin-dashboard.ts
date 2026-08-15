@@ -38,6 +38,36 @@ export function useAdminUserStats() {
   });
 }
 
+export function useAdminKycRequests(
+  page: number,
+  status = "ALL",
+  role = "ALL",
+) {
+  return useQuery({
+    queryKey: ["admin", "kyc", "requests", page, status, role],
+    queryFn: () => adminService.getKycRequests(page, 20, { status, role }),
+    placeholderData: (previous) => previous,
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminKycStats() {
+  return useQuery({
+    queryKey: ["admin", "kyc", "stats"],
+    queryFn: adminService.getKycStats,
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminKycRequest(requestId: string) {
+  return useQuery({
+    queryKey: ["admin", "kyc", "request", requestId],
+    queryFn: () => adminService.getKycRequestById(requestId),
+    enabled: Boolean(requestId),
+    staleTime: 30_000,
+  });
+}
+
 export function useAdminVendorProperties(vendorId: string, enabled = true) {
   return useQuery({
     queryKey: ["admin", "vendor", vendorId, "properties"],
@@ -98,6 +128,27 @@ export function useAdminProperties(page: number, status: string) {
     queryFn: () =>
       adminService.getPropertyManagement({ page, limit: 10, status }),
     placeholderData: (previous) => previous,
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminProperty(propertyId: string) {
+  return useQuery({
+    queryKey: ["admin", "property", propertyId],
+    queryFn: async () => {
+      const [property, assets] = await Promise.all([
+        propertyService.getById(propertyId),
+        propertyService.getAssets(propertyId),
+      ]);
+      return {
+        ...property,
+        media: assets.media.length ? assets.media : property.media,
+        documents: assets.documents.length
+          ? assets.documents
+          : property.documents,
+      };
+    },
+    enabled: Boolean(propertyId),
     staleTime: 30_000,
   });
 }

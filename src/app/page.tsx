@@ -8,11 +8,16 @@ import { TrustStats } from "@/components/marketing/trust-stats";
 import { Testimonials } from "@/components/marketing/testimonials";
 import { CtaBanner } from "@/components/marketing/cta-banner";
 import { Footer } from "@/components/shared/footer";
+import { PropertySearchForm } from "@/components/shared/property-search-form";
+import { CONTAINER, cn } from "@/lib/utils";
 
 export default function HomePage() {
   return (
     <>
       <Hero />
+      <div className={cn(CONTAINER, "relative z-20 -mt-16 lg:px-8")}>
+        <PropertySearchForm />
+      </div>
       <FeaturedProperties />
       <ExploreByCategory />
       <FeaturedListings />

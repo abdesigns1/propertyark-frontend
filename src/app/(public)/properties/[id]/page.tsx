@@ -10,13 +10,12 @@ import { PropertyVideo } from "@/features/properties/components/property-video";
 import { PropertyMap } from "@/features/properties/components/property-map";
 import { PropertyReviews } from "@/features/properties/components/property-reviews";
 import { VendorContactCard } from "@/features/properties/components/vendor-contact-card";
-import { PropertyCard } from "@/features/properties/components/property-card";
+import { SimilarPropertiesCarousel } from "@/features/properties/components/similar-properties-carousel";
 import { PropertyViewTracker } from "@/features/properties/components/property-view-tracker";
 import { ShortletBookingCard } from "@/features/properties/components/shortlet-booking-card";
 import { Footer } from "@/components/shared/footer";
 import { getAvailablePropertiesServer } from "@/features/properties/server/get-available-properties";
 import { CONTAINER, cn } from "@/lib/utils";
-import Link from "next/link";
 
 export default async function PropertyDetailPage({
   params,
@@ -34,7 +33,7 @@ export default async function PropertyDetailPage({
   const property = base;
   const similar = properties
     .filter((candidate) => candidate.id !== property.id)
-    .slice(0, 3);
+    .slice(0, 12);
 
   return (
     <>
@@ -102,22 +101,9 @@ export default async function PropertyDetailPage({
         </div>
       </div>
 
-      <section className={cn(CONTAINER, "py-16 text-center")}>
-        <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
-          Similar Properties
-        </h2>
-        <div className="mt-8 grid grid-cols-1 gap-6 text-left sm:grid-cols-2 lg:grid-cols-3">
-          {similar.map((p) => (
-            <PropertyCard key={p.id} property={p} />
-          ))}
-        </div>
-        <Link
-          href="/properties"
-          className="mt-8 inline-flex rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary-hover"
-        >
-          View All
-        </Link>
-      </section>
+      <div className={cn(CONTAINER, "py-16")}>
+        <SimilarPropertiesCarousel properties={similar} />
+      </div>
 
       <Footer />
     </>

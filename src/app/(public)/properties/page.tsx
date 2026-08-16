@@ -40,6 +40,13 @@ const QUERY_TYPE_TO_LABEL: Record<string, string> = {
   shortlet: "Shortlet",
 };
 
+const PROPERTY_CATEGORY_MAP: Record<string, string> = {
+  residential: "RESIDENTIAL",
+  commercial: "COMMERCIAL",
+  industrial: "INDUSTRIAL",
+  "mixed-use": "MIXED_USE",
+};
+
 function PropertiesContent() {
   const pathname = usePathname();
   const queryClient = useQueryClient();
@@ -54,24 +61,30 @@ function PropertiesContent() {
   const [searchQuery, setSearchQuery] = useState(
     () => searchParams.get("search")?.trim() ?? "",
   );
+  const propertyCategory = searchParams.get("category") ?? "";
+  const hasExplicitMaxPrice = searchParams.has("maxPrice");
   const deferredFilters = useDeferredValue(filters);
   const backendFilters = useMemo(
     () => ({
       listingTypes: deferredFilters.types
         .map((type) => LISTING_TYPE_MAP[type])
         .filter(Boolean),
+      propertyTypes: PROPERTY_CATEGORY_MAP[propertyCategory]
+        ? [PROPERTY_CATEGORY_MAP[propertyCategory]]
+        : [],
       city: deferredFilters.location.trim() || undefined,
       minPrice:
         deferredFilters.priceRange[0] > DEFAULT_FILTERS.priceRange[0]
           ? deferredFilters.priceRange[0]
           : undefined,
       maxPrice:
+        hasExplicitMaxPrice ||
         deferredFilters.priceRange[1] < DEFAULT_FILTERS.priceRange[1]
           ? deferredFilters.priceRange[1]
           : undefined,
       search: searchQuery || undefined,
     }),
-    [deferredFilters, searchQuery],
+    [deferredFilters, hasExplicitMaxPrice, propertyCategory, searchQuery],
   );
   const availableProperties = usePaginatedAvailableProperties({
     page,

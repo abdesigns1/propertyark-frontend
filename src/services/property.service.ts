@@ -12,6 +12,7 @@ import {
 
 export interface AvailablePropertyFilters {
   listingTypes?: string[];
+  propertyTypes?: string[];
   city?: string;
   minPrice?: number;
   maxPrice?: number;
@@ -406,18 +407,23 @@ function normalizeVendorPropertiesResponse(
 }
 
 async function getFilteredAvailable(filters: AvailablePropertyFilters = {}) {
-  const { listingTypes = [], ...commonFilters } = filters;
-  const request = (listingType?: string) =>
+  const { listingTypes = [], propertyTypes = [], ...commonFilters } = filters;
+  const request = (listingType?: string, type?: string) =>
     api.get<AvailablePropertiesResponse>("/properties/available", {
       params: {
         ...commonFilters,
         listingType,
+        type,
         // The UI owns pagination, so request the complete filtered collection.
         limit: 1000,
       },
     });
+  const listingFilters = listingTypes.length ? listingTypes : [undefined];
+  const typeFilters = propertyTypes.length ? propertyTypes : [undefined];
   const responses = await Promise.all(
-    listingTypes.length ? listingTypes.map(request) : [request()],
+    listingFilters.flatMap((listingType) =>
+      typeFilters.map((type) => request(listingType, type)),
+    ),
   );
   const uniqueProperties = new Map<string, PropertyApiItem>();
   responses.forEach(({ data }) =>
@@ -460,7 +466,7 @@ export const propertyService = {
     limit = 12,
     filters = {},
   }: AvailablePropertiesPageOptions = {}) => {
-    const { listingTypes = [], ...commonFilters } = filters;
+    const { listingTypes = [], propertyTypes = [], ...commonFilters } = filters;
     const { data } = await api.get<AvailablePropertiesResponse>(
       "/properties/available",
       {
@@ -470,6 +476,8 @@ export const propertyService = {
           ...commonFilters,
           listingType: listingTypes.length === 1 ? listingTypes[0] : undefined,
           listingTypes: listingTypes.length > 1 ? listingTypes : undefined,
+          type: propertyTypes.length === 1 ? propertyTypes[0] : undefined,
+          types: propertyTypes.length > 1 ? propertyTypes : undefined,
         },
       },
     );

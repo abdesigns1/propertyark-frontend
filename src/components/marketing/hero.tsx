@@ -3,14 +3,13 @@ import Link from "next/link";
 import { TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/shared/navbar";
-import { PropertySearchForm } from "@/components/shared/property-search-form";
 
 export function Hero() {
   return (
     <>
       <Navbar />
 
-      <section className="relative isolate overflow-hidden pb-6 pt-32 sm:pb-28">
+      <section className="relative isolate overflow-hidden pb-40 pt-32 sm:pb-36 lg:pb-36">
         {/* Background image + overlay */}
         <div className="absolute inset-0 -z-10">
           <Image
@@ -86,11 +85,6 @@ export function Hero() {
               </p>
             </div>
           </div>
-        </div>
-
-        {/* Search bar straddling the bottom edge */}
-        <div className="relative z-10 mx-auto mt-20 max-w-7xl px-6 sm:mt-20 sm:translate-y-1/2 sm:mt-24">
-          <PropertySearchForm />
         </div>
       </section>
     </>

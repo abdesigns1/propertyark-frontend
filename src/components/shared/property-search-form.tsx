@@ -1,120 +1,216 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
-const PROPERTY_TYPES = [
-  { value: "rent", label: "Rent" },
+const PURPOSES = [
   { value: "sale", label: "Sale" },
-  { value: "land", label: "Land" },
   { value: "shortlet", label: "Shortlet" },
-];
+  { value: "rent", label: "Rent" },
+] as const;
+
+const LOCATIONS = ["Lagos", "Abuja", "Port Harcourt", "Ibadan", "Enugu"];
+
+const PROPERTY_CATEGORIES = [
+  { value: "all", label: "All property types" },
+  { value: "residential", label: "Residential" },
+  { value: "commercial", label: "Commercial" },
+  { value: "industrial", label: "Industrial" },
+  { value: "mixed-use", label: "Mixed use" },
+] as const;
 
 const PRICE_RANGES = [
-  { value: "0-500000", label: "₦0 - ₦500K" },
+  { value: "all", label: "Any budget" },
+  { value: "0-500000", label: "Up to ₦500K" },
   { value: "500000-2000000", label: "₦500K - ₦2M" },
   { value: "2000000-10000000", label: "₦2M - ₦10M" },
   { value: "10000000-50000000", label: "₦10M - ₦50M" },
   { value: "50000000-100000000", label: "₦50M - ₦100M" },
   { value: "100000000-", label: "₦100M+" },
-];
+] as const;
 
-interface PropertySearchFormProps {
-  onSearch?: (params: {
-    location: string;
-    propertyType: string;
-    priceRange: string;
-  }) => void;
-}
-
-export function PropertySearchForm({ onSearch }: PropertySearchFormProps) {
+export function PropertySearchForm() {
   const router = useRouter();
-  const [location, setLocation] = useState("");
-  const [propertyType, setPropertyType] = useState("rent");
-  const [priceRange, setPriceRange] = useState(PRICE_RANGES[1].value);
+  const [purpose, setPurpose] = useState("sale");
+  const [query, setQuery] = useState("");
+  const [location, setLocation] = useState("all");
+  const [category, setCategory] = useState("all");
+  const [priceRange, setPriceRange] = useState("all");
 
-  function handleSearch() {
-    onSearch?.({ location, propertyType, priceRange });
+  function handleSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-    const [minPrice, maxPrice] = priceRange.split("-");
     const params = new URLSearchParams();
-    if (location.trim()) params.set("location", location.trim());
-    if (propertyType) params.set("type", propertyType);
-    if (minPrice) params.set("minPrice", minPrice);
-    if (maxPrice) params.set("maxPrice", maxPrice);
+    const search = query.trim();
+    if (search) params.set("search", search);
+    if (location !== "all") params.set("location", location);
+    if (category !== "all") params.set("category", category);
+    if (purpose) params.set("purpose", purpose);
 
-    router.push(`/properties?${params.toString()}`);
+    if (priceRange !== "all") {
+      const [minPrice, maxPrice] = priceRange.split("-");
+      if (minPrice) params.set("minPrice", minPrice);
+      if (maxPrice) params.set("maxPrice", maxPrice);
+    }
+
+    const pathname = purpose === "shortlet" ? "/shortlets" : "/properties";
+    router.push(`${pathname}?${params.toString()}`);
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl bg-card p-4 shadow-lg sm:flex-row sm:items-center sm:divide-x sm:divide-border">
-      <div className="flex-1 px-2 py-1">
-        <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Location
-        </label>
-        <Input
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          placeholder="Where are you looking?"
-          className="mt-1 border-none p-0 shadow-none focus-visible:ring-0"
-        />
-      </div>
+    <Tabs
+      value={purpose}
+      onValueChange={setPurpose}
+      className="w-full flex-col items-start gap-0"
+      orientation="horizontal"
+    >
+      <TabsList
+        variant="line"
+        aria-label="Listing purpose"
+        className="h-14 shrink-0 justify-start gap-0 rounded-b-none rounded-t-xl bg-card px-2 shadow-sm"
+      >
+        {PURPOSES.map((item) => (
+          <TabsTrigger
+            key={item.value}
+            value={item.value}
+            className="h-full min-w-16 px-3 text-sm font-semibold text-muted-foreground sm:min-w-20"
+          >
+            <span className={cn(purpose === item.value && "text-primary")}>
+              {item.label}
+            </span>
+            {purpose === item.value && (
+              <span
+                aria-hidden="true"
+                className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-primary"
+              />
+            )}
+          </TabsTrigger>
+        ))}
+      </TabsList>
 
-      <div className="px-2 py-1 sm:pl-6">
-        <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Property Type
-        </label>
-        <Select value={propertyType} onValueChange={setPropertyType}>
-          <SelectTrigger className="mt-1 border-none p-0 shadow-none focus:ring-0 [&>svg]:opacity-60">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PROPERTY_TYPES.map((type) => (
-              <SelectItem key={type.value} value={type.value}>
-                {type.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <form
+        onSubmit={handleSearch}
+        className="w-full rounded-b-2xl rounded-tr-2xl bg-card p-4 shadow-xl ring-1 ring-foreground/5 sm:rounded-tl-none lg:p-3"
+      >
+        <FieldGroup className="grid gap-0 lg:grid-cols-[1.45fr_0.8fr_1fr_0.9fr_auto] lg:items-center">
+          <Field className="px-4 py-3 lg:border-r">
+            <FieldLabel
+              htmlFor="home-property-search"
+              className="font-semibold"
+            >
+              Search
+            </FieldLabel>
+            <Input
+              id="home-property-search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Property, location, or neighbourhood..."
+              className="h-7 border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0"
+            />
+          </Field>
 
-      <div className="px-2 py-1 sm:pl-6">
-        <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Price Range
-        </label>
-        <Select value={priceRange} onValueChange={setPriceRange}>
-          <SelectTrigger className="mt-1 border-none p-0 shadow-none focus:ring-0 [&>svg]:opacity-60">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PRICE_RANGES.map((range) => (
-              <SelectItem key={range.value} value={range.value}>
-                {range.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+          <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
+            <FieldLabel
+              htmlFor="home-property-location"
+              className="font-semibold"
+            >
+              Location
+            </FieldLabel>
+            <Select value={location} onValueChange={setLocation}>
+              <SelectTrigger
+                id="home-property-location"
+                className="h-7 w-full border-0 px-0 shadow-none focus-visible:ring-0"
+              >
+                <SelectValue placeholder="Select your city" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">Any location</SelectItem>
+                  {LOCATIONS.map((city) => (
+                    <SelectItem key={city} value={city}>
+                      {city}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
 
-      <div className="pt-1 sm:pl-6">
-        <Button
-          onClick={handleSearch}
-          className="w-full rounded-md p-6 bg-primary text-primary-foreground hover:bg-primary-hover sm:w-auto"
-        >
-          <Search className="h-4 w-4" />
-          Search
-        </Button>
-      </div>
-    </div>
+          <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
+            <FieldLabel htmlFor="home-property-type" className="font-semibold">
+              Property Type
+            </FieldLabel>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger
+                id="home-property-type"
+                className="h-7 w-full border-0 px-0 shadow-none focus-visible:ring-0"
+              >
+                <SelectValue placeholder="Select property type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {PROPERTY_CATEGORIES.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
+            <FieldLabel
+              htmlFor="home-property-budget"
+              className="font-semibold"
+            >
+              Budget
+            </FieldLabel>
+            <Select value={priceRange} onValueChange={setPriceRange}>
+              <SelectTrigger
+                id="home-property-budget"
+                className="h-7 w-full border-0 px-0 shadow-none focus-visible:ring-0"
+              >
+                <SelectValue placeholder="Select price range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {PRICE_RANGES.map((range) => (
+                    <SelectItem key={range.value} value={range.value}>
+                      {range.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <div className="border-t p-3 lg:border-t-0 lg:px-5">
+            <Button
+              type="submit"
+              size="lg"
+              className="h-11 w-full min-w-28 lg:w-auto"
+            >
+              <Search data-icon="inline-start" />
+              Search
+            </Button>
+          </div>
+        </FieldGroup>
+      </form>
+    </Tabs>
   );
 }

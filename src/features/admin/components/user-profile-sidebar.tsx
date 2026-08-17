@@ -1,5 +1,4 @@
 import {
-  Ban,
   CheckCircle2,
   ExternalLink,
   Flag,
@@ -17,12 +16,13 @@ import {
   getUserInitials,
 } from "@/features/admin/lib/user-display";
 import type { AdminUser } from "@/services/admin.service";
+import { DeleteAccountButton } from "@/features/admin/components/delete-account-button";
 
 export function UserProfileSidebar({ user }: { user: AdminUser }) {
   return (
     <aside className="flex flex-col gap-6">
       <UserIdentityCard user={user} />
-      <AdministrativeActions email={user.email} />
+      <AdministrativeActions user={user} />
       <VerificationChecklist user={user} />
     </aside>
   );
@@ -65,7 +65,7 @@ function UserIdentityCard({ user }: { user: AdminUser }) {
   );
 }
 
-function AdministrativeActions({ email }: { email: string }) {
+function AdministrativeActions({ user }: { user: AdminUser }) {
   return (
     <Card>
       <CardHeader>
@@ -79,7 +79,7 @@ function AdministrativeActions({ email }: { email: string }) {
           Reset Password
         </Button>
         <Button variant="outline" className="h-14 justify-start" asChild>
-          <a href={`mailto:${email}`}>
+          <a href={`mailto:${user.email}`}>
             <Send data-icon="inline-start" />
             Send Direct Email
           </a>
@@ -92,10 +92,11 @@ function AdministrativeActions({ email }: { email: string }) {
           <Flag data-icon="inline-start" />
           Flag for Review
         </Button>
-        <Button variant="destructive" className="h-14 justify-start" disabled>
-          <Ban data-icon="inline-start" />
-          Suspend User Account
-        </Button>
+        <DeleteAccountButton
+          userId={user.id}
+          fullName={user.fullName}
+          role={user.role}
+        />
       </CardContent>
     </Card>
   );

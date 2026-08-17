@@ -2,13 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  ArrowRight,
-  CircleSlash2,
-  Filter,
-  RotateCcw,
-  Search,
-} from "lucide-react";
+import { CircleSlash2, Filter, RotateCcw, Search } from "lucide-react";
 import { AnimatedContainer, AnimatedItem, FadeIn } from "@/components/motion";
 import { BecomeVendorBanner } from "@/components/contact/become-vendor-banner";
 import { PaginationControls } from "@/components/shared/pagination-controls";
@@ -37,7 +31,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAvailableProperties } from "@/features/properties/hooks/use-available-properties";
 import { useFavorites } from "@/features/properties/hooks/use-favorites";
-import { RecommendedPropertyCard } from "./recommended-property-card";
+import { SimilarPropertiesCarousel } from "@/features/properties/components/similar-properties-carousel";
 import { SavedPropertyCard } from "./saved-property-card";
 
 const PAGE_SIZE = 5;
@@ -128,7 +122,7 @@ function SavedProperties({ audience }: { audience: "buyer" | "vendor" }) {
   );
   const recommendations = allProperties
     .filter((property) => !savedIds.includes(property.id))
-    .slice(0, 3);
+    .slice(0, 12);
 
   function resetFilters() {
     setSearchInput("");
@@ -308,27 +302,16 @@ function SavedProperties({ audience }: { audience: "buyer" | "vendor" }) {
         </div>
       )}
 
-      <section className="mt-14">
-        <div className="mb-7 flex items-center justify-between gap-4">
-          <h2 className="text-2xl font-semibold md:text-3xl">
-            Recommended Properties
-          </h2>
-          <Button variant="link" asChild>
-            <Link
-              href={audience === "buyer" ? "/buyer/properties" : "/properties"}
-            >
-              View all recommendations <ArrowRight data-icon="inline-end" />
-            </Link>
-          </Button>
-        </div>
-        <AnimatedContainer className="grid gap-5 md:grid-cols-3">
-          {recommendations.map((property, index) => (
-            <AnimatedItem key={property.id}>
-              <RecommendedPropertyCard property={property} index={index + 1} />
-            </AnimatedItem>
-          ))}
-        </AnimatedContainer>
-      </section>
+      <div className="mt-14">
+        <SimilarPropertiesCarousel
+          properties={recommendations}
+          title="Recommended Properties"
+          viewAllHref={
+            audience === "buyer" ? "/buyer/properties" : "/properties"
+          }
+          viewAllLabel="View All Recommendations"
+        />
+      </div>
 
       {audience === "buyer" && (
         <div className="mt-16 -mx-6 [&>section]:pb-8">

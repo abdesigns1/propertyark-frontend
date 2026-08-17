@@ -414,10 +414,39 @@ export const inspectionService = {
     status: "ACCEPTED" | "DECLINED";
     reason?: string;
   }) => {
-    const { data } = await api.patch(`/inquiries/${inspectionId}/review`, {
+    const payload = {
       status,
       ...(reason ? { reason } : {}),
-    });
+    };
+
+    try {
+      // The current API collection documents this operation as GET with a
+      // JSON body. Use request() so Axios preserves that documented body.
+      const { data } = await api.request({
+        method: "GET",
+        url: `/inquiries/${inspectionId}/review`,
+        data: payload,
+      });
+      return data;
+    } catch (error) {
+      if (
+        !axios.isAxiosError(error) ||
+        ![400, 404, 405].includes(error.response?.status ?? 0)
+      ) {
+        throw error;
+      }
+
+      // Keep compatibility with the previous API contract while deployments
+      // transition to the newly documented review method.
+      const { data } = await api.patch(
+        `/inquiries/${inspectionId}/review`,
+        payload,
+      );
+      return data;
+    }
+  },
+  complete: async (inspectionId: string) => {
+    const { data } = await api.patch(`/users/${inspectionId}/complete`);
     return data;
   },
   schedule: async (input: ScheduleInspectionInput) => {

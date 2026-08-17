@@ -22,7 +22,11 @@ export const adminNavigation = [
   { label: "Transactions", href: "#transactions", icon: FileText },
   { label: "Escrow Management", href: "#escrow", icon: WalletCards },
   { label: "Subscriptions", href: "#subscriptions", icon: CreditCard },
-  { label: "Reports & Analytics", href: "#reports", icon: ChartNoAxesCombined },
+  {
+    label: "Reports & Analytics",
+    href: "/admin/reports",
+    icon: ChartNoAxesCombined,
+  },
   { label: "Notifications", href: "/admin/notifications", icon: Bell },
   { label: "System Settings", href: "#settings", icon: Settings },
 ] as const;

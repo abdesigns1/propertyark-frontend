@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AnimatedDialogIcon } from "@/components/animated-dialog-icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,6 +57,14 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import {
   Select,
   SelectContent,
@@ -95,6 +104,16 @@ import { cn } from "@/lib/utils";
 
 const BUYER_INSPECTIONS_KEY = ["buyer", "inspections"] as const;
 const ACTIVE_STATUSES = ["ACCEPTED", "CONFIRMED", "SCHEDULED"];
+const UPCOMING_PAGE_SIZE = 4;
+const HISTORY_PAGE_SIZE = 5;
+const HISTORY_STATUSES = [
+  "ALL",
+  "PENDING",
+  "CONFIRMED",
+  "COMPLETED",
+  "CANCELLED",
+] as const;
+type HistoryStatus = (typeof HISTORY_STATUSES)[number];
 
 function statusLabel(status: string) {
   if (ACTIVE_STATUSES.includes(status)) return "Confirmed";
@@ -157,12 +176,15 @@ export function BuyerInspections() {
   const [requestOpen, setRequestOpen] = useState(false);
   const [successProperty, setSuccessProperty] = useState("");
   const [selected, setSelected] = useState<BuyerInspection | null>(null);
+  const [completionTarget, setCompletionTarget] =
+    useState<BuyerInspection | null>(null);
   const [propertyId, setPropertyId] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [meetingType, setMeetingType] = useState("IN_PERSON");
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [upcomingPage, setUpcomingPage] = useState(1);
 
   const selectedProperty = properties.find((item) => item.id === propertyId);
   const selectedDetailsProperty = properties.find(
@@ -171,18 +193,24 @@ export function BuyerInspections() {
   const upcoming = inspections.filter((item) =>
     ACTIVE_STATUSES.includes(item.status),
   );
-  const counts = useMemo(
-    () => ({
-      upcoming: upcoming.length,
-      pending: inspections.filter((item) => item.status === "PENDING").length,
-      completed: inspections.filter((item) => item.status === "COMPLETED")
-        .length,
-      cancelled: inspections.filter((item) =>
-        ["DECLINED", "REJECTED", "CANCELLED"].includes(item.status),
-      ).length,
-    }),
-    [inspections, upcoming.length],
+  const upcomingTotalPages = Math.max(
+    1,
+    Math.ceil(upcoming.length / UPCOMING_PAGE_SIZE),
   );
+  const currentUpcomingPage = Math.min(upcomingPage, upcomingTotalPages);
+  const upcomingPageStart = (currentUpcomingPage - 1) * UPCOMING_PAGE_SIZE;
+  const paginatedUpcoming = upcoming.slice(
+    upcomingPageStart,
+    upcomingPageStart + UPCOMING_PAGE_SIZE,
+  );
+  const counts = {
+    upcoming: upcoming.length,
+    pending: inspections.filter((item) => item.status === "PENDING").length,
+    completed: inspections.filter((item) => item.status === "COMPLETED").length,
+    cancelled: inspections.filter((item) =>
+      ["DECLINED", "REJECTED", "CANCELLED"].includes(item.status),
+    ).length,
+  };
 
   const schedule = useMutation({
     mutationFn: () =>
@@ -214,6 +242,31 @@ export function BuyerInspections() {
     onError: (error) =>
       toast.error(
         getApiErrorMessage(error, "The inspection request could not be sent."),
+      ),
+  });
+
+  const completion = useMutation({
+    mutationFn: inspectionService.complete,
+    onSuccess: async () => {
+      toast.success("Inspection marked as completed.", {
+        description:
+          "The vendor can now see that you are satisfied with the property inspection.",
+      });
+      setCompletionTarget(null);
+      setSelected(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: BUYER_INSPECTIONS_KEY }),
+        queryClient.invalidateQueries({ queryKey: ["buyer-dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: ["vendor", "inspections"] }),
+        queryClient.invalidateQueries({ queryKey: ["vendor", "dashboard"] }),
+      ]);
+    },
+    onError: (error) =>
+      toast.error(
+        getApiErrorMessage(
+          error,
+          "The inspection could not be marked as completed.",
+        ),
       ),
   });
 
@@ -304,17 +357,78 @@ export function BuyerInspections() {
               </span>
             </div>
             {upcoming.length ? (
-              <div className="grid gap-4 md:grid-cols-2">
-                {upcoming.slice(0, 4).map((inspection) => (
-                  <InspectionCard
-                    key={inspection.id}
-                    inspection={inspection}
-                    property={properties.find(
-                      (item) => item.id === inspection.propertyId,
-                    )}
-                    onDetails={() => setSelected(inspection)}
-                  />
-                ))}
+              <div className="flex flex-col gap-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  {paginatedUpcoming.map((inspection) => (
+                    <InspectionCard
+                      key={inspection.id}
+                      inspection={inspection}
+                      property={properties.find(
+                        (item) => item.id === inspection.propertyId,
+                      )}
+                      onDetails={() => setSelected(inspection)}
+                      onComplete={() => setCompletionTarget(inspection)}
+                    />
+                  ))}
+                </div>
+                {upcomingTotalPages > 1 && (
+                  <Pagination className="justify-end">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          aria-disabled={currentUpcomingPage === 1}
+                          className={cn(
+                            currentUpcomingPage === 1 &&
+                              "pointer-events-none opacity-50",
+                          )}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            setUpcomingPage((current) =>
+                              Math.max(current - 1, 1),
+                            );
+                          }}
+                        />
+                      </PaginationItem>
+                      {Array.from(
+                        { length: upcomingTotalPages },
+                        (_, index) => index + 1,
+                      ).map((pageNumber) => (
+                        <PaginationItem key={pageNumber}>
+                          <PaginationLink
+                            href="#"
+                            isActive={pageNumber === currentUpcomingPage}
+                            aria-label={`Go to upcoming inspections page ${pageNumber}`}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              setUpcomingPage(pageNumber);
+                            }}
+                          >
+                            {pageNumber}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          aria-disabled={
+                            currentUpcomingPage === upcomingTotalPages
+                          }
+                          className={cn(
+                            currentUpcomingPage === upcomingTotalPages &&
+                              "pointer-events-none opacity-50",
+                          )}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            setUpcomingPage((current) =>
+                              Math.min(current + 1, upcomingTotalPages),
+                            );
+                          }}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                )}
               </div>
             ) : (
               <Empty className="min-h-64 rounded-xl border">
@@ -331,7 +445,7 @@ export function BuyerInspections() {
           <HistoryTable inspections={inspections} onDetails={setSelected} />
         </div>
 
-        <aside className="flex flex-col gap-5">
+        <aside className="flex flex-col gap-5 xl:sticky xl:top-24 xl:self-start">
           <InspectionCalendar inspections={inspections} />
           <Card className="bg-primary text-primary-foreground">
             <CardHeader>
@@ -377,6 +491,17 @@ export function BuyerInspections() {
         inspection={selected}
         property={selectedDetailsProperty}
         onOpenChange={(open) => !open && setSelected(null)}
+        onComplete={setCompletionTarget}
+      />
+      <CompleteInspectionDialog
+        inspection={completionTarget}
+        submitting={completion.isPending}
+        onOpenChange={(open) => {
+          if (!open && !completion.isPending) setCompletionTarget(null);
+        }}
+        onConfirm={() => {
+          if (completionTarget) completion.mutate(completionTarget.id);
+        }}
       />
     </div>
   );
@@ -413,10 +538,12 @@ function InspectionCard({
   inspection,
   property,
   onDetails,
+  onComplete,
 }: {
   inspection: BuyerInspection;
   property?: Property;
   onDetails: () => void;
+  onComplete: () => void;
 }) {
   const image =
     property?.images[0] ??
@@ -476,10 +603,25 @@ function InspectionCard({
           </span>
         </div>
       </CardContent>
-      <CardFooter>
-        <Button className="w-full" onClick={onDetails}>
+      <CardFooter
+        className={cn(
+          "grid gap-2",
+          inspection.status === "ACCEPTED" && "grid-cols-2",
+        )}
+      >
+        <Button
+          className="w-full"
+          variant={inspection.status === "ACCEPTED" ? "outline" : "default"}
+          onClick={onDetails}
+        >
           View Details
         </Button>
+        {inspection.status === "ACCEPTED" && (
+          <Button className="w-full" onClick={onComplete}>
+            <CheckCircle2 data-icon="inline-start" />
+            Satisfactory
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );
@@ -492,13 +634,60 @@ function HistoryTable({
   inspections: BuyerInspection[];
   onDetails: (item: BuyerInspection) => void;
 }) {
+  const [statusFilter, setStatusFilter] = useState<HistoryStatus>("ALL");
+  const [page, setPage] = useState(1);
+  const filteredInspections = inspections.filter(
+    (inspection) =>
+      statusFilter === "ALL" ||
+      statusLabel(inspection.status).toUpperCase() === statusFilter,
+  );
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredInspections.length / HISTORY_PAGE_SIZE),
+  );
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * HISTORY_PAGE_SIZE;
+  const paginatedInspections = filteredInspections.slice(
+    pageStart,
+    pageStart + HISTORY_PAGE_SIZE,
+  );
+
+  const changePage = (nextPage: number) => {
+    setPage(Math.min(Math.max(nextPage, 1), totalPages));
+  };
+
   return (
     <Card className="overflow-hidden">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between gap-4">
         <CardTitle>Request History</CardTitle>
+        <Select
+          value={statusFilter}
+          onValueChange={(value: HistoryStatus) => {
+            setStatusFilter(value);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger
+            className="w-40"
+            aria-label="Filter request history by status"
+          >
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent align="end">
+            <SelectGroup>
+              {HISTORY_STATUSES.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {status === "ALL"
+                    ? "All statuses"
+                    : status.charAt(0) + status.slice(1).toLowerCase()}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
       </CardHeader>
       <CardContent className="p-0">
-        {inspections.length ? (
+        {paginatedInspections.length ? (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -510,7 +699,7 @@ function HistoryTable({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {inspections.map((inspection) => (
+                {paginatedInspections.map((inspection) => (
                   <TableRow key={inspection.id}>
                     <TableCell className="pl-6">
                       <p className="font-medium">{inspection.propertyName}</p>
@@ -542,14 +731,80 @@ function HistoryTable({
         ) : (
           <Empty className="min-h-48">
             <EmptyHeader>
-              <EmptyTitle>No inspection history</EmptyTitle>
+              <EmptyTitle>
+                {inspections.length
+                  ? "No requests match this status"
+                  : "No inspection history"}
+              </EmptyTitle>
               <EmptyDescription>
-                Your requests will appear here after booking.
+                {inspections.length
+                  ? "Choose another status to view your inspection requests."
+                  : "Your requests will appear here after booking."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}
       </CardContent>
+      {filteredInspections.length > 0 && (
+        <CardFooter className="flex flex-col justify-between gap-3 border-t sm:flex-row sm:items-center">
+          <p className="text-sm text-muted-foreground">
+            Showing {pageStart + 1}–
+            {Math.min(
+              pageStart + HISTORY_PAGE_SIZE,
+              filteredInspections.length,
+            )}{" "}
+            of {filteredInspections.length}
+          </p>
+          <Pagination className="mx-0 w-auto">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  aria-disabled={currentPage === 1}
+                  className={cn(
+                    currentPage === 1 && "pointer-events-none opacity-50",
+                  )}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    changePage(currentPage - 1);
+                  }}
+                />
+              </PaginationItem>
+              {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+                (pageNumber) => (
+                  <PaginationItem key={pageNumber}>
+                    <PaginationLink
+                      href="#"
+                      isActive={pageNumber === currentPage}
+                      aria-label={`Go to page ${pageNumber}`}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        changePage(pageNumber);
+                      }}
+                    >
+                      {pageNumber}
+                    </PaginationLink>
+                  </PaginationItem>
+                ),
+              )}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  aria-disabled={currentPage === totalPages}
+                  className={cn(
+                    currentPage === totalPages &&
+                      "pointer-events-none opacity-50",
+                  )}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    changePage(currentPage + 1);
+                  }}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </CardFooter>
+      )}
     </Card>
   );
 }
@@ -673,11 +928,14 @@ function RequestInspectionDialog(props: RequestDialogProps) {
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Request Property Inspection</DialogTitle>
-          <DialogDescription>
-            Fill in the details to schedule a new inspection.
-          </DialogDescription>
+        <DialogHeader className="flex flex-row items-center gap-4 text-left sm:text-left">
+          <AnimatedDialogIcon icon={CalendarCheck2} />
+          <div className="flex flex-col gap-1.5">
+            <DialogTitle>Request Property Inspection</DialogTitle>
+            <DialogDescription>
+              Fill in the details to schedule a new inspection.
+            </DialogDescription>
+          </div>
         </DialogHeader>
         <FieldGroup>
           <Field data-invalid={props.submitted && !props.propertyId}>
@@ -790,9 +1048,7 @@ function SuccessDialog({
     >
       <DialogContent className="sm:max-w-xl">
         <div className="flex min-h-96 flex-col items-center justify-center gap-6 text-center">
-          <span className="flex size-28 items-center justify-center rounded-full border-8 border-success text-success">
-            <Check className="size-14" />
-          </span>
+          <AnimatedDialogIcon icon={Check} tone="success" size="large" />
           <div>
             <DialogTitle className="text-3xl">
               Inspection Booked Successfully
@@ -813,10 +1069,12 @@ function InspectionDetailsSheet({
   inspection,
   property,
   onOpenChange,
+  onComplete,
 }: {
   inspection: BuyerInspection | null;
   property?: Property;
   onOpenChange: (open: boolean) => void;
+  onComplete: (inspection: BuyerInspection) => void;
 }) {
   if (!inspection) return null;
   const image =
@@ -949,9 +1207,62 @@ function InspectionDetailsSheet({
               </CardContent>
             </Card>
           )}
+          {inspection.status === "ACCEPTED" && (
+            <Button className="w-full" onClick={() => onComplete(inspection)}>
+              <CheckCircle2 data-icon="inline-start" />
+              Satisfactory — Complete Inspection
+            </Button>
+          )}
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function CompleteInspectionDialog({
+  inspection,
+  submitting,
+  onOpenChange,
+  onConfirm,
+}: {
+  inspection: BuyerInspection | null;
+  submitting: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open={Boolean(inspection)} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader className="items-center text-center sm:text-center">
+          <AnimatedDialogIcon icon={CheckCircle2} tone="success" size="large" />
+          <DialogTitle className="mt-2 text-2xl">
+            Complete this inspection?
+          </DialogTitle>
+          <DialogDescription className="max-w-sm leading-6">
+            Confirm that you have inspected {inspection?.propertyName} and are
+            satisfied with the property. This will mark the inspection as
+            completed for you and the vendor.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            disabled={submitting}
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button disabled={submitting} onClick={onConfirm}>
+            {submitting ? (
+              <LoaderCircle data-icon="inline-start" className="animate-spin" />
+            ) : (
+              <CheckCircle2 data-icon="inline-start" />
+            )}
+            Yes, I&apos;m Satisfied
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

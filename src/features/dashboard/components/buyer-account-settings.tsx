@@ -369,9 +369,21 @@ function BuyerAccountSettingsContent({
         email: updated.email || profile.email,
         phone: updated.phone || phone.trim(),
         location: updated.location || location.trim(),
-        avatarUrl: updated.avatarUrl || avatarUrl || null,
+        avatarUrl: updated.avatarUrl ?? profile.avatarUrl,
       });
-      queryClient.setQueryData(buyerProfileQueryKey(accountKey), updated);
+      queryClient.setQueryData<VendorSettingsProfile>(
+        buyerProfileQueryKey(accountKey),
+        (current) => ({
+          ...(current ?? profile),
+          ...updated,
+          fullName: updated.fullName || `${firstName} ${lastName}`.trim(),
+          email: updated.email || profile.email,
+          phone: updated.phone || phone.trim(),
+          location: updated.location || location.trim(),
+          avatarUrl: updated.avatarUrl ?? profile.avatarUrl,
+        }),
+      );
+      queryClient.invalidateQueries({ queryKey: ["buyer-dashboard"] });
       setAvatarFile(null);
       toast.success("Profile changes saved successfully.");
     },
@@ -458,18 +470,23 @@ function BuyerAccountSettingsContent({
                       <Button
                         variant="outline"
                         className="min-w-28"
-                        onClick={() => setAvatarUrl("")}
+                        onClick={() => {
+                          setAvatarUrl(profile.avatarUrl ?? "");
+                          setAvatarFile(null);
+                          if (fileInput.current) fileInput.current.value = "";
+                        }}
                       >
-                        Remove
+                        Reset
                       </Button>
                       <input
                         ref={fileInput}
                         type="file"
                         accept="image/png,image/jpeg,image/gif"
                         className="hidden"
-                        onChange={(event) =>
-                          choosePhoto(event.target.files?.[0])
-                        }
+                        onChange={(event) => {
+                          choosePhoto(event.target.files?.[0]);
+                          event.currentTarget.value = "";
+                        }}
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">

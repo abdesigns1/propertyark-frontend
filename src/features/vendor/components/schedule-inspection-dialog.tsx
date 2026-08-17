@@ -10,6 +10,7 @@ import {
   MapPin,
   Video,
 } from "lucide-react";
+import { AnimatedDialogIcon } from "@/components/animated-dialog-icon";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -156,13 +157,16 @@ export function ScheduleInspectionDialog({
             className="flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col"
             onSubmit={submit}
           >
-            <DialogHeader className="shrink-0 px-5 py-5 sm:px-8 sm:py-7">
-              <DialogTitle className="pr-8 text-xl sm:text-2xl">
-                Schedule Property Inspection
-              </DialogTitle>
-              <DialogDescription>
-                Set up a new viewing appointment for a potential buyer.
-              </DialogDescription>
+            <DialogHeader className="flex shrink-0 flex-row items-center gap-4 px-5 py-5 text-left sm:px-8 sm:py-7 sm:text-left">
+              <AnimatedDialogIcon icon={CalendarDays} />
+              <div className="flex flex-col gap-1.5">
+                <DialogTitle className="pr-8 text-xl sm:text-2xl">
+                  Schedule Property Inspection
+                </DialogTitle>
+                <DialogDescription>
+                  Set up a new viewing appointment for a potential buyer.
+                </DialogDescription>
+              </div>
             </DialogHeader>
 
             <div className="min-h-0 flex-1 overflow-y-auto border-y px-5 py-5 sm:px-8 sm:py-7">
@@ -394,9 +398,7 @@ function SuccessState({
 }) {
   return (
     <div className="flex min-h-[min(530px,calc(100dvh-1rem))] flex-col items-center justify-center gap-6 overflow-y-auto px-5 py-12 text-center sm:gap-7 sm:px-8">
-      <div className="flex size-24 items-center justify-center rounded-full border-[9px] border-success text-success sm:size-28 sm:border-[10px]">
-        <Check className="size-12 stroke-[3] sm:size-14" />
-      </div>
+      <AnimatedDialogIcon icon={Check} tone="success" size="large" />
       <div className="flex flex-col gap-3">
         <DialogTitle className="text-2xl sm:text-3xl">
           Inspection Booked Successfully

@@ -3,7 +3,7 @@ import { useAuthStore } from "@/store/auth.store";
 
 export const api = axios.create({
   // Same-origin proxy avoids browser CORS preflights to the hosted API.
-  baseURL: "/api/backend",
+  baseURL: "/api/v1",
   withCredentials: true, // sends the httpOnly refresh-token cookie
   timeout: 90_000,
 });
@@ -51,7 +51,7 @@ api.interceptors.response.use(
       isRefreshing = true;
       try {
         const { data } = await axios.post(
-          "/api/backend/auth/refresh",
+          "/api/v1/auth/refresh",
           {},
           { withCredentials: true, timeout: 90_000 },
         );

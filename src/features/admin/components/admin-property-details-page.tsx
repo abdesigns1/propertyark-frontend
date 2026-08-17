@@ -23,8 +23,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminActionDialog } from "@/features/admin/components/admin-action-dialog";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
-import { AnimatedConfirmationIcon } from "@/features/admin/components/animated-confirmation-icon";
 import { useAdminProperty } from "@/features/admin/hooks/use-admin-dashboard";
 import {
   adminPropertyCategory,
@@ -794,33 +794,17 @@ function DecisionDialog({
   onSubmit: () => void;
 }) {
   return (
-    <Dialog
+    <AdminActionDialog
       open={Boolean(decision)}
       onOpenChange={(open) => !open && onClose()}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <AnimatedConfirmationIcon
-            icon={decision === "changes" ? AlertTriangle : Flag}
-            tone={decision === "changes" ? "warning" : "destructive"}
-          />
-          <DialogTitle>
-            {decision === "changes"
-              ? "Request property changes"
-              : "Reject property"}
-          </DialogTitle>
-          <DialogDescription>
-            Explain what the vendor must correct. This reason will be submitted
-            with the review decision.
-          </DialogDescription>
-        </DialogHeader>
-        <Textarea
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-          placeholder="Enter a clear review note..."
-          rows={5}
-        />
-        <DialogFooter>
+      icon={decision === "changes" ? AlertTriangle : Flag}
+      tone={decision === "changes" ? "warning" : "destructive"}
+      title={
+        decision === "changes" ? "Request property changes" : "Reject property"
+      }
+      description="Explain what the vendor must correct. This reason will be submitted with the review decision."
+      footer={
+        <>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
@@ -832,9 +816,16 @@ function DecisionDialog({
             <Flag data-icon="inline-start" />
             Submit decision
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </>
+      }
+    >
+      <Textarea
+        value={reason}
+        onChange={(event) => setReason(event.target.value)}
+        placeholder="Enter a clear review note..."
+        rows={5}
+      />
+    </AdminActionDialog>
   );
 }
 
@@ -852,22 +843,21 @@ function ApprovalDialog({
   onConfirm: () => void;
 }) {
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <AnimatedConfirmationIcon icon={ShieldCheck} tone="success" />
-          <DialogTitle>Approve and publish property?</DialogTitle>
-          <DialogDescription>
-            You are about to approve <strong>{propertyName}</strong>. Once
-            confirmed, the listing will become available on the PropertyArk
-            marketplace.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="rounded-lg border border-primary/15 bg-primary/5 p-4 text-sm text-muted-foreground">
-          Confirm that you have reviewed the property information, media, and
-          all supplied legal documents.
-        </div>
-        <DialogFooter>
+    <AdminActionDialog
+      open={open}
+      onOpenChange={(nextOpen) => !nextOpen && onClose()}
+      icon={ShieldCheck}
+      tone="success"
+      title="Approve and publish property?"
+      description={
+        <>
+          You are about to approve <strong>{propertyName}</strong>. Once
+          confirmed, the listing will become available on the PropertyArk
+          marketplace.
+        </>
+      }
+      footer={
+        <>
           <Button variant="outline" disabled={pending} onClick={onClose}>
             Cancel
           </Button>
@@ -875,9 +865,14 @@ function ApprovalDialog({
             <CheckCircle2 data-icon="inline-start" />
             {pending ? "Approving..." : "Confirm Approval"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </>
+      }
+    >
+      <div className="rounded-lg border border-primary/15 bg-primary/5 p-4 text-sm text-muted-foreground">
+        Confirm that you have reviewed the property information, media, and all
+        supplied legal documents.
+      </div>
+    </AdminActionDialog>
   );
 }
 

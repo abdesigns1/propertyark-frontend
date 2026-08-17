@@ -12,21 +12,13 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminActionDialog } from "@/features/admin/components/admin-action-dialog";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
-import { AnimatedConfirmationIcon } from "@/features/admin/components/animated-confirmation-icon";
 import { useAdminKycRequest } from "@/features/admin/hooks/use-admin-dashboard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -214,49 +206,46 @@ function KycReview({
             </Badge>
           )}
         </div>
-        <Dialog
+        <AdminActionDialog
           open={Boolean(action)}
           onOpenChange={(open) => !open && setAction(null)}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <AnimatedConfirmationIcon
-                icon={action === "reject" ? XCircle : BadgeCheck}
-                tone={action === "reject" ? "destructive" : "success"}
-              />
-              <DialogTitle className="mt-2">
-                {action === "reject"
-                  ? "Reject this document?"
-                  : "Approve this document?"}
-              </DialogTitle>
-              <DialogDescription>
-                Confirm you want to {action} this document.
-              </DialogDescription>
-            </DialogHeader>
-            {action === "reject" && (
-              <Textarea
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-                placeholder="Reason for rejection"
-              />
-            )}
-            <DialogFooter>
+          icon={action === "reject" ? XCircle : BadgeCheck}
+          tone={action === "reject" ? "destructive" : "success"}
+          title={
+            action === "reject"
+              ? "Reject this document?"
+              : "Approve this document?"
+          }
+          description={`Confirm you want to ${action} this identity document.`}
+          footer={
+            <>
               <Button variant="outline" onClick={() => setAction(null)}>
                 Cancel
               </Button>
               <Button
+                variant={action === "reject" ? "destructive" : "default"}
                 disabled={
                   mutation.isPending ||
                   (action === "reject" && reason.trim().length < 5)
                 }
                 onClick={() => mutation.mutate()}
               >
-                {mutation.isPending && <RotateCw className="animate-spin" />}
+                {mutation.isPending && (
+                  <RotateCw data-icon="inline-start" className="animate-spin" />
+                )}
                 Confirm
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </>
+          }
+        >
+          {action === "reject" && (
+            <Textarea
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="Reason for rejection"
+            />
+          )}
+        </AdminActionDialog>
       </main>
     </AdminWorkspace>
   );

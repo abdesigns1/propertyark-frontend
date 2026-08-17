@@ -21,6 +21,7 @@ export function proxy(request: NextRequest) {
     "/admin/properties",
     "/admin/kyc",
     "/admin/notifications",
+    "/admin/reports",
   ];
 
   if (

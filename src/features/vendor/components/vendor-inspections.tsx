@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AnimatedDialogIcon } from "@/components/animated-dialog-icon";
 import { PaginationControls } from "@/components/shared/pagination-controls";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +44,14 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -100,6 +109,15 @@ import type {
 } from "@/services/inspection.service";
 
 const PAGE_SIZE = 10;
+type ReviewDecision = "ACCEPTED" | "DECLINED";
+type ReviewTarget = {
+  inspection: VendorInspection;
+  decision: ReviewDecision;
+};
+type RequestReview = (
+  inspection: VendorInspection,
+  decision: ReviewDecision,
+) => void;
 
 export function VendorInspections() {
   const query = useVendorInspections();
@@ -112,6 +130,7 @@ export function VendorInspections() {
   const [meetingType, setMeetingType] = useState("all");
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<ReviewTarget | null>(null);
 
   const inspections = useMemo(
     () => query.data?.inspections ?? [],
@@ -322,7 +341,9 @@ export function VendorInspections() {
               selectedId={selected?.id}
               onPageChange={setPage}
               onSelect={setSelectedId}
-              review={review}
+              onReview={(inspection, decision) =>
+                setReviewTarget({ inspection, decision })
+              }
             />
           ) : (
             <Empty className="min-h-[420px] rounded-xl border">
@@ -352,14 +373,19 @@ export function VendorInspections() {
             <Reminders
               upcoming={upcoming}
               pending={pending}
-              review={review}
+              onReview={(inspection, decision) =>
+                setReviewTarget({ inspection, decision })
+              }
               onSelect={setSelectedId}
             />
             {selected && (
               <InspectionDetails
                 inspection={selected}
                 onClose={() => setSelectedId(null)}
-                review={review}
+                reviewPending={review.isPending}
+                onReview={(inspection, decision) =>
+                  setReviewTarget({ inspection, decision })
+                }
               />
             )}
           </aside>
@@ -371,6 +397,26 @@ export function VendorInspections() {
         onOpenChange={setScheduleOpen}
         properties={propertiesQuery.data?.properties ?? []}
         inspections={inspections}
+      />
+      <ReviewInspectionDialog
+        target={reviewTarget}
+        submitting={review.isPending}
+        onOpenChange={(open) => {
+          if (!open && !review.isPending) setReviewTarget(null);
+        }}
+        onConfirm={() => {
+          if (!reviewTarget) return;
+          review.mutate(
+            {
+              inspectionId: reviewTarget.inspection.id,
+              status: reviewTarget.decision,
+              ...(reviewTarget.decision === "DECLINED"
+                ? { reason: "Declined by vendor" }
+                : {}),
+            },
+            { onSuccess: () => setReviewTarget(null) },
+          );
+        }}
       />
     </div>
   );
@@ -455,7 +501,7 @@ function InspectionTableCard({
   selectedId,
   onPageChange,
   onSelect,
-  review,
+  onReview,
 }: {
   inspections: VendorInspection[];
   total: number;
@@ -464,7 +510,7 @@ function InspectionTableCard({
   selectedId?: string;
   onPageChange: (page: number) => void;
   onSelect: (id: string) => void;
-  review: ReturnType<typeof useReviewInspection>;
+  onReview: RequestReview;
 }) {
   return (
     <Card className="min-w-0 gap-0 overflow-hidden py-0">
@@ -542,7 +588,7 @@ function InspectionTableCard({
                 <TableCell className="pr-4 text-right">
                   <InspectionActionsMenu
                     inspection={inspection}
-                    review={review}
+                    onReview={onReview}
                   />
                 </TableCell>
               </TableRow>
@@ -568,12 +614,12 @@ function InspectionTableCard({
 function Reminders({
   upcoming,
   pending,
-  review,
+  onReview,
   onSelect,
 }: {
   upcoming: VendorInspection | null;
   pending: VendorInspection | null;
-  review: ReturnType<typeof useReviewInspection>;
+  onReview: RequestReview;
   onSelect: (id: string) => void;
 }) {
   return (
@@ -634,31 +680,14 @@ function Reminders({
             Inspection request for {pending.propertyName}.
           </CardContent>
           <CardFooter className="gap-2">
-            <Button
-              size="sm"
-              disabled={review.isPending}
-              onClick={() =>
-                review.mutate({ inspectionId: pending.id, status: "ACCEPTED" })
-              }
-            >
-              {review.isPending ? (
-                <LoaderCircle className="animate-spin" />
-              ) : (
-                <Check />
-              )}
+            <Button size="sm" onClick={() => onReview(pending, "ACCEPTED")}>
+              <Check />
               Approve
             </Button>
             <Button
               size="sm"
               variant="outline"
-              disabled={review.isPending}
-              onClick={() =>
-                review.mutate({
-                  inspectionId: pending.id,
-                  status: "DECLINED",
-                  reason: "Declined by vendor",
-                })
-              }
+              onClick={() => onReview(pending, "DECLINED")}
             >
               Deny
             </Button>
@@ -671,10 +700,10 @@ function Reminders({
 
 function InspectionActionsMenu({
   inspection,
-  review,
+  onReview,
 }: {
   inspection: VendorInspection;
-  review: ReturnType<typeof useReviewInspection>;
+  onReview: RequestReview;
 }) {
   const pending = inspection.status === "PENDING";
 
@@ -696,23 +725,15 @@ function InspectionActionsMenu({
       >
         <DropdownMenuGroup>
           <DropdownMenuItem
-            disabled={!pending || review.isPending}
-            onSelect={() =>
-              review.mutate({ inspectionId: inspection.id, status: "ACCEPTED" })
-            }
+            disabled={!pending}
+            onSelect={() => onReview(inspection, "ACCEPTED")}
           >
             <Check /> Confirm inspection
           </DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
-            disabled={!pending || review.isPending}
-            onSelect={() =>
-              review.mutate({
-                inspectionId: inspection.id,
-                status: "DECLINED",
-                reason: "Declined by vendor",
-              })
-            }
+            disabled={!pending}
+            onSelect={() => onReview(inspection, "DECLINED")}
           >
             <X /> Reject inspection
           </DropdownMenuItem>
@@ -735,14 +756,104 @@ function notifyRescheduleUnavailable() {
   });
 }
 
+function ReviewInspectionDialog({
+  target,
+  submitting,
+  onOpenChange,
+  onConfirm,
+}: {
+  target: ReviewTarget | null;
+  submitting: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
+}) {
+  const accepting = target?.decision === "ACCEPTED";
+  const inspection = target?.inspection;
+
+  return (
+    <Dialog open={Boolean(target)} onOpenChange={onOpenChange}>
+      <DialogContent className="overflow-hidden p-0 sm:max-w-md">
+        <div className="flex flex-col items-center gap-5 px-6 pb-2 pt-8 text-center">
+          <AnimatedDialogIcon
+            icon={accepting ? CalendarCheck2 : CalendarX2}
+            tone={accepting ? "success" : "destructive"}
+            size="large"
+          />
+          <DialogHeader className="items-center text-center sm:text-center">
+            <DialogTitle className="text-2xl">
+              {accepting
+                ? "Confirm this inspection?"
+                : "Reject this inspection?"}
+            </DialogTitle>
+            <DialogDescription className="max-w-sm leading-6">
+              {accepting
+                ? "The buyer will be notified that this inspection has been confirmed."
+                : "The buyer will be notified that this inspection request has been rejected."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {inspection && (
+            <Card className="w-full gap-3 bg-muted/50 py-4 text-left shadow-none">
+              <CardHeader className="px-4">
+                <CardDescription className="font-mono text-xs font-semibold text-primary">
+                  {inspectionCode(inspection)}
+                </CardDescription>
+                <CardTitle className="text-base">
+                  {inspection.propertyName}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between gap-4 px-4 text-sm text-muted-foreground">
+                <span>{inspection.userName}</span>
+                <span>{formatShortDate(inspection.inspectionDate)}</span>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        <DialogFooter className="grid grid-cols-2 gap-3 border-t bg-muted/30 p-5 sm:grid-cols-2">
+          <Button
+            variant="outline"
+            disabled={submitting}
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant={accepting ? "default" : "destructive"}
+            disabled={submitting}
+            onClick={onConfirm}
+          >
+            {submitting ? (
+              <LoaderCircle data-icon="inline-start" className="animate-spin" />
+            ) : accepting ? (
+              <Check data-icon="inline-start" />
+            ) : (
+              <X data-icon="inline-start" />
+            )}
+            {submitting
+              ? accepting
+                ? "Confirming..."
+                : "Rejecting..."
+              : accepting
+                ? "Confirm"
+                : "Reject"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function InspectionDetails({
   inspection,
   onClose,
-  review,
+  reviewPending,
+  onReview,
 }: {
   inspection: VendorInspection;
   onClose: () => void;
-  review: ReturnType<typeof useReviewInspection>;
+  reviewPending: boolean;
+  onReview: RequestReview;
 }) {
   const pending = inspection.status === "PENDING";
 
@@ -869,15 +980,10 @@ function InspectionDetails({
         {pending && (
           <div className="grid w-full grid-cols-2 gap-2">
             <Button
-              disabled={review.isPending}
-              onClick={() =>
-                review.mutate({
-                  inspectionId: inspection.id,
-                  status: "ACCEPTED",
-                })
-              }
+              disabled={reviewPending}
+              onClick={() => onReview(inspection, "ACCEPTED")}
             >
-              {review.isPending ? (
+              {reviewPending ? (
                 <LoaderCircle
                   data-icon="inline-start"
                   className="animate-spin"
@@ -889,14 +995,8 @@ function InspectionDetails({
             </Button>
             <Button
               variant="destructive"
-              disabled={review.isPending}
-              onClick={() =>
-                review.mutate({
-                  inspectionId: inspection.id,
-                  status: "DECLINED",
-                  reason: "Declined by vendor",
-                })
-              }
+              disabled={reviewPending}
+              onClick={() => onReview(inspection, "DECLINED")}
             >
               <X data-icon="inline-start" />
               Reject

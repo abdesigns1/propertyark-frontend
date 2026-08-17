@@ -16,7 +16,7 @@ export function useApiWarmup() {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 60_000);
 
-    void fetch("/api/backend/health", {
+    void fetch("/api/v1/health", {
       method: "GET",
       credentials: "include",
       cache: "no-store",

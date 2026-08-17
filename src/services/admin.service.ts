@@ -389,6 +389,9 @@ export const adminService = {
           data.data.users.find((user) => user.id === userId) ?? null,
       ),
 
+  deleteUser: (userId: string) =>
+    api.delete(`/users/${encodeURIComponent(userId)}`),
+
   getUserStats: () =>
     api
       .get<

@@ -1,5 +1,4 @@
 import {
-  Ban,
   CheckCircle2,
   CircleEllipsis,
   ExternalLink,
@@ -21,6 +20,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Property } from "@/features/properties/types";
 import type { AdminUser } from "@/services/admin.service";
+import { DeleteAccountButton } from "@/features/admin/components/delete-account-button";
 
 export function VendorProfileSidebar({
   user,
@@ -38,7 +38,7 @@ export function VendorProfileSidebar({
         propertyCount={properties.length}
         propertiesLoading={propertiesLoading}
       />
-      <VendorAdminActions email={user.email} />
+      <VendorAdminActions user={user} />
       <VerificationChecklist user={user} />
     </aside>
   );
@@ -127,7 +127,7 @@ function Metric({
   );
 }
 
-function VendorAdminActions({ email }: { email: string }) {
+function VendorAdminActions({ user }: { user: AdminUser }) {
   return (
     <Card>
       <CardHeader>
@@ -140,7 +140,7 @@ function VendorAdminActions({ email }: { email: string }) {
           <KeyRound data-icon="inline-start" /> Reset Password
         </Button>
         <Button variant="outline" className="h-14 justify-start" asChild>
-          <a href={`mailto:${email}`}>
+          <a href={`mailto:${user.email}`}>
             <Send data-icon="inline-start" /> Send Direct Email
           </a>
         </Button>
@@ -151,9 +151,11 @@ function VendorAdminActions({ email }: { email: string }) {
         >
           <Flag data-icon="inline-start" /> Flag for Review
         </Button>
-        <Button variant="destructive" className="h-14 justify-start" disabled>
-          <Ban data-icon="inline-start" /> Suspend User Account
-        </Button>
+        <DeleteAccountButton
+          userId={user.id}
+          fullName={user.fullName}
+          role={user.role}
+        />
       </CardContent>
     </Card>
   );

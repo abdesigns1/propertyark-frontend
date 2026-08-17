@@ -11,8 +11,14 @@ const AUTO_SCROLL_DELAY = 4_500;
 
 export function SimilarPropertiesCarousel({
   properties,
+  title = "Similar Properties",
+  viewAllHref = "/properties",
+  viewAllLabel = "View All Properties",
 }: {
   properties: Property[];
+  title?: string;
+  viewAllHref?: string;
+  viewAllLabel?: string;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [isInteracting, setIsInteracting] = useState(false);
@@ -85,7 +91,7 @@ export function SimilarPropertiesCarousel({
         id="similar-properties-heading"
         className="text-center text-2xl font-semibold text-foreground sm:text-3xl"
       >
-        Similar Properties
+        {title}
       </h2>
 
       <div
@@ -116,7 +122,7 @@ export function SimilarPropertiesCarousel({
 
       <div className="mt-5 flex flex-col items-center justify-between gap-4 sm:flex-row">
         <Button asChild>
-          <Link href="/properties">View All Properties</Link>
+          <Link href={viewAllHref}>{viewAllLabel}</Link>
         </Button>
 
         <div className="flex items-center gap-3" aria-label="Carousel controls">

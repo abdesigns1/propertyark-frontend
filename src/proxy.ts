@@ -19,6 +19,8 @@ export function proxy(request: NextRequest) {
   const clientGuardedAdminPrefixes = [
     "/admin/users",
     "/admin/properties",
+    "/admin/inspections",
+    "/admin/shortlet-bookings",
     "/admin/kyc",
     "/admin/notifications",
     "/admin/reports",

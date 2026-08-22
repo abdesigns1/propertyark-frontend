@@ -27,6 +27,9 @@ export interface VendorInspection {
   message: string | null;
   requestSentAt: string;
   updatedAt: string | null;
+  satisfactionScore: number | null;
+  feedback: string | null;
+  issueReported: boolean;
 }
 
 export interface VendorInspectionStats {
@@ -39,6 +42,11 @@ export interface VendorInspectionStats {
 export interface VendorInspectionsResult {
   inspections: VendorInspection[];
   stats: VendorInspectionStats;
+}
+
+export interface AdminInspectionsResult extends VendorInspectionsResult {
+  pagination: { page: number; limit: number; total: number; pages: number };
+  issuesReported: number;
 }
 
 export interface ScheduleInspectionInput {
@@ -95,7 +103,13 @@ function preferredDateFromMessage(message: string | null) {
 
 function inspectionRows(value: unknown) {
   if (Array.isArray(value)) return value;
+  const root = record(value);
+  // The inquiry endpoints currently use both `{ data: [] }` and
+  // `{ data: { inquiries: [] } }` envelopes. Preserve the direct array before
+  // `unwrap()` treats it as an object with numeric keys.
+  if (Array.isArray(root.data)) return root.data;
   const source = unwrap(value);
+  if (Array.isArray(source.data)) return source.data;
   for (const key of [
     "inquiries",
     "inspections",
@@ -257,7 +271,75 @@ function normalizeInspection(value: unknown, index: number): VendorInspection {
     message,
     requestSentAt,
     updatedAt: stringFrom(inquiry, ["updatedAt", "reviewedAt", "approvedAt"]),
+    satisfactionScore:
+      numberFrom(inquiry, ["satisfactionScore", "rating", "score"]) || null,
+    feedback: stringFrom(inquiry, ["feedback", "review", "comment"]),
+    issueReported:
+      inquiry.issueReported === true ||
+      inquiry.hasIssue === true ||
+      ["ISSUE_REPORTED", "DISPUTED"].includes(
+        (stringFrom(inquiry, ["status"]) ?? "").toUpperCase(),
+      ),
   };
+}
+
+function paginationFrom(
+  value: unknown,
+  page: number,
+  limit: number,
+  count: number,
+) {
+  const source = unwrap(value);
+  const pagination = record(source.pagination);
+  const total =
+    numberFrom(pagination, ["total", "count"]) ||
+    numberFrom(source, ["total", "count"]) ||
+    count;
+  return {
+    page: numberFrom(pagination, ["page", "currentPage"]) || page,
+    limit: numberFrom(pagination, ["limit", "pageSize"]) || limit,
+    total,
+    pages:
+      numberFrom(pagination, ["pages", "totalPages"]) ||
+      Math.max(1, Math.ceil(total / limit)),
+  };
+}
+
+async function getAdminVendorInquiryPayloads() {
+  const { data } = await api.get<unknown>("/users/", {
+    params: { page: 1, limit: 1000 },
+  });
+  const root = record(data);
+  const payload = record(root.data ?? data);
+  const users = (Array.isArray(payload.users) ? payload.users : []).map(record);
+  const vendorIds = users
+    .filter(
+      (user) =>
+        (stringFrom(user, ["role", "userType"]) ?? "").toUpperCase() ===
+        "VENDOR",
+    )
+    .map((user) => stringFrom(user, ["id", "_id", "userId"]))
+    .filter((id): id is string => Boolean(id));
+
+  // The current backend exposes inquiries per vendor, but not as a global
+  // admin collection. Query vendors in small batches to avoid flooding the API
+  // while still composing the complete inspection management view.
+  const payloads: unknown[] = [];
+  const batchSize = 6;
+  for (let index = 0; index < vendorIds.length; index += batchSize) {
+    const batch = vendorIds.slice(index, index + batchSize);
+    const responses = await Promise.allSettled(
+      batch.map((vendorId) =>
+        api.get("/inquiries/vendor", {
+          params: { vendorId, page: 1, limit: 1000 },
+        }),
+      ),
+    );
+    responses.forEach((response) => {
+      if (response.status === "fulfilled") payloads.push(response.value.data);
+    });
+  }
+  return payloads;
 }
 
 function normalizeStats(
@@ -310,6 +392,79 @@ async function findRecentlyCreatedInquiry(
 }
 
 export const inspectionService = {
+  async getAdminInspections({
+    page = 1,
+    limit = 10,
+  }: {
+    page?: number;
+    limit?: number;
+  } = {}): Promise<AdminInspectionsResult> {
+    const responses = await Promise.allSettled([
+      api.get("/inquiries", { params: { page, limit } }),
+      api.get("/inquiries/vendor", { params: { page, limit } }),
+    ]);
+    const payloads = responses.flatMap((response) =>
+      response.status === "fulfilled" ? [response.value.data] : [],
+    );
+    if (!payloads.length) {
+      const rejection = responses.find(
+        (response): response is PromiseRejectedResult =>
+          response.status === "rejected",
+      );
+      throw rejection?.reason ?? new Error("Inspection records unavailable");
+    }
+
+    const directRows = payloads.flatMap(inspectionRows);
+    const isAggregated = directRows.length === 0;
+    const allPayloads = !isAggregated
+      ? payloads
+      : [...payloads, ...(await getAdminVendorInquiryPayloads())];
+    const uniqueInspections = new Map<string, VendorInspection>();
+    allPayloads.forEach((payload) =>
+      inspectionRows(payload)
+        .map(normalizeInspection)
+        .forEach((inspection) =>
+          uniqueInspections.set(inspection.id, inspection),
+        ),
+    );
+    const allInspections = [...uniqueInspections.values()].sort(
+      (first, second) =>
+        new Date(second.requestSentAt).getTime() -
+        new Date(first.requestSentAt).getTime(),
+    );
+    const inspections = isAggregated
+      ? allInspections.slice((page - 1) * limit, page * limit)
+      : allInspections;
+    const stats = normalizeStats(allPayloads[0], allInspections);
+    const primaryPayload = allPayloads.find(
+      (payload) => inspectionRows(payload).length > 0,
+    );
+    return {
+      inspections,
+      stats,
+      issuesReported: allInspections.filter((item) => item.issueReported)
+        .length,
+      pagination: isAggregated
+        ? {
+            page,
+            limit,
+            total: allInspections.length,
+            pages: Math.max(1, Math.ceil(allInspections.length / limit)),
+          }
+        : paginationFrom(
+            primaryPayload ?? allPayloads[0],
+            page,
+            limit,
+            allInspections.length,
+          ),
+    };
+  },
+  async getAdminInspection(inspectionId: string): Promise<VendorInspection> {
+    const { data } = await api.get(`/inquiries/${inspectionId}`);
+    const source = unwrap(data);
+    const candidate = source.inquiry ?? source.inspection ?? source;
+    return normalizeInspection(candidate, 0);
+  },
   async getBuyerInspections(): Promise<VendorInspectionsResult> {
     const { data } = await api.get("/inquiries/my", {
       params: { page: 1, limit: 100 },
@@ -446,7 +601,7 @@ export const inspectionService = {
     }
   },
   complete: async (inspectionId: string) => {
-    const { data } = await api.patch(`/users/${inspectionId}/complete`);
+    const { data } = await api.patch(`/users/${inspectionId}/complete`, {});
     return data;
   },
   schedule: async (input: ScheduleInspectionInput) => {

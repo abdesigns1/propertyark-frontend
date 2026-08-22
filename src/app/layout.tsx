@@ -23,6 +23,16 @@ export const metadata: Metadata = {
   },
   description:
     "PropertyArk is a verified property marketplace where buyers browse, inspect, and invest in real estate, and vendors list and manage properties — all in one platform.",
+  icons: {
+    icon: [
+      {
+        url: "/property%20arc%20logo-7.png",
+        type: "image/png",
+      },
+    ],
+    shortcut: "/property%20arc%20logo-7.png",
+    apple: "/property%20arc%20logo-7.png",
+  },
 };
 
 export default function RootLayout({

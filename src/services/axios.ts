@@ -62,7 +62,13 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         useAuthStore.getState().clearAuth();
-        window.location.href = "/login";
+        // Keep admin routes inside the admin authentication flow. Falling back
+        // to the public login loses the intended admin destination and can
+        // incorrectly treat administrator credentials as a public session.
+        const isAdminRoute = window.location.pathname.startsWith("/admin");
+        const loginPath = isAdminRoute ? "/admin/login" : "/login";
+        const redirect = `${window.location.pathname}${window.location.search}`;
+        window.location.href = `${loginPath}?redirect=${encodeURIComponent(redirect)}`;
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

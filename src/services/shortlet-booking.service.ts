@@ -22,6 +22,34 @@ export interface ShortletBooking {
   checkInTime?: string;
   checkOutTime?: string;
   requestedAt?: string;
+  guestId?: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  adults?: number;
+  children?: number;
+  vendorId?: string;
+  vendorName?: string;
+  vendorEmail?: string;
+  vendorPhone?: string;
+  propertyImageUrl?: string;
+  propertyLocation?: string;
+  propertyType?: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
+  transactionReference?: string;
+}
+
+export interface AdminShortletBookingsResult {
+  bookings: ShortletBooking[];
+  stats: {
+    total: number;
+    pending: number;
+    upcoming: number;
+    checkedIn: number;
+    completed: number;
+    cancelled: number;
+  };
+  pagination: { page: number; limit: number; total: number; pages: number };
 }
 
 export interface ShortletCalendarEvent {
@@ -111,6 +139,8 @@ function numberFrom(source: UnknownRecord, keys: string[]) {
 
 function findBookings(value: unknown): unknown[] {
   if (Array.isArray(value)) return value;
+  const root = asRecord(value);
+  if (Array.isArray(root.data)) return root.data;
   const source = unwrap(value);
   for (const key of [
     "bookings",
@@ -170,6 +200,12 @@ function normalizeBooking(value: unknown, index: number): ShortletBooking {
     booking.guest ?? booking.user ?? booking.customer ?? booking.bookedBy,
   );
   const property = asRecord(booking.property ?? booking.shortlet);
+  const vendor = asRecord(
+    booking.vendor ?? booking.host ?? property.vendor ?? property.owner,
+  );
+  const media = Array.isArray(property.media)
+    ? property.media.map(asRecord)
+    : [];
   const firstName =
     stringFrom(booking, ["firstName", "guestFirstName"]) ??
     stringFrom(guest, ["firstName"]);
@@ -231,7 +267,86 @@ function normalizeBooking(value: unknown, index: number): ShortletBooking {
     requestedAt:
       stringFrom(booking, ["createdAt", "requestedAt", "bookedAt"]) ??
       undefined,
+    guestId:
+      stringFrom(booking, ["guestId", "userId"]) ??
+      stringFrom(guest, ["id", "_id"]) ??
+      undefined,
+    guestEmail:
+      stringFrom(booking, ["email", "guestEmail"]) ??
+      stringFrom(guest, ["email"]) ??
+      undefined,
+    guestPhone:
+      stringFrom(booking, ["phone", "guestPhone"]) ??
+      stringFrom(guest, ["phone", "phoneNumber"]) ??
+      undefined,
+    adults: numberFrom(booking, ["adult", "adults", "adultGuests"]),
+    children: numberFrom(booking, ["child", "children", "childGuests"]),
+    vendorId:
+      stringFrom(booking, ["vendorId", "hostId"]) ??
+      stringFrom(vendor, ["id", "_id"]) ??
+      undefined,
+    vendorName:
+      stringFrom(booking, ["vendorName", "hostName"]) ??
+      stringFrom(vendor, ["fullName", "name", "businessName"]) ??
+      undefined,
+    vendorEmail:
+      stringFrom(booking, ["vendorEmail"]) ??
+      stringFrom(vendor, ["email"]) ??
+      undefined,
+    vendorPhone:
+      stringFrom(booking, ["vendorPhone"]) ??
+      stringFrom(vendor, ["phone", "phoneNumber"]) ??
+      undefined,
+    propertyImageUrl:
+      stringFrom(booking, ["propertyImage", "propertyImageUrl"]) ??
+      stringFrom(property, ["image", "imageUrl", "thumbnail"]) ??
+      stringFrom(
+        media.find((item) => item.isPrimary === true) ?? media[0] ?? {},
+        ["url", "imageUrl"],
+      ) ??
+      undefined,
+    propertyLocation:
+      stringFrom(booking, ["propertyLocation", "location"]) ??
+      ([stringFrom(property, ["address"]), stringFrom(property, ["city"])]
+        .filter(Boolean)
+        .join(", ") ||
+        undefined),
+    propertyType: stringFrom(property, ["type", "propertyType"]) ?? undefined,
+    paymentStatus:
+      stringFrom(booking, ["paymentStatus", "paymentState"]) ?? undefined,
+    paymentMethod:
+      stringFrom(booking, ["paymentMethod", "paymentProvider"]) ?? undefined,
+    transactionReference:
+      stringFrom(booking, [
+        "transactionReference",
+        "paymentReference",
+        "reference",
+      ]) ?? undefined,
   };
+}
+
+async function adminVendorBookingPayloads() {
+  const { data } = await api.get<unknown>("/users/", {
+    params: { page: 1, limit: 1000 },
+  });
+  const payload = asRecord(asRecord(data).data ?? data);
+  const vendors = (Array.isArray(payload.users) ? payload.users : [])
+    .map(asRecord)
+    .filter(
+      (user) =>
+        (stringFrom(user, ["role", "userType"]) ?? "").toUpperCase() ===
+        "VENDOR",
+    );
+  const responses = await Promise.allSettled(
+    vendors.map((vendor) =>
+      api.get("/shortlet-bookings/vendor-stats", {
+        params: { vendorId: stringFrom(vendor, ["id", "_id"]) },
+      }),
+    ),
+  );
+  return responses.flatMap((response) =>
+    response.status === "fulfilled" ? [response.value.data] : [],
+  );
 }
 
 function normalizeDashboard(value: unknown): ShortletDashboardData {
@@ -334,6 +449,55 @@ function normalizeDashboard(value: unknown): ShortletDashboardData {
 }
 
 export const shortletBookingService = {
+  async getAdminBookings({
+    page = 1,
+    limit = 10,
+  } = {}): Promise<AdminShortletBookingsResult> {
+    const direct = await api
+      .get("/shortlet-bookings/vendor-stats", {
+        params: { page: 1, limit: 1000 },
+      })
+      .then((response) => response.data)
+      .catch(() => null);
+    const directRows = direct ? findBookings(direct) : [];
+    const payloads = directRows.length
+      ? [direct]
+      : [...(direct ? [direct] : []), ...(await adminVendorBookingPayloads())];
+    const records = new Map<string, ShortletBooking>();
+    payloads.forEach((payload) =>
+      findBookings(payload)
+        .map(normalizeBooking)
+        .forEach((booking) => records.set(booking.id, booking)),
+    );
+    const all = [...records.values()].sort(
+      (first, second) =>
+        new Date(second.requestedAt ?? second.checkIn).getTime() -
+        new Date(first.requestedAt ?? first.checkIn).getTime(),
+    );
+    const count = (...statuses: ShortletBookingStatus[]) =>
+      all.filter((booking) => statuses.includes(booking.status)).length;
+    return {
+      bookings: all.slice((page - 1) * limit, page * limit),
+      stats: {
+        total: all.length,
+        pending: count("PENDING"),
+        upcoming: count("CONFIRMED"),
+        checkedIn: count("CHECKED_IN"),
+        completed: count("COMPLETED"),
+        cancelled: count("CANCELLED"),
+      },
+      pagination: {
+        page,
+        limit,
+        total: all.length,
+        pages: Math.max(1, Math.ceil(all.length / limit)),
+      },
+    };
+  },
+  async getAdminBooking(bookingId: string) {
+    const result = await this.getAdminBookings({ page: 1, limit: 1000 });
+    return result.bookings.find((booking) => booking.id === bookingId) ?? null;
+  },
   async create(input: CreateShortletBookingInput) {
     const { data } = await api.post("/shortlet-bookings", input);
     return data;

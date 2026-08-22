@@ -61,6 +61,7 @@ import {
   vendorPropertiesQueryKey,
 } from "@/features/vendor/hooks/use-vendor-properties";
 import type { PropertyMediaResponse } from "@/features/properties/types/api";
+import { getAmenityIcon } from "@/features/properties/utils/amenity-icons";
 import {
   PropertyFileList,
   PropertyStepper,
@@ -417,11 +418,13 @@ export function AddPropertyWizard({
     // The property endpoint accepts one multipart request containing fields,
     // property media, and legal documents.
     const form = new FormData();
-    Object.entries({
+    const propertyFields = {
       name: values.name.trim(),
       description: values.description.trim(),
       type: values.type,
       listingType: values.listingType,
+      // `status` is the property's availability state. The backend separately
+      // resets the admin-controlled `listingStatus` to PENDING on resubmission.
       status: "AVAILABLE",
       address: values.address.trim(),
       city: values.city.trim(),
@@ -433,7 +436,11 @@ export function AddPropertyWizard({
       bathrooms: values.bathrooms || "0",
       [PRICE_FIELDS[values.listingType]]: values.price,
       amenities: JSON.stringify(values.amenities),
-    }).forEach(([key, value]) => form.append(key, value));
+    };
+    Object.entries(propertyFields).forEach(([key, value]) =>
+      form.append(key, value),
+    );
+
     if (isEditing) {
       // Keep edit media in the PATCH request instead of calling the backend's
       // bulk media endpoint, which currently fails when resolving uploaded IDs.
@@ -460,7 +467,16 @@ export function AddPropertyWizard({
         queryClient.invalidateQueries({
           queryKey: ["properties", "available"],
         }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "properties"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] }),
       ];
+      if (initialPropertyId) {
+        invalidations.push(
+          queryClient.invalidateQueries({
+            queryKey: ["admin", "property", initialPropertyId],
+          }),
+        );
+      }
       if (accountKey) {
         invalidations.push(
           queryClient.invalidateQueries({
@@ -822,30 +838,37 @@ export function AddPropertyWizard({
                       className="flex flex-wrap gap-2"
                       aria-label="Added property amenities"
                     >
-                      {values.amenities.map((item) => (
-                        <Badge
-                          key={item}
-                          variant="outline"
-                          className="gap-2 px-3 py-1.5 text-sm"
-                        >
-                          <span>{item}</span>
-                          <button
-                            type="button"
-                            className="rounded-full text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            aria-label={`Remove ${item}`}
-                            onClick={() =>
-                              update(
-                                "amenities",
-                                values.amenities.filter(
-                                  (entry) => entry !== item,
-                                ),
-                              )
-                            }
+                      {values.amenities.map((item) => {
+                        const AmenityIcon = getAmenityIcon(item);
+                        return (
+                          <Badge
+                            key={item}
+                            variant="outline"
+                            className="gap-2 px-3 py-1.5 text-sm"
                           >
-                            <X className="size-3.5" aria-hidden="true" />
-                          </button>
-                        </Badge>
-                      ))}
+                            <AmenityIcon
+                              className="size-4 text-primary"
+                              aria-hidden="true"
+                            />
+                            <span>{item}</span>
+                            <button
+                              type="button"
+                              className="rounded-full text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              aria-label={`Remove ${item}`}
+                              onClick={() =>
+                                update(
+                                  "amenities",
+                                  values.amenities.filter(
+                                    (entry) => entry !== item,
+                                  ),
+                                )
+                              }
+                            >
+                              <X className="size-3.5" aria-hidden="true" />
+                            </button>
+                          </Badge>
+                        );
+                      })}
                     </div>
                   )}
                 </Field>

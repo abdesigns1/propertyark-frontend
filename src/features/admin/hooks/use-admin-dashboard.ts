@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { adminService } from "@/services/admin.service";
 import { propertyService } from "@/services/property.service";
 import { inspectionService } from "@/services/inspection.service";
+import { shortletBookingService } from "@/services/shortlet-booking.service";
 
 export function useAdminDashboard() {
   return useQuery({
@@ -149,6 +150,44 @@ export function useAdminProperty(propertyId: string) {
       };
     },
     enabled: Boolean(propertyId),
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminInspections(page: number, limit = 10) {
+  return useQuery({
+    queryKey: ["admin", "inspections", page, limit],
+    queryFn: () => inspectionService.getAdminInspections({ page, limit }),
+    placeholderData: (previous) => previous,
+    staleTime: 30_000,
+    refetchOnMount: "always",
+  });
+}
+
+export function useAdminInspection(inspectionId: string) {
+  return useQuery({
+    queryKey: ["admin", "inspection", inspectionId],
+    queryFn: () => inspectionService.getAdminInspection(inspectionId),
+    enabled: Boolean(inspectionId),
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminShortletBookings(page: number, limit = 10) {
+  return useQuery({
+    queryKey: ["admin", "shortlet-bookings", page, limit],
+    queryFn: () => shortletBookingService.getAdminBookings({ page, limit }),
+    placeholderData: (previous) => previous,
+    staleTime: 30_000,
+    refetchOnMount: "always",
+  });
+}
+
+export function useAdminShortletBooking(bookingId: string) {
+  return useQuery({
+    queryKey: ["admin", "shortlet-booking", bookingId],
+    queryFn: () => shortletBookingService.getAdminBooking(bookingId),
+    enabled: Boolean(bookingId),
     staleTime: 30_000,
   });
 }

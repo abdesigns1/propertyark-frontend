@@ -69,6 +69,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -84,6 +92,7 @@ import {
 } from "@/features/vendor/hooks/use-vendor-inspections";
 import { useVendorProperties } from "@/features/vendor/hooks/use-vendor-properties";
 import { ScheduleInspectionDialog } from "@/features/vendor/components/schedule-inspection-dialog";
+import { RescheduleInspectionDialog } from "@/features/vendor/components/reschedule-inspection-dialog";
 import {
   calendarDays,
   calendarEventTone,
@@ -131,6 +140,8 @@ export function VendorInspections() {
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reviewTarget, setReviewTarget] = useState<ReviewTarget | null>(null);
+  const [rescheduleTarget, setRescheduleTarget] =
+    useState<VendorInspection | null>(null);
 
   const inspections = useMemo(
     () => query.data?.inspections ?? [],
@@ -164,16 +175,15 @@ export function VendorInspections() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const selected =
-    inspections.find((inspection) => inspection.id === selectedId) ??
-    visible[0] ??
-    inspections[0] ??
-    null;
+    inspections.find((inspection) => inspection.id === selectedId) ?? null;
   const pending =
     inspections.find((inspection) => inspection.status === "PENDING") ?? null;
   const upcoming =
     [...inspections]
       .filter((inspection) =>
-        ["ACCEPTED", "CONFIRMED", "SCHEDULED"].includes(inspection.status),
+        ["ACCEPTED", "CONFIRMED", "SCHEDULED", "RESCHEDULED"].includes(
+          inspection.status,
+        ),
       )
       .sort(
         (a, b) =>
@@ -286,6 +296,7 @@ export function VendorInspections() {
                     ["all", "Status: All"],
                     ["PENDING", "Pending"],
                     ["ACCEPTED", "Confirmed"],
+                    ["RESCHEDULED", "Rescheduled"],
                     ["COMPLETED", "Completed"],
                     ["DECLINED", "Declined"],
                     ["CANCELLED", "Cancelled"],
@@ -344,6 +355,7 @@ export function VendorInspections() {
               onReview={(inspection, decision) =>
                 setReviewTarget({ inspection, decision })
               }
+              onReschedule={setRescheduleTarget}
             />
           ) : (
             <Empty className="min-h-[420px] rounded-xl border">
@@ -369,7 +381,7 @@ export function VendorInspections() {
         </main>
 
         {view === "list" && (
-          <aside className="min-w-0 space-y-5">
+          <aside className="min-w-0 self-start xl:sticky xl:top-24">
             <Reminders
               upcoming={upcoming}
               pending={pending}
@@ -378,19 +390,21 @@ export function VendorInspections() {
               }
               onSelect={setSelectedId}
             />
-            {selected && (
-              <InspectionDetails
-                inspection={selected}
-                onClose={() => setSelectedId(null)}
-                reviewPending={review.isPending}
-                onReview={(inspection, decision) =>
-                  setReviewTarget({ inspection, decision })
-                }
-              />
-            )}
           </aside>
         )}
       </div>
+
+      {selected && (
+        <InspectionDetails
+          inspection={selected}
+          onClose={() => setSelectedId(null)}
+          reviewPending={review.isPending}
+          onReview={(inspection, decision) =>
+            setReviewTarget({ inspection, decision })
+          }
+          onReschedule={setRescheduleTarget}
+        />
+      )}
 
       <ScheduleInspectionDialog
         open={scheduleOpen}
@@ -416,6 +430,13 @@ export function VendorInspections() {
             },
             { onSuccess: () => setReviewTarget(null) },
           );
+        }}
+      />
+      <RescheduleInspectionDialog
+        key={rescheduleTarget?.id ?? "closed-reschedule-dialog"}
+        inspection={rescheduleTarget}
+        onOpenChange={(open) => {
+          if (!open) setRescheduleTarget(null);
         }}
       />
     </div>
@@ -502,6 +523,7 @@ function InspectionTableCard({
   onPageChange,
   onSelect,
   onReview,
+  onReschedule,
 }: {
   inspections: VendorInspection[];
   total: number;
@@ -511,6 +533,7 @@ function InspectionTableCard({
   onPageChange: (page: number) => void;
   onSelect: (id: string) => void;
   onReview: RequestReview;
+  onReschedule: (inspection: VendorInspection) => void;
 }) {
   return (
     <Card className="min-w-0 gap-0 overflow-hidden py-0">
@@ -589,6 +612,7 @@ function InspectionTableCard({
                   <InspectionActionsMenu
                     inspection={inspection}
                     onReview={onReview}
+                    onReschedule={onReschedule}
                   />
                 </TableCell>
               </TableRow>
@@ -701,11 +725,20 @@ function Reminders({
 function InspectionActionsMenu({
   inspection,
   onReview,
+  onReschedule,
 }: {
   inspection: VendorInspection;
   onReview: RequestReview;
+  onReschedule: (inspection: VendorInspection) => void;
 }) {
   const pending = inspection.status === "PENDING";
+  const reschedulable = [
+    "PENDING",
+    "ACCEPTED",
+    "CONFIRMED",
+    "SCHEDULED",
+    "RESCHEDULED",
+  ].includes(inspection.status);
 
   return (
     <DropdownMenu>
@@ -740,20 +773,16 @@ function InspectionActionsMenu({
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem onSelect={notifyRescheduleUnavailable}>
+          <DropdownMenuItem
+            disabled={!reschedulable}
+            onSelect={() => onReschedule(inspection)}
+          >
             <CalendarClock /> Reschedule inspection
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
-
-function notifyRescheduleUnavailable() {
-  toast.info("Rescheduling is not available yet", {
-    description:
-      "The backend needs an inspection reschedule endpoint before this date can be changed safely.",
-  });
 }
 
 function ReviewInspectionDialog({
@@ -849,170 +878,184 @@ function InspectionDetails({
   onClose,
   reviewPending,
   onReview,
+  onReschedule,
 }: {
   inspection: VendorInspection;
   onClose: () => void;
   reviewPending: boolean;
   onReview: RequestReview;
+  onReschedule: (inspection: VendorInspection) => void;
 }) {
   const pending = inspection.status === "PENDING";
 
   return (
-    <Card className="gap-5">
-      <CardHeader className="flex-row items-start justify-between">
-        <CardTitle className="text-xl">Inspection Details</CardTitle>
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          aria-label="Close details"
-          onClick={onClose}
-        >
-          <X />
-        </Button>
-      </CardHeader>
-      <Separator />
-      <CardContent className="space-y-6">
-        <DetailLabel>Buyer information</DetailLabel>
-        <div className="flex items-center gap-3">
-          <Avatar>
-            {inspection.userAvatarUrl && (
-              <AvatarImage
-                src={inspection.userAvatarUrl}
-                alt={inspection.userName}
-              />
-            )}
-            <AvatarFallback>{nameInitials(inspection.userName)}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
-            <p className="font-semibold">{inspection.userName}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {inspection.userEmail ?? "PropertyArk user"}
-            </p>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            asChild={Boolean(inspection.userEmail)}
-            variant="outline"
-            size="sm"
-            disabled={!inspection.userEmail}
-          >
-            {inspection.userEmail ? (
-              <a href={`mailto:${inspection.userEmail}`}>
-                <Mail /> Email
-              </a>
-            ) : (
-              <span>
-                <Mail /> Email
-              </span>
-            )}
-          </Button>
-          <Button
-            asChild={Boolean(inspection.userPhone)}
-            variant="outline"
-            size="sm"
-            disabled={!inspection.userPhone}
-          >
-            {inspection.userPhone ? (
-              <a href={`tel:${inspection.userPhone}`}>
-                <Phone /> Call
-              </a>
-            ) : (
-              <span>
-                <Phone /> Call
-              </span>
-            )}
-          </Button>
-        </div>
-
-        <div>
-          <DetailLabel>Property</DetailLabel>
-          <div className="mt-2 flex items-center gap-3 rounded-lg bg-surface p-3">
-            <Avatar className="size-11 rounded-md">
-              {inspection.propertyImageUrl && (
+    <Sheet open onOpenChange={(open) => !open && onClose()}>
+      <SheetContent
+        side="right"
+        className="w-full gap-0 sm:max-w-md"
+        aria-describedby="vendor-inspection-details-description"
+      >
+        <SheetHeader className="border-b px-6 py-5 pr-14">
+          <SheetTitle className="text-xl">Inspection Details</SheetTitle>
+          <SheetDescription id="vendor-inspection-details-description">
+            {inspectionCode(inspection)} · {statusLabel(inspection.status)}
+          </SheetDescription>
+        </SheetHeader>
+        <Separator />
+        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6">
+          <DetailLabel>Buyer information</DetailLabel>
+          <div className="flex items-center gap-3">
+            <Avatar>
+              {inspection.userAvatarUrl && (
                 <AvatarImage
-                  className="rounded-md object-cover"
-                  src={inspection.propertyImageUrl}
-                  alt={inspection.propertyName}
+                  src={inspection.userAvatarUrl}
+                  alt={inspection.userName}
                 />
               )}
-              <AvatarFallback className="rounded-md bg-background text-primary">
-                <Building2 className="size-5" />
+              <AvatarFallback>
+                {nameInitials(inspection.userName)}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">
-                {inspection.propertyName}
-              </p>
+              <p className="font-semibold">{inspection.userName}</p>
               <p className="truncate text-xs text-muted-foreground">
-                {inspection.location}
+                {inspection.userEmail ?? "PropertyArk user"}
               </p>
             </div>
           </div>
-        </div>
-
-        <div>
-          <DetailLabel>Notes</DetailLabel>
-          <div className="mt-2 rounded-lg border border-warning/20 bg-warning/10 p-3 text-sm leading-6">
-            {inspection.message ??
-              "No notes were provided with this inspection request."}
-          </div>
-        </div>
-
-        <div>
-          <DetailLabel>Timeline</DetailLabel>
-          <div className="mt-3 space-y-4 border-l pl-4">
-            <TimelineItem
-              active
-              title={statusLabel(inspection.status)}
-              date={formatTimelineDate(
-                inspection.updatedAt ?? inspection.inspectionDate,
-              )}
-            />
-            <TimelineItem
-              title="Request sent"
-              date={formatTimelineDate(inspection.requestSentAt)}
-            />
-          </div>
-        </div>
-      </CardContent>
-      <CardFooter className="flex-col gap-2 bg-card pt-4">
-        {pending && (
-          <div className="grid w-full grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button
-              disabled={reviewPending}
-              onClick={() => onReview(inspection, "ACCEPTED")}
+              asChild={Boolean(inspection.userEmail)}
+              variant="outline"
+              size="sm"
+              disabled={!inspection.userEmail}
             >
-              {reviewPending ? (
-                <LoaderCircle
-                  data-icon="inline-start"
-                  className="animate-spin"
-                />
+              {inspection.userEmail ? (
+                <a href={`mailto:${inspection.userEmail}`}>
+                  <Mail /> Email
+                </a>
               ) : (
-                <Check data-icon="inline-start" />
+                <span>
+                  <Mail /> Email
+                </span>
               )}
-              Confirm
             </Button>
             <Button
-              variant="destructive"
-              disabled={reviewPending}
-              onClick={() => onReview(inspection, "DECLINED")}
+              asChild={Boolean(inspection.userPhone)}
+              variant="outline"
+              size="sm"
+              disabled={!inspection.userPhone}
             >
-              <X data-icon="inline-start" />
-              Reject
+              {inspection.userPhone ? (
+                <a href={`tel:${inspection.userPhone}`}>
+                  <Phone /> Call
+                </a>
+              ) : (
+                <span>
+                  <Phone /> Call
+                </span>
+              )}
             </Button>
           </div>
-        )}
-        <Button
-          className="w-full"
-          variant={pending ? "outline" : "default"}
-          onClick={notifyRescheduleUnavailable}
-        >
-          <CalendarClock data-icon="inline-start" />
-          Reschedule Inspection
-        </Button>
-      </CardFooter>
-    </Card>
+
+          <div>
+            <DetailLabel>Property</DetailLabel>
+            <div className="mt-2 flex items-center gap-3 rounded-lg bg-surface p-3">
+              <Avatar className="size-11 rounded-md">
+                {inspection.propertyImageUrl && (
+                  <AvatarImage
+                    className="rounded-md object-cover"
+                    src={inspection.propertyImageUrl}
+                    alt={inspection.propertyName}
+                  />
+                )}
+                <AvatarFallback className="rounded-md bg-background text-primary">
+                  <Building2 className="size-5" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">
+                  {inspection.propertyName}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {inspection.location}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <DetailLabel>Notes</DetailLabel>
+            <div className="mt-2 rounded-lg border border-warning/20 bg-warning/10 p-3 text-sm leading-6">
+              {inspection.message ??
+                "No notes were provided with this inspection request."}
+            </div>
+          </div>
+
+          <div>
+            <DetailLabel>Timeline</DetailLabel>
+            <div className="mt-3 space-y-4 border-l pl-4">
+              <TimelineItem
+                active
+                title={statusLabel(inspection.status)}
+                date={formatTimelineDate(
+                  inspection.updatedAt ?? inspection.inspectionDate,
+                )}
+              />
+              <TimelineItem
+                title="Request sent"
+                date={formatTimelineDate(inspection.requestSentAt)}
+              />
+            </div>
+          </div>
+        </div>
+        <SheetFooter className="border-t bg-background px-6 py-5">
+          {pending && (
+            <div className="grid w-full grid-cols-2 gap-2">
+              <Button
+                disabled={reviewPending}
+                onClick={() => onReview(inspection, "ACCEPTED")}
+              >
+                {reviewPending ? (
+                  <LoaderCircle
+                    data-icon="inline-start"
+                    className="animate-spin"
+                  />
+                ) : (
+                  <Check data-icon="inline-start" />
+                )}
+                Confirm
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={reviewPending}
+                onClick={() => onReview(inspection, "DECLINED")}
+              >
+                <X data-icon="inline-start" />
+                Reject
+              </Button>
+            </div>
+          )}
+          <Button
+            className="w-full"
+            variant={pending ? "outline" : "default"}
+            disabled={
+              ![
+                "PENDING",
+                "ACCEPTED",
+                "CONFIRMED",
+                "SCHEDULED",
+                "RESCHEDULED",
+              ].includes(inspection.status)
+            }
+            onClick={() => onReschedule(inspection)}
+          >
+            <CalendarClock data-icon="inline-start" />
+            Reschedule Inspection
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
 

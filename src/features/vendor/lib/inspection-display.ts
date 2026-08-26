@@ -4,6 +4,7 @@ const STATUS_LABELS: Record<string, string> = {
   ACCEPTED: "Confirmed",
   CONFIRMED: "Confirmed",
   SCHEDULED: "Scheduled",
+  RESCHEDULED: "Rescheduled",
   PENDING: "Pending",
   COMPLETED: "Completed",
   DECLINED: "Declined",

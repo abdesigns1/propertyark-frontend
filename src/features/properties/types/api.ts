@@ -5,6 +5,13 @@ export interface PropertyMediaResponse {
   isPrimary: boolean;
 }
 
+export interface PropertyBookedSlotResponse {
+  id: string;
+  checkInDate: string;
+  checkOutDate: string;
+  status: string;
+}
+
 export interface PropertyApiItem {
   id: string;
   name: string;
@@ -43,6 +50,7 @@ export interface PropertyApiItem {
   createdAt: string;
   updatedAt?: string;
   media?: PropertyMediaResponse[];
+  bookedSlots?: PropertyBookedSlotResponse[];
   priceDisplay?: string;
   approvalStatus?: string;
   reviewStatus?: string;

@@ -67,3 +67,25 @@ export function useScheduleInspection() {
       ),
   });
 }
+
+export function useRescheduleInspection() {
+  const accountKey = useAccountKey();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: inspectionService.reschedule,
+    onSuccess: () => {
+      toast.success("Inspection rescheduled successfully.", {
+        description: "The buyer will be notified of the new date and time.",
+      });
+      queryClient.invalidateQueries({
+        queryKey: vendorInspectionsQueryKey(accountKey ?? "unresolved-session"),
+      });
+      queryClient.invalidateQueries({ queryKey: ["vendor", "dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+    onError: (error) =>
+      toast.error(
+        getApiErrorMessage(error, "The inspection could not be rescheduled."),
+      ),
+  });
+}

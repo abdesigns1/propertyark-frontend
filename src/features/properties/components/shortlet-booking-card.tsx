@@ -14,6 +14,7 @@ import {
   isWithinInterval,
   parseISO,
   setDate,
+  subDays,
   startOfDay,
   startOfMonth,
   startOfWeek,
@@ -48,8 +49,6 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth.store";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const UNAVAILABLE_DATES: Date[] = [];
-
 export function ShortletBookingCard({ property }: { property: Property }) {
   const router = useRouter();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -63,9 +62,28 @@ export function ShortletBookingCard({ property }: { property: Property }) {
   const [guestPickerOpen, setGuestPickerOpen] = useState(false);
   const guests = adults + children;
 
-  // Keep this empty until the API exposes property-specific blocked/booked dates.
-  // Appointment availability cannot safely be used because it is not scoped to a property.
-  const unavailableDates = UNAVAILABLE_DATES;
+  const unavailableDates = useMemo(
+    () =>
+      (property.unavailableDateRanges ?? []).flatMap(({ start, end }) => {
+        const firstNight = startOfDay(parseISO(start));
+        const checkout = startOfDay(parseISO(end));
+        if (
+          Number.isNaN(firstNight.getTime()) ||
+          Number.isNaN(checkout.getTime()) ||
+          !isBefore(firstNight, checkout)
+        ) {
+          return [];
+        }
+
+        // A stay occupies each night from check-in up to, but not including,
+        // checkout. The checkout date can therefore be selected by the next guest.
+        return eachDayOfInterval({
+          start: firstNight,
+          end: subDays(checkout, 1),
+        });
+      }),
+    [property.unavailableDateRanges],
+  );
 
   const calendarDays = useMemo(
     () =>
@@ -85,7 +103,9 @@ export function ShortletBookingCard({ property }: { property: Property }) {
 
   function rangeContainsUnavailable(start: Date, end: Date) {
     if (!isBefore(start, end)) return false;
-    return eachDayOfInterval({ start, end }).some(isUnavailable);
+    return eachDayOfInterval({ start, end: subDays(end, 1) }).some(
+      isUnavailable,
+    );
   }
 
   function updateCheckIn(value: string) {
@@ -113,10 +133,7 @@ export function ShortletBookingCard({ property }: { property: Property }) {
       toast.error("Check-out must be after check-in.");
       return;
     }
-    if (
-      isUnavailable(nextDate) ||
-      rangeContainsUnavailable(checkIn, nextDate)
-    ) {
+    if (rangeContainsUnavailable(checkIn, nextDate)) {
       toast.error("Your stay includes an unavailable date.");
       return;
     }

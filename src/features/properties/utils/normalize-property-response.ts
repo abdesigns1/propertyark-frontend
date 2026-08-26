@@ -28,6 +28,15 @@ const STATUS_MAP: Record<string, PropertyStatus> = {
   OCCUPIED: "rented",
 };
 
+const BLOCKING_BOOKING_STATUSES = new Set([
+  "PENDING",
+  "APPROVED",
+  "ACCEPTED",
+  "CONFIRMED",
+  "PAID",
+  "CHECKED_IN",
+]);
+
 function getPrice(property: PropertyApiItem) {
   if (property.listingType === "FOR_RENT") return property.rentAmount ?? 0;
   if (property.listingType === "FOR_SALE") return property.salePrice ?? 0;
@@ -97,5 +106,14 @@ export function normalizePropertyResponse(property: PropertyApiItem): Property {
     isVerified: true,
     createdAt: property.createdAt,
     updatedAt: property.updatedAt,
+    unavailableDateRanges: (property.bookedSlots ?? [])
+      .filter((slot) =>
+        BLOCKING_BOOKING_STATUSES.has(slot.status.toUpperCase()),
+      )
+      .filter((slot) => slot.checkInDate && slot.checkOutDate)
+      .map((slot) => ({
+        start: slot.checkInDate,
+        end: slot.checkOutDate,
+      })),
   };
 }

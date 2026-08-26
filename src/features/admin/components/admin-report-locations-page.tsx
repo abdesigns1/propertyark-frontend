@@ -111,7 +111,6 @@ export function AdminReportLocationsPage() {
           <LocationMap
             locations={filteredLocations}
             selected={selectedLocation}
-            onSelect={setSelectedLocation}
           />
           <Card className="min-h-[640px] py-0">
             <CardHeader className="border-b py-5">
@@ -250,96 +249,41 @@ function LocationStat({
 function LocationMap({
   locations,
   selected,
-  onSelect,
 }: {
   locations: ReportLocation[];
   selected: string | null;
-  onSelect: (location: string) => void;
 }) {
+  const activeLocation =
+    selected ?? topMapLocation(locations)?.location ?? "Nigeria";
+  const mapUrl = `https://maps.google.com/maps?q=${encodeURIComponent(activeLocation)}&z=12&output=embed`;
+
   return (
-    <Card className="min-h-[640px] bg-muted/30 py-0">
+    <Card className="min-h-[640px] overflow-hidden bg-muted/30 py-0">
       <CardHeader className="border-b bg-card py-5">
         <CardTitle>Performance Map</CardTitle>
         <CardDescription>
-          Select a marker to highlight its table record.
+          Select a table record to explore that market on the map.
         </CardDescription>
       </CardHeader>
-      <CardContent className="relative min-h-[560px] overflow-hidden p-0">
-        <svg
-          viewBox="0 0 900 560"
-          className="absolute inset-0 size-full"
-          aria-hidden="true"
-        >
-          <defs>
-            <pattern
-              id="map-grid"
-              width="64"
-              height="64"
-              patternUnits="userSpaceOnUse"
-            >
-              <path
-                d="M64 0H0V64"
-                fill="none"
-                stroke="currentColor"
-                strokeOpacity=".08"
-              />
-            </pattern>
-          </defs>
-          <rect width="900" height="560" fill="url(#map-grid)" />
-          <path
-            d="M-30 420 C120 330 180 445 330 330 S575 220 930 285"
-            fill="none"
-            stroke="currentColor"
-            strokeOpacity=".13"
-            strokeWidth="18"
-          />
-          <path
-            d="M80 -20 C155 125 265 150 390 95 S625 95 720 590"
-            fill="none"
-            stroke="currentColor"
-            strokeOpacity=".1"
-            strokeWidth="10"
-          />
-          <path
-            d="M10 165 C220 235 330 205 470 250 S690 390 920 405"
-            fill="none"
-            stroke="currentColor"
-            strokeOpacity=".08"
-            strokeWidth="6"
-          />
-        </svg>
-        {locations.map((location, index) => {
-          const point = mapPoint(location.location, index);
-          const active = selected === location.location;
-          return (
-            <button
-              key={location.location}
-              type="button"
-              aria-label={`Select ${location.location}`}
-              onClick={() => onSelect(location.location)}
-              className={cn(
-                "absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-background bg-primary shadow-lg transition-transform hover:scale-110",
-                active ? "size-8 scale-110" : "size-5",
-              )}
-              style={{ left: `${point.x}%`, top: `${point.y}%` }}
-            >
-              <span className="sr-only">{location.location}</span>
-            </button>
-          );
-        })}
+      <CardContent className="relative min-h-[560px] overflow-hidden bg-muted p-0">
+        <iframe
+          key={activeLocation}
+          title={`Map showing ${activeLocation}`}
+          src={mapUrl}
+          className="absolute inset-0 size-full border-0"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          allowFullScreen
+        />
         <div className="absolute bottom-5 left-5 max-w-72 rounded-xl border bg-card/95 p-4 shadow-lg backdrop-blur">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Selected market
           </p>
-          <p className="mt-1 font-semibold">
-            {selected ??
-              topMapLocation(locations)?.location ??
-              "Select a marker"}
-          </p>
-          {selected && (
+          <p className="mt-1 font-semibold">{activeLocation}</p>
+          {activeLocation !== "Nigeria" && (
             <p className="mt-1 text-sm text-muted-foreground">
-              {locations.find((item) => item.location === selected)?.listings ??
-                0}{" "}
+              {locations.find((item) => item.location === activeLocation)
+                ?.listings ?? 0}{" "}
               active listings in this market.
             </p>
           )}
@@ -347,17 +291,6 @@ function LocationMap({
       </CardContent>
     </Card>
   );
-}
-
-function mapPoint(value: string, index: number) {
-  const hash = [...value].reduce(
-    (total, character) => total + character.charCodeAt(0),
-    0,
-  );
-  return {
-    x: 12 + ((hash * 17 + index * 29) % 76),
-    y: 13 + ((hash * 11 + index * 23) % 68),
-  };
 }
 
 function topMapLocation(locations: ReportLocation[]) {

@@ -60,6 +60,10 @@ export interface Property {
   isFeatured?: boolean;
   createdAt: string;
   updatedAt?: string;
+  unavailableDateRanges?: Array<{
+    start: string;
+    end: string;
+  }>;
 }
 
 // For property comparison and search/filter features

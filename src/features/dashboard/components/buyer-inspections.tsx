@@ -98,12 +98,13 @@ import { getApiErrorMessage } from "@/services/api-error";
 import {
   inspectionService,
   type VendorInspection as BuyerInspection,
+  type VendorInspectionsResult,
 } from "@/services/inspection.service";
 import { useAuthStore } from "@/store/auth.store";
 import { cn } from "@/lib/utils";
 
 const BUYER_INSPECTIONS_KEY = ["buyer", "inspections"] as const;
-const ACTIVE_STATUSES = ["ACCEPTED", "CONFIRMED", "SCHEDULED"];
+const ACTIVE_STATUSES = ["ACCEPTED", "CONFIRMED", "SCHEDULED", "RESCHEDULED"];
 const UPCOMING_PAGE_SIZE = 4;
 const HISTORY_PAGE_SIZE = 5;
 const HISTORY_STATUSES = [
@@ -116,6 +117,7 @@ const HISTORY_STATUSES = [
 type HistoryStatus = (typeof HISTORY_STATUSES)[number];
 
 function statusLabel(status: string) {
+  if (status === "RESCHEDULED") return "Rescheduled";
   if (ACTIVE_STATUSES.includes(status)) return "Confirmed";
   if (status === "PENDING") return "Pending";
   if (status === "COMPLETED") return "Completed";
@@ -247,7 +249,7 @@ export function BuyerInspections() {
 
   const completion = useMutation({
     mutationFn: inspectionService.complete,
-    onSuccess: async () => {
+    onSuccess: async (_data, inspectionId) => {
       toast.success("Inspection marked as completed.", {
         description:
           "The vendor can now see that you are satisfied with the property inspection.",
@@ -260,6 +262,38 @@ export function BuyerInspections() {
         queryClient.invalidateQueries({ queryKey: ["vendor", "inspections"] }),
         queryClient.invalidateQueries({ queryKey: ["vendor", "dashboard"] }),
       ]);
+      // The completion mutation is authoritative. Preserve the completed state
+      // immediately even if a read replica briefly returns the pre-completion row.
+      queryClient.setQueryData<VendorInspectionsResult>(
+        BUYER_INSPECTIONS_KEY,
+        (current) => {
+          if (!current) return current;
+          const inspections = current.inspections.map((inspection) =>
+            inspection.id === inspectionId
+              ? { ...inspection, status: "COMPLETED" }
+              : inspection,
+          );
+          return {
+            inspections,
+            stats: {
+              upcoming: inspections.filter((inspection) =>
+                ACTIVE_STATUSES.includes(inspection.status),
+              ).length,
+              pending: inspections.filter(
+                (inspection) => inspection.status === "PENDING",
+              ).length,
+              completed: inspections.filter(
+                (inspection) => inspection.status === "COMPLETED",
+              ).length,
+              declined: inspections.filter((inspection) =>
+                ["DECLINED", "REJECTED", "CANCELLED"].includes(
+                  inspection.status,
+                ),
+              ).length,
+            },
+          };
+        },
+      );
     },
     onError: (error) =>
       toast.error(

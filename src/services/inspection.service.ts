@@ -60,6 +60,12 @@ export interface ScheduleInspectionInput {
   time: string;
 }
 
+export interface RescheduleInspectionInput {
+  inspectionId: string;
+  scheduledDate: string;
+  reason?: string;
+}
+
 function record(value: unknown): UnknownRecord {
   return value && typeof value === "object" ? (value as UnknownRecord) : {};
 }
@@ -91,6 +97,68 @@ function numberFrom(source: UnknownRecord, keys: string[]) {
     }
   }
   return 0;
+}
+
+function booleanFrom(source: UnknownRecord, keys: string[]) {
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value === 1;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (["true", "yes", "1", "completed", "satisfied"].includes(normalized)) {
+        return true;
+      }
+      if (["false", "no", "0"].includes(normalized)) return false;
+    }
+  }
+  return false;
+}
+
+function normalizeInspectionStatus(inquiry: UnknownRecord) {
+  const completion = record(
+    inquiry.completion ?? inquiry.satisfaction ?? inquiry.inspectionCompletion,
+  );
+  const rawStatus = (
+    stringFrom(inquiry, ["status", "inspectionStatus"]) ?? "PENDING"
+  ).toUpperCase();
+  const completionStatus = (
+    stringFrom(completion, ["status", "state"]) ?? ""
+  ).toUpperCase();
+  const completedStatuses = new Set([
+    "COMPLETED",
+    "COMPLETE",
+    "DONE",
+    "CLOSED",
+    "SATISFIED",
+    "SATISFACTORY",
+    "SATISFACTION_CONFIRMED",
+    "SUCCESSFUL",
+  ]);
+  const hasCompletionTimestamp = Boolean(
+    stringFrom(inquiry, [
+      "completedAt",
+      "completionDate",
+      "satisfiedAt",
+      "satisfactionConfirmedAt",
+    ]) ?? stringFrom(completion, ["completedAt", "createdAt", "confirmedAt"]),
+  );
+  const isCompleted =
+    booleanFrom(inquiry, [
+      "isCompleted",
+      "completed",
+      "isSatisfied",
+      "satisfied",
+      "satisfactory",
+      "userSatisfied",
+      "satisfactionConfirmed",
+    ]) ||
+    booleanFrom(completion, ["isCompleted", "completed", "confirmed"]) ||
+    hasCompletionTimestamp ||
+    completedStatuses.has(rawStatus) ||
+    completedStatuses.has(completionStatus);
+
+  return isCompleted ? "COMPLETED" : rawStatus;
 }
 
 function preferredDateFromMessage(message: string | null) {
@@ -266,7 +334,7 @@ function normalizeInspection(value: unknown, index: number): VendorInspection {
     location:
       stringFrom(inquiry, ["location", "meetingLocation"]) ??
       (propertyLocation || "Location not provided"),
-    status: (stringFrom(inquiry, ["status"]) ?? "PENDING").toUpperCase(),
+    status: normalizeInspectionStatus(inquiry),
     meetingType: stringFrom(inquiry, ["meetingType", "inspectionType"]),
     message,
     requestSentAt,
@@ -354,13 +422,18 @@ function normalizeStats(
   return {
     upcoming:
       numberFrom(source, ["upcoming", "accepted", "confirmed", "ACCEPTED"]) ||
-      count("ACCEPTED", "CONFIRMED", "SCHEDULED"),
+      count("ACCEPTED", "CONFIRMED", "SCHEDULED", "RESCHEDULED"),
     pending:
       numberFrom(source, ["pending", "pendingInquiries", "PENDING"]) ||
       count("PENDING"),
     completed:
-      numberFrom(source, ["completed", "completedVisits", "COMPLETED"]) ||
-      count("COMPLETED"),
+      numberFrom(source, [
+        "completed",
+        "completedVisits",
+        "satisfied",
+        "satisfactory",
+        "COMPLETED",
+      ]) || count("COMPLETED"),
     declined:
       numberFrom(source, ["declined", "cancelled", "DECLINED", "CANCELLED"]) ||
       count("DECLINED", "REJECTED", "CANCELLED"),
@@ -602,6 +675,24 @@ export const inspectionService = {
   },
   complete: async (inspectionId: string) => {
     const { data } = await api.patch(`/users/${inspectionId}/complete`, {});
+    return data;
+  },
+  reschedule: async ({
+    inspectionId,
+    scheduledDate,
+    reason,
+  }: RescheduleInspectionInput) => {
+    const url = `/inquiries/${encodeURIComponent(inspectionId)}/review`;
+    const payload = {
+      // The review endpoint accepts ACCEPTED or DECLINED. Re-submitting an
+      // accepted inquiry with a new scheduledDate is the backend's
+      // reschedule operation; RESCHEDULED is a response/display status, not
+      // a valid review command.
+      status: "ACCEPTED",
+      scheduledDate,
+      ...(reason?.trim() ? { reason: reason.trim() } : {}),
+    };
+    const { data } = await api.patch(url, payload);
     return data;
   },
   schedule: async (input: ScheduleInspectionInput) => {

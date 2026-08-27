@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   BadgeCheck,
@@ -29,6 +29,7 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { adminService } from "@/services/admin.service";
+import { useAuthStore } from "@/store/auth.store";
 
 export function AdminKycReviewPage({ requestId }: { requestId: string }) {
   const query = useAdminKycRequest(requestId);
@@ -109,22 +110,12 @@ function KycReview({
             </CardHeader>
             <CardContent className="flex min-h-[600px] items-center justify-center p-8">
               {request.documentUrl ? (
-                isPdfDocument(request.documentUrl, request.documentName) ? (
-                  <iframe
-                    src={request.documentUrl}
-                    title={`NIN document for ${request.fullName}`}
-                    className="min-h-[540px] w-full rounded-md border"
-                  />
-                ) : (
-                  <div className="relative size-full min-h-[540px]">
-                    <Image
-                      src={request.documentUrl}
-                      alt="Submitted NIN document"
-                      fill
-                      className="object-contain"
-                    />
-                  </div>
-                )
+                <AuthenticatedKycDocument
+                  key={request.documentUrl}
+                  url={request.documentUrl}
+                  name={request.documentName}
+                  ownerName={request.fullName}
+                />
               ) : (
                 <div className="text-center text-muted-foreground">
                   <FileBadge className="mx-auto size-12" />
@@ -257,8 +248,89 @@ const verificationChecks = [
   { id: "document-is-valid", label: "Document is not expired" },
 ] as const;
 
-function isPdfDocument(url: string, name: string) {
-  return /\.pdf(?:$|[?#])/i.test(url) || /\.pdf$/i.test(name);
+function AuthenticatedKycDocument({
+  url,
+  name,
+  ownerName,
+}: {
+  url: string;
+  name: string;
+  ownerName: string;
+}) {
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const [document, setDocument] = useState<{
+    objectUrl: string;
+    contentType: string;
+  } | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let objectUrl: string | null = null;
+
+    if (!accessToken) {
+      return () => controller.abort();
+    }
+
+    void fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: "same-origin",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("KYC document request failed");
+        const blob = await response.blob();
+        objectUrl = URL.createObjectURL(blob);
+        setFailed(false);
+        setDocument({ objectUrl, contentType: blob.type });
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setFailed(true);
+        }
+      });
+
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [accessToken, url]);
+
+  if (!accessToken || failed) {
+    return (
+      <div className="text-center text-muted-foreground">
+        <FileBadge className="mx-auto size-12" />
+        <p className="mt-3">This document could not be securely loaded.</p>
+      </div>
+    );
+  }
+
+  if (!document) return <Skeleton className="min-h-[540px] w-full" />;
+
+  if (document.contentType === "application/pdf" || /\.pdf$/i.test(name)) {
+    return (
+      <iframe
+        src={document.objectUrl}
+        title={`Identity document for ${ownerName}`}
+        sandbox=""
+        referrerPolicy="no-referrer"
+        className="min-h-[540px] w-full rounded-md border"
+      />
+    );
+  }
+
+  return (
+    <div className="relative size-full min-h-[540px]">
+      <Image
+        src={document.objectUrl}
+        alt="Submitted identity document"
+        fill
+        unoptimized
+        className="object-contain"
+      />
+    </div>
+  );
 }
 
 function Info({ label, value }: { label: string; value: string }) {

@@ -1,4 +1,9 @@
 import type { NextRequest } from "next/server";
+import {
+  isAllowedMediaContentType,
+  sanitizeMediaPath,
+  secureMediaHeaders,
+} from "@/lib/property-media-security";
 
 const MEDIA_ORIGIN = "https://propertyark-backend.onrender.com";
 
@@ -12,17 +17,15 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> },
 ) {
   const { path } = await params;
-  if (!path.length) {
+  const safePath = sanitizeMediaPath(path);
+  if (!safePath) {
     return Response.json(
-      { message: "Media path is required." },
+      { message: "A valid media path is required." },
       { status: 400 },
     );
   }
 
-  const upstreamUrl = new URL(
-    `/uploads/${path.map(encodeURIComponent).join("/")}`,
-    MEDIA_ORIGIN,
-  );
+  const upstreamUrl = new URL(`/uploads/${safePath.join("/")}`, MEDIA_ORIGIN);
 
   try {
     const requestHeaders = new Headers();
@@ -32,6 +35,7 @@ export async function GET(
     const response = await fetch(upstreamUrl, {
       headers: requestHeaders,
       cache: "no-store",
+      redirect: "error",
     });
     if (!response.ok) {
       return Response.json(
@@ -40,16 +44,19 @@ export async function GET(
       );
     }
 
-    const headers = new Headers();
-    const contentType = response.headers.get("content-type");
-    const contentLength = response.headers.get("content-length");
-    const contentRange = response.headers.get("content-range");
-    const acceptRanges = response.headers.get("accept-ranges");
-    if (contentType) headers.set("content-type", contentType);
-    if (contentLength) headers.set("content-length", contentLength);
-    if (contentRange) headers.set("content-range", contentRange);
-    if (acceptRanges) headers.set("accept-ranges", acceptRanges);
-    headers.set("cache-control", "public, max-age=3600");
+    if (
+      !isAllowedMediaContentType(
+        response.headers.get("content-type"),
+        "property",
+      )
+    ) {
+      return Response.json(
+        { message: "The upstream response is not a supported media type." },
+        { status: 415 },
+      );
+    }
+
+    const headers = secureMediaHeaders(response.headers, "property");
 
     return new Response(response.body, { status: response.status, headers });
   } catch {

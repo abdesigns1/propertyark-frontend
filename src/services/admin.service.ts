@@ -1,4 +1,5 @@
 import { api } from "@/services/axios";
+import { trustedUploadProxyUrl } from "@/lib/property-media-security";
 
 export interface AdminProperty {
   id: string;
@@ -215,24 +216,7 @@ function kycDocumentUrl(...sources: unknown[]): string | null {
 }
 
 function normalizeKycDocumentUrl(url: string) {
-  const trimmed = url.trim();
-
-  try {
-    const parsed = new URL(trimmed);
-    if (
-      parsed.hostname === "propertyark-backend.onrender.com" &&
-      parsed.pathname.startsWith("/uploads/")
-    ) {
-      return `/api/property-media/${parsed.pathname.slice("/uploads/".length)}`;
-    }
-  } catch {
-    // The API can also return an upload path without its origin.
-  }
-
-  const uploadPath = trimmed.replace(/^\/?uploads\//, "");
-  if (uploadPath !== trimmed) return `/api/property-media/${uploadPath}`;
-
-  return trimmed;
+  return trustedUploadProxyUrl(url, "kyc");
 }
 
 function normalizeKycRequest(value: unknown): AdminKycRequest {

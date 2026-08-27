@@ -5,6 +5,7 @@ import type {
   PropertyType,
 } from "@/features/properties/types";
 import type { PropertyApiItem } from "@/features/properties/types/api";
+import { trustedUploadProxyUrl } from "@/lib/property-media-security";
 
 const TYPE_MAP: Record<string, PropertyType> = {
   RESIDENTIAL: "apartment",
@@ -45,23 +46,7 @@ function getPrice(property: PropertyApiItem) {
 }
 
 export function normalizePropertyMediaUrl(url: string) {
-  try {
-    const parsed = new URL(url);
-    if (
-      parsed.hostname === "propertyark-backend.onrender.com" &&
-      parsed.pathname.startsWith("/uploads/")
-    ) {
-      const mediaPath = parsed.pathname
-        .slice("/uploads/".length)
-        .split("/")
-        .map((segment) => encodeURIComponent(decodeURIComponent(segment)))
-        .join("/");
-      return `/api/property-media/${mediaPath}`;
-    }
-  } catch {
-    // Relative URLs and local assets should pass through unchanged.
-  }
-  return url;
+  return trustedUploadProxyUrl(url, "property") ?? url;
 }
 
 export function normalizePropertyResponse(property: PropertyApiItem): Property {

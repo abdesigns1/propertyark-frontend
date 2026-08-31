@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
+  BedDouble,
   Building2,
   CalendarDays,
   MapPin,
@@ -50,6 +51,15 @@ const PRICE_RANGES = [
   { value: "100000000-", label: "₦100M+" },
 ] as const;
 
+const BED_OPTIONS = [
+  { value: "all", label: "Any beds" },
+  { value: "1", label: "1 bed" },
+  { value: "2", label: "2 beds" },
+  { value: "3", label: "3 beds" },
+  { value: "4", label: "4 beds" },
+  { value: "5", label: "5 beds" },
+] as const;
+
 function toDateInputValue(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -74,6 +84,7 @@ export function PropertySearchForm() {
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState("2");
+  const [beds, setBeds] = useState("all");
 
   const today = toDateInputValue(new Date());
 
@@ -89,9 +100,13 @@ export function PropertySearchForm() {
       if (checkIn) params.set("checkIn", checkIn);
       if (checkOut) params.set("checkOut", checkOut);
       params.set("guests", guests);
+      if (beds !== "all") params.set("bedrooms", beds);
     } else {
       if (location !== "all") params.set("location", location);
       if (category !== "all") params.set("category", category);
+      if (purpose === "rent" && beds !== "all") {
+        params.set("bedrooms", beds);
+      }
 
       if (priceRange !== "all") {
         const [minPrice, maxPrice] = priceRange.split("-");
@@ -139,7 +154,14 @@ export function PropertySearchForm() {
         onSubmit={handleSearch}
         className="w-full rounded-b-2xl rounded-tr-2xl bg-card p-4 shadow-xl ring-1 ring-foreground/5 sm:rounded-tl-none lg:p-3"
       >
-        <FieldGroup className="grid gap-0 lg:grid-cols-[1.35fr_0.82fr_0.82fr_0.72fr_auto] lg:items-center">
+        <FieldGroup
+          className={cn(
+            "grid gap-0 lg:items-center",
+            purpose === "shortlet" || purpose === "rent"
+              ? "lg:grid-cols-[1.15fr_0.72fr_0.72fr_0.62fr_0.62fr_auto]"
+              : "lg:grid-cols-[1.35fr_0.82fr_0.82fr_0.72fr_auto]",
+          )}
+        >
           {purpose === "shortlet" ? (
             <>
               <Field className="px-4 py-3 lg:border-r">
@@ -228,6 +250,33 @@ export function PropertySearchForm() {
                   </SelectContent>
                 </Select>
               </Field>
+
+              <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
+                <FieldLabel
+                  htmlFor="home-shortlet-beds"
+                  className="font-semibold"
+                >
+                  <BedDouble aria-hidden="true" className="size-4" />
+                  Beds
+                </FieldLabel>
+                <Select value={beds} onValueChange={setBeds}>
+                  <SelectTrigger
+                    id="home-shortlet-beds"
+                    className="h-7 w-full border-0 px-0 shadow-none focus-visible:ring-0"
+                  >
+                    <SelectValue placeholder="Any beds" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {BED_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
             </>
           ) : (
             <>
@@ -275,6 +324,35 @@ export function PropertySearchForm() {
                   </SelectContent>
                 </Select>
               </Field>
+
+              {purpose === "rent" && (
+                <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
+                  <FieldLabel
+                    htmlFor="home-rent-beds"
+                    className="font-semibold"
+                  >
+                    <BedDouble aria-hidden="true" className="size-4" />
+                    Beds
+                  </FieldLabel>
+                  <Select value={beds} onValueChange={setBeds}>
+                    <SelectTrigger
+                      id="home-rent-beds"
+                      className="h-7 w-full border-0 px-0 shadow-none focus-visible:ring-0"
+                    >
+                      <SelectValue placeholder="Any beds" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {BED_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
 
               <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
                 <FieldLabel

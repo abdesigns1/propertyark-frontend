@@ -16,6 +16,7 @@ export interface AvailablePropertyFilters {
   city?: string;
   minPrice?: number;
   maxPrice?: number;
+  bedrooms?: number;
   search?: string;
 }
 

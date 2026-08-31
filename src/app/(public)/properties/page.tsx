@@ -62,6 +62,7 @@ function PropertiesContent() {
     () => searchParams.get("search")?.trim() ?? "",
   );
   const propertyCategory = searchParams.get("category") ?? "";
+  const bedrooms = Number(searchParams.get("bedrooms")) || undefined;
   const hasExplicitMaxPrice = searchParams.has("maxPrice");
   const deferredFilters = useDeferredValue(filters);
   const backendFilters = useMemo(
@@ -82,9 +83,16 @@ function PropertiesContent() {
         deferredFilters.priceRange[1] < DEFAULT_FILTERS.priceRange[1]
           ? deferredFilters.priceRange[1]
           : undefined,
+      bedrooms,
       search: searchQuery || undefined,
     }),
-    [deferredFilters, hasExplicitMaxPrice, propertyCategory, searchQuery],
+    [
+      bedrooms,
+      deferredFilters,
+      hasExplicitMaxPrice,
+      propertyCategory,
+      searchQuery,
+    ],
   );
   const availableProperties = usePaginatedAvailableProperties({
     page,

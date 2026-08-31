@@ -17,14 +17,14 @@ const FOOTER_COLUMNS = [
     title: "Resources",
     links: [
       { label: "Pricing", href: "/pricing" },
-      { label: "Help Center", href: "/help" },
+      { label: "Help Center", href: "/faq" },
       { label: "Guides & Blog", href: "/blog" },
     ],
   },
   {
     title: "Legal",
     links: [
-      { label: "Legal", href: "/legal" },
+      { label: "Legal", href: "/professional-services" },
       { label: "Privacy Policy", href: "/privacy-policy" },
       { label: "Terms of Service", href: "/terms" },
     ],

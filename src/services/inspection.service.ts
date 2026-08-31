@@ -99,6 +99,21 @@ function numberFrom(source: UnknownRecord, keys: string[]) {
   return 0;
 }
 
+function optionalNumberFrom(source: UnknownRecord, keys: string[]) {
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (
+      typeof value === "string" &&
+      value.trim() &&
+      !Number.isNaN(Number(value))
+    ) {
+      return Number(value);
+    }
+  }
+  return undefined;
+}
+
 function booleanFrom(source: UnknownRecord, keys: string[]) {
   for (const key of keys) {
     const value = source[key];
@@ -414,30 +429,60 @@ function normalizeStats(
   value: unknown,
   inspections: VendorInspection[],
 ): VendorInspectionStats {
-  const source = unwrap(value);
+  const payload = unwrap(value);
+  const source = record(payload.stats ?? payload.summary ?? payload);
   const count = (...statuses: string[]) =>
     inspections.filter((inspection) => statuses.includes(inspection.status))
       .length;
 
   return {
     upcoming:
-      numberFrom(source, ["upcoming", "accepted", "confirmed", "ACCEPTED"]) ||
-      count("ACCEPTED", "CONFIRMED", "SCHEDULED", "RESCHEDULED"),
+      optionalNumberFrom(source, [
+        "upcoming",
+        "upcomingInquiries",
+        "accepted",
+        "confirmed",
+        "scheduled",
+        "ACCEPTED",
+      ]) ?? count("ACCEPTED", "CONFIRMED", "SCHEDULED", "RESCHEDULED"),
     pending:
-      numberFrom(source, ["pending", "pendingInquiries", "PENDING"]) ||
-      count("PENDING"),
+      optionalNumberFrom(source, [
+        "pending",
+        "pendingInquiries",
+        "pendingRequests",
+        "PENDING",
+      ]) ?? count("PENDING"),
     completed:
-      numberFrom(source, [
+      optionalNumberFrom(source, [
         "completed",
+        "completedInquiries",
         "completedVisits",
         "satisfied",
         "satisfactory",
         "COMPLETED",
-      ]) || count("COMPLETED"),
+      ]) ?? count("COMPLETED"),
     declined:
-      numberFrom(source, ["declined", "cancelled", "DECLINED", "CANCELLED"]) ||
-      count("DECLINED", "REJECTED", "CANCELLED"),
+      optionalNumberFrom(source, [
+        "declined",
+        "declinedInquiries",
+        "cancelled",
+        "cancelledInquiries",
+        "DECLINED",
+        "CANCELLED",
+      ]) ?? count("DECLINED", "REJECTED", "CANCELLED"),
   };
+}
+
+function issueCountFrom(value: unknown) {
+  const payload = unwrap(value);
+  const source = record(payload.stats ?? payload.summary ?? payload);
+  return optionalNumberFrom(source, [
+    "issuesReported",
+    "reportedIssues",
+    "issueReported",
+    "issues",
+    "disputed",
+  ]);
 }
 
 function isUncertainInquiryDelivery(error: unknown) {
@@ -472,10 +517,13 @@ export const inspectionService = {
     page?: number;
     limit?: number;
   } = {}): Promise<AdminInspectionsResult> {
-    const responses = await Promise.allSettled([
-      api.get("/inquiries", { params: { page, limit } }),
-      api.get("/inquiries/vendor", { params: { page, limit } }),
-    ]);
+    const [adminResponse, vendorResponse, statsResponse] =
+      await Promise.allSettled([
+        api.get("/inquiries", { params: { page, limit } }),
+        api.get("/inquiries/vendor", { params: { page, limit } }),
+        api.get("/inquiries/admin/stats"),
+      ]);
+    const responses = [adminResponse, vendorResponse];
     const payloads = responses.flatMap((response) =>
       response.status === "fulfilled" ? [response.value.data] : [],
     );
@@ -508,15 +556,21 @@ export const inspectionService = {
     const inspections = isAggregated
       ? allInspections.slice((page - 1) * limit, page * limit)
       : allInspections;
-    const stats = normalizeStats(allPayloads[0], allInspections);
+    const statsPayload =
+      statsResponse.status === "fulfilled" ? statsResponse.value.data : null;
+    const stats = normalizeStats(
+      statsPayload ?? allPayloads[0],
+      allInspections,
+    );
     const primaryPayload = allPayloads.find(
       (payload) => inspectionRows(payload).length > 0,
     );
     return {
       inspections,
       stats,
-      issuesReported: allInspections.filter((item) => item.issueReported)
-        .length,
+      issuesReported:
+        issueCountFrom(statsPayload) ??
+        allInspections.filter((item) => item.issueReported).length,
       pagination: isAggregated
         ? {
             page,

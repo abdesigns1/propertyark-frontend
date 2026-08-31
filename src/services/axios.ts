@@ -1,9 +1,13 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/store/auth.store";
 
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  "https://propertyark-backend.onrender.com/api/v1"
+).replace(/\/+$/, "");
+
 export const api = axios.create({
-  // Same-origin proxy avoids browser CORS preflights to the hosted API.
-  baseURL: "/api/v1",
+  baseURL: API_BASE_URL,
   withCredentials: true, // sends the httpOnly refresh-token cookie
   timeout: 90_000,
 });
@@ -51,7 +55,7 @@ api.interceptors.response.use(
       isRefreshing = true;
       try {
         const { data } = await axios.post(
-          "/api/v1/auth/refresh",
+          `${API_BASE_URL}/auth/refresh`,
           {},
           { withCredentials: true, timeout: 90_000 },
         );

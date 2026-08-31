@@ -5,12 +5,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   BriefcaseBusiness,
-  Building2,
   CreditCard,
   KeyRound,
   LoaderCircle,
   LockKeyhole,
-  Megaphone,
+  Mail,
+  MessageSquareText,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
@@ -35,6 +35,14 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getApiErrorMessage } from "@/services/api-error";
@@ -48,55 +56,42 @@ import { useAccountKey } from "@/lib/account-identity";
 import { cn } from "@/lib/utils";
 
 type Section =
-  "profile" | "business" | "password" | "notifications" | "payment" | "account";
+  "profile" | "business" | "password" | "notifications" | "payment";
 const sections: Array<{
   id: Section;
   label: string;
   group: string;
   icon: typeof UserRound;
-  available: boolean;
 }> = [
   {
     id: "profile",
     label: "Profile Info",
     group: "Account settings",
     icon: UserRound,
-    available: true,
   },
   {
     id: "business",
     label: "Business Info",
     group: "Account settings",
     icon: BriefcaseBusiness,
-    available: true,
   },
   {
     id: "password",
     label: "Password",
     group: "Security",
     icon: KeyRound,
-    available: true,
   },
   {
     id: "notifications",
     label: "Notifications",
     group: "Preferences",
     icon: Bell,
-    available: false,
   },
   {
     id: "payment",
     label: "Payment Settings",
     group: "Financial",
     icon: CreditCard,
-    available: false,
-  },
-  {
-    id: "account",
-    label: "Account Management",
-    group: "Advanced",
-    icon: ShieldCheck,
-    available: false,
   },
 ];
 
@@ -109,40 +104,54 @@ function SettingsNavigation({
 }) {
   const groups = [...new Set(sections.map((item) => item.group))];
   return (
-    <nav
-      aria-label="Settings sections"
-      className="flex gap-2 overflow-x-auto lg:flex-col lg:gap-6"
-    >
-      {groups.map((group) => (
-        <div key={group} className="flex shrink-0 flex-col gap-1">
-          <p className="hidden px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:block">
-            {group}
-          </p>
-          {sections
-            .filter((item) => item.group === group)
-            .map(({ id, label, icon: Icon, available }) => (
-              <Button
-                key={id}
-                type="button"
-                variant={active === id ? "secondary" : "ghost"}
-                className="justify-start"
-                onClick={() => onChange(id)}
-              >
-                <Icon data-icon="inline-start" />
+    <>
+      <Select
+        value={active}
+        onValueChange={(value) => onChange(value as Section)}
+      >
+        <SelectTrigger
+          className="w-full lg:hidden"
+          aria-label="Choose a settings section"
+        >
+          <SelectValue placeholder="Choose a settings section" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            {sections.map(({ id, label }) => (
+              <SelectItem key={id} value={id}>
                 {label}
-                {!available && (
-                  <Badge
-                    variant="outline"
-                    className="ml-auto hidden lg:inline-flex"
-                  >
-                    Soon
-                  </Badge>
-                )}
-              </Button>
+              </SelectItem>
             ))}
-        </div>
-      ))}
-    </nav>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+      <nav
+        aria-label="Settings sections"
+        className="hidden flex-col gap-6 lg:flex"
+      >
+        {groups.map((group) => (
+          <div key={group} className="flex flex-col gap-1">
+            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {group}
+            </p>
+            {sections
+              .filter((item) => item.group === group)
+              .map(({ id, label, icon: Icon }) => (
+                <Button
+                  key={id}
+                  type="button"
+                  variant={active === id ? "secondary" : "ghost"}
+                  className="justify-start"
+                  onClick={() => onChange(id)}
+                >
+                  <Icon data-icon="inline-start" />
+                  {label}
+                </Button>
+              ))}
+          </div>
+        ))}
+      </nav>
+    </>
   );
 }
 
@@ -161,6 +170,7 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
     staleTime: 60_000,
   });
   const [fullName, setFullName] = useState(storedUser?.fullName ?? "");
+  const [businessName, setBusinessName] = useState("");
   const [phone, setPhone] = useState(storedUser?.phone ?? "");
   const [location, setLocation] = useState(storedUser?.location ?? "");
   const [avatarUrl, setAvatarUrl] = useState(storedUser?.avatarUrl ?? "");
@@ -169,6 +179,7 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
     if (profile.data)
       queueMicrotask(() => {
         setFullName(profile.data.fullName);
+        setBusinessName(profile.data.businessName);
         setPhone(profile.data.phone);
         setLocation(profile.data.location);
         setAvatarUrl(profile.data.avatarUrl ?? "");
@@ -180,6 +191,7 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
         fullName: fullName.trim(),
         phone: phone.trim(),
         location: location.trim(),
+        ...(businessOnly ? { businessName: businessName.trim() } : {}),
       }),
     onSuccess: (updated) => {
       updateUser({
@@ -267,7 +279,7 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             {businessOnly ? "Business Information" : "Account Overview"}
           </h1>
           <p className="mt-1 text-muted-foreground">
@@ -277,7 +289,11 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
           </p>
         </div>
         <Button
-          disabled={save.isPending || !fullName.trim()}
+          className="w-full sm:w-auto"
+          disabled={
+            save.isPending ||
+            (businessOnly ? !businessName.trim() : !fullName.trim())
+          }
           onClick={() => save.mutate()}
         >
           {save.isPending && (
@@ -288,7 +304,7 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
       </header>
       {!businessOnly && (
         <Card>
-          <CardContent className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
+          <CardContent className="flex flex-col items-center gap-5 text-center sm:flex-row sm:items-center sm:text-left">
             <Avatar className="size-24 rounded-2xl">
               <AvatarImage
                 src={avatarUrl}
@@ -302,6 +318,7 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
             <div className="flex flex-col gap-2">
               <div className="flex flex-wrap gap-2">
                 <Button
+                  className="w-full sm:w-auto"
                   type="button"
                   onClick={() => fileInput.current?.click()}
                   disabled={avatar.isPending}
@@ -330,7 +347,7 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
         <Card>
           <CardHeader>
             <CardTitle>
-              {businessOnly ? "Vendor Details" : "Account Information"}
+              {businessOnly ? "Business Name" : "Account Information"}
             </CardTitle>
             <CardDescription>
               These details are loaded from your authenticated profile.
@@ -339,11 +356,17 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
           <CardContent>
             <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="settings-name">Full Name</FieldLabel>
+                <FieldLabel htmlFor="settings-name">
+                  {businessOnly ? "Business Name" : "Full Name"}
+                </FieldLabel>
                 <Input
                   id="settings-name"
-                  value={fullName}
-                  onChange={(event) => setFullName(event.target.value)}
+                  value={businessOnly ? businessName : fullName}
+                  onChange={(event) =>
+                    businessOnly
+                      ? setBusinessName(event.target.value)
+                      : setFullName(event.target.value)
+                  }
                 />
               </Field>
               <Field data-disabled>
@@ -379,18 +402,18 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
             </FieldGroup>
           </CardContent>
         </Card>
-        <Card className="bg-primary text-primary-foreground">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="size-5" />
-              Privacy Guard
-            </CardTitle>
+        <Card className="bg-primary text-primary-foreground xl:min-h-full xl:justify-center">
+          <CardHeader className="gap-4 px-6">
+            <span className="flex size-12 items-center justify-center rounded-full bg-primary-foreground/15 ring-1 ring-primary-foreground/20">
+              <ShieldCheck className="size-6" aria-hidden />
+            </span>
+            <CardTitle className="text-lg">Privacy Guard</CardTitle>
             <CardDescription className="text-primary-foreground/75">
               Your authenticated profile is protected in transit and updates are
               saved through the backend.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-6">
             <Badge variant="secondary">Authenticated account</Badge>
           </CardContent>
         </Card>
@@ -432,7 +455,7 @@ function PasswordSettings() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-3xl font-semibold tracking-tight">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           Password & Security
         </h1>
         <p className="mt-1 text-muted-foreground">
@@ -498,6 +521,7 @@ function PasswordSettings() {
         </CardContent>
         <CardFooter className="justify-end">
           <Button
+            className="w-full sm:w-auto"
             disabled={
               mutation.isPending || !currentPassword || !newPassword || !confirm
             }
@@ -530,44 +554,97 @@ function PasswordSettings() {
 }
 
 function NotificationSettings() {
+  const accountKey = useAccountKey();
+  const queryClient = useQueryClient();
+  const profileQueryKey = vendorProfileQueryKey(
+    accountKey ?? "unresolved-session",
+  );
+  const profile = useQuery({
+    queryKey: profileQueryKey,
+    queryFn: settingsService.getProfile,
+    enabled: Boolean(accountKey),
+    staleTime: 60_000,
+  });
   const [settings, setSettings] = useState({
-    inquiries: true,
-    approval: true,
-    appointments: true,
-    verification: true,
-    marketing: false,
+    emailAlerts: true,
+    smsNotifications: false,
+    pushNotifications: true,
+  });
+  useEffect(() => {
+    if (!profile.data) return;
+    queueMicrotask(() =>
+      setSettings({
+        emailAlerts: profile.data.emailAlerts ?? true,
+        smsNotifications: profile.data.smsNotifications ?? false,
+        pushNotifications: profile.data.pushNotifications ?? true,
+      }),
+    );
+  }, [profile.data]);
+  const save = useMutation({
+    mutationFn: () => {
+      if (!profile.data) throw new Error("Your profile is still loading.");
+      return settingsService.updateProfile({
+        fullName: profile.data.fullName,
+        phone: profile.data.phone,
+        location: profile.data.location,
+        ...settings,
+      });
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData<VendorSettingsProfile>(
+        profileQueryKey,
+        (current) => ({
+          ...(current ?? updated),
+          ...updated,
+          ...settings,
+        }),
+      );
+      toast.success("Notification preferences saved.");
+    },
+    onError: (error) =>
+      toast.error(
+        getApiErrorMessage(
+          error,
+          "Notification preferences could not be saved.",
+        ),
+      ),
   });
   const rows = [
     {
-      key: "inquiries",
-      title: "New Lead Inquiries",
-      copy: "Alerts when a user requests information about your property.",
+      key: "emailAlerts",
+      title: "Email Notifications",
+      copy: "Receive booking, inspection, property, and account updates by email.",
     },
     {
-      key: "approval",
-      title: "Property Approval Status",
-      copy: "Updates when a property listing is approved or rejected.",
+      key: "smsNotifications",
+      title: "SMS Notifications",
+      copy: "Receive important operational updates by text message.",
     },
     {
-      key: "appointments",
-      title: "Appointment Reminders",
-      copy: "Scheduled property viewing reminders.",
-    },
-    {
-      key: "verification",
-      title: "Document Verification Updates",
-      copy: "Updates when compliance documents are reviewed.",
-    },
-    {
-      key: "marketing",
-      title: "Platform Updates & News",
-      copy: "Product announcements and vendor tips.",
+      key: "pushNotifications",
+      title: "In-app Notifications",
+      copy: "Show updates on your notification page and dashboard indicators.",
     },
   ] as const;
+  if (profile.isLoading) return <NotificationSettingsSkeleton />;
+  if (profile.isError || !profile.data)
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Notification preferences could not be loaded</CardTitle>
+          <CardDescription>
+            {getApiErrorMessage(profile.error, "Please try again shortly.")}
+          </CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <Button onClick={() => profile.refetch()}>Try again</Button>
+        </CardFooter>
+      </Card>
+    );
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <h1 className="text-3xl font-semibold tracking-tight">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           Notification Preferences
         </h1>
         <p className="mt-1 text-muted-foreground">
@@ -575,9 +652,13 @@ function NotificationSettings() {
         </p>
       </header>
       {[
-        { title: "Property Alerts", icon: Building2, items: rows.slice(0, 2) },
-        { title: "Operational Alerts", icon: Bell, items: rows.slice(2, 4) },
-        { title: "Marketing", icon: Megaphone, items: rows.slice(4) },
+        { title: "Email", icon: Mail, items: rows.slice(0, 1) },
+        {
+          title: "Text Messages",
+          icon: MessageSquareText,
+          items: rows.slice(1, 2),
+        },
+        { title: "PropertyArk", icon: Bell, items: rows.slice(2) },
       ].map(({ title, icon: Icon, items }) => (
         <Card key={title}>
           <CardHeader>
@@ -592,7 +673,7 @@ function NotificationSettings() {
             {items.map((item, index) => (
               <div key={item.key}>
                 {index > 0 && <Separator className="mb-4" />}
-                <Field orientation="horizontal">
+                <Field orientation="horizontal" className="items-start">
                   <FieldLabel
                     htmlFor={`notification-${item.key}`}
                     className="flex-1 font-normal"
@@ -620,15 +701,27 @@ function NotificationSettings() {
       ))}
       <div className="flex justify-end">
         <Button
-          onClick={() =>
-            toast.error(
-              "Notification preferences cannot be saved until the backend provides a notification-settings endpoint.",
-            )
-          }
+          className="w-full sm:w-auto"
+          disabled={save.isPending}
+          onClick={() => save.mutate()}
         >
+          {save.isPending && (
+            <LoaderCircle data-icon="inline-start" className="animate-spin" />
+          )}
           Save Preferences
         </Button>
       </div>
+    </div>
+  );
+}
+
+function NotificationSettingsSkeleton() {
+  return (
+    <div className="flex flex-col gap-5">
+      <Skeleton className="h-20 rounded-xl" />
+      {[1, 2, 3].map((item) => (
+        <Skeleton key={item} className="h-36 rounded-xl" />
+      ))}
     </div>
   );
 }
@@ -669,9 +762,9 @@ export function VendorSettings() {
     return () => window.removeEventListener("hashchange", syncSection);
   }, []);
   return (
-    <div className="mx-auto grid w-full max-w-[1500px] gap-8 lg:grid-cols-[250px_minmax(0,1fr)]">
+    <div className="mx-auto grid w-full max-w-[1500px] gap-6 lg:grid-cols-[250px_minmax(0,1fr)] lg:gap-8">
       <aside className="border-b pb-5 lg:min-h-[calc(100vh-7rem)] lg:border-b-0 lg:border-r lg:pr-6">
-        <h2 className="mb-5 text-2xl font-semibold">Settings</h2>
+        <h2 className="mb-4 text-2xl font-semibold lg:mb-5">Settings</h2>
         <SettingsNavigation active={active} onChange={setActive} />
       </aside>
       <main
@@ -681,9 +774,7 @@ export function VendorSettings() {
         {active === "business" && <ProfileSettings businessOnly />}
         {active === "password" && <PasswordSettings />}
         {active === "notifications" && <NotificationSettings />}
-        {["payment", "account"].includes(active) && (
-          <UnavailableSettings section={active} />
-        )}
+        {active === "payment" && <UnavailableSettings section={active} />}
       </main>
     </div>
   );

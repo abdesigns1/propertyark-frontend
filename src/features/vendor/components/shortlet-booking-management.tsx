@@ -7,6 +7,8 @@ import {
   CalendarClock,
   CalendarDays,
   Check,
+  ChevronLeft,
+  ChevronRight,
   CircleCheck,
   Download,
   MessageSquareText,
@@ -67,7 +69,6 @@ import {
 import type {
   ShortletBooking,
   ShortletBookingStatus,
-  ShortletCalendarEvent,
 } from "@/services/shortlet-booking.service";
 import { getApiErrorMessage } from "@/services/api-error";
 import { cn } from "@/lib/utils";
@@ -543,83 +544,150 @@ function formatRequestedAt(value?: string) {
   }).format(date);
 }
 
-const calendarDays = [
-  { day: 29, outside: true },
-  { day: 30, outside: true },
-  ...Array.from({ length: 12 }, (_, index) => ({
-    day: index + 1,
-    outside: false,
-  })),
-];
-
-const calendarToneClasses: Record<ShortletCalendarEvent["tone"], string> = {
-  confirmed: "border-primary bg-primary/10 text-primary",
-  occupied: "border-destructive bg-destructive/10 text-destructive",
-  pending: "border-secondary bg-secondary/15 text-secondary-hover",
-  blocked: "border-muted-foreground bg-muted text-muted-foreground",
+const calendarEventClasses: Record<ShortletBookingStatus, string> = {
+  PENDING: "border-warning/30 bg-warning/10 text-warning",
+  CONFIRMED: "border-primary/30 bg-primary/10 text-primary",
+  CHECKED_IN: "border-destructive/30 bg-destructive/10 text-destructive",
+  COMPLETED: "border-success/30 bg-success/10 text-success",
+  CANCELLED: "border-muted-foreground/30 bg-muted text-muted-foreground",
 };
 
-function HospitalityCalendar({ events }: { events: ShortletCalendarEvent[] }) {
-  const eventByDay = new Map(events.map((event) => [event.day, event]));
+const monthFormatter = new Intl.DateTimeFormat("en-NG", {
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+function HospitalityCalendar({
+  bookings,
+  onSelect,
+}: {
+  bookings: ShortletBooking[];
+  onSelect: (bookingId: string) => void;
+}) {
+  const [visibleMonth, setVisibleMonth] = useState(() =>
+    startOfUtcMonth(new Date()),
+  );
+  const days = calendarMonthDays(visibleMonth);
 
   return (
     <Card id="hospitality-calendar" className="shadow-sm">
-      <CardHeader>
+      <CardHeader className="gap-5 border-b">
         <div>
           <CardTitle>Hospitality Calendar</CardTitle>
-          <CardDescription className="mt-1 max-w-52">
-            Manage occupancy across all units
+          <CardDescription className="mt-1">
+            View reservations and occupancy across every shortlet property.
           </CardDescription>
         </div>
-        <CardAction className="flex flex-wrap justify-end gap-3 text-xs">
-          {[
-            ["Confirmed", "bg-primary"],
-            ["Occupied", "bg-destructive"],
-            ["Pending", "bg-secondary"],
-            ["Blocked", "bg-muted-foreground"],
-          ].map(([label, dot]) => (
-            <span key={label} className="flex items-center gap-1.5">
-              <span className={cn("size-2.5 rounded-full", dot)} />
-              {label}
-            </span>
-          ))}
+        <CardAction className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setVisibleMonth(startOfUtcMonth(new Date()))}
+          >
+            Today
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label="Previous month"
+            onClick={() => setVisibleMonth(addUtcMonths(visibleMonth, -1))}
+          >
+            <ChevronLeft />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label="Next month"
+            onClick={() => setVisibleMonth(addUtcMonths(visibleMonth, 1))}
+          >
+            <ChevronRight />
+          </Button>
         </CardAction>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <h3 className="text-xl font-semibold">
+            {monthFormatter.format(visibleMonth)}
+          </h3>
+          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+            {[
+              ["Confirmed", "bg-primary"],
+              ["Occupied", "bg-destructive"],
+              ["Pending", "bg-warning"],
+              ["Completed", "bg-success"],
+              ["Cancelled", "bg-muted-foreground"],
+            ].map(([label, dot]) => (
+              <span key={label} className="flex items-center gap-1.5">
+                <span
+                  className={cn("size-2.5 rounded-full", dot)}
+                  aria-hidden
+                />
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
         <div className="overflow-x-auto rounded-xl border">
-          <div className="grid min-w-[700px] grid-cols-7 bg-surface/70 text-center text-sm font-semibold uppercase text-muted-foreground">
+          <div className="grid min-w-[840px] grid-cols-7 bg-surface/70 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
               <div key={day} className="border-r px-3 py-4 last:border-r-0">
                 {day}
               </div>
             ))}
           </div>
-          <div className="grid min-w-[700px] grid-cols-7">
-            {calendarDays.map(({ day, outside }, index) => {
-              const event = outside ? undefined : eventByDay.get(day);
+          <div className="grid min-w-[840px] grid-cols-7">
+            {days.map((day) => {
+              const outside = day.getUTCMonth() !== visibleMonth.getUTCMonth();
+              const dayBookings = bookingsForCalendarDay(bookings, day);
+              const isToday = sameUtcDay(day, new Date());
               return (
                 <div
-                  key={`${day}-${index}`}
-                  className="min-h-24 border-r border-t p-2 last:border-r-0 [&:nth-child(7n)]:border-r-0"
+                  key={day.toISOString()}
+                  className={cn(
+                    "min-h-36 border-r border-t p-2 [&:nth-child(7n)]:border-r-0",
+                    outside && "bg-surface/30",
+                  )}
                 >
-                  <p
+                  <time
+                    dateTime={day.toISOString().slice(0, 10)}
                     className={cn(
-                      "text-right text-sm",
+                      "ml-auto flex size-7 items-center justify-center rounded-full text-sm",
                       outside && "text-muted-foreground",
+                      isToday &&
+                        "bg-primary font-semibold text-primary-foreground",
                     )}
                   >
-                    {day}
-                  </p>
-                  {event ? (
-                    <div
-                      className={cn(
-                        "mt-2 border-l-4 px-2 py-1.5 text-[10px] font-medium leading-tight",
-                        calendarToneClasses[event.tone],
-                      )}
-                    >
-                      {event.label}
-                    </div>
-                  ) : null}
+                    {day.getUTCDate()}
+                  </time>
+                  <div className="mt-2 flex flex-col gap-1">
+                    {dayBookings.slice(0, 3).map((booking) => (
+                      <Button
+                        key={booking.id}
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-auto w-full justify-start rounded-md border px-2 py-1.5 text-left",
+                          calendarEventClasses[booking.status],
+                        )}
+                        onClick={() => onSelect(booking.id)}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-semibold">
+                            {booking.guestName}
+                          </span>
+                          <span className="block truncate text-[10px] opacity-80">
+                            {booking.propertyName}
+                          </span>
+                        </span>
+                      </Button>
+                    ))}
+                    {dayBookings.length > 3 && (
+                      <Badge variant="outline" className="w-fit">
+                        +{dayBookings.length - 3} more
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -628,6 +696,51 @@ function HospitalityCalendar({ events }: { events: ShortletCalendarEvent[] }) {
       </CardContent>
     </Card>
   );
+}
+
+function startOfUtcMonth(value: Date) {
+  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), 1));
+}
+
+function addUtcMonths(value: Date, amount: number) {
+  return new Date(
+    Date.UTC(value.getUTCFullYear(), value.getUTCMonth() + amount, 1),
+  );
+}
+
+function calendarMonthDays(month: Date) {
+  const first = startOfUtcMonth(month);
+  const mondayOffset = (first.getUTCDay() + 6) % 7;
+  const calendarStart = new Date(first);
+  calendarStart.setUTCDate(first.getUTCDate() - mondayOffset);
+  return Array.from({ length: 42 }, (_, index) => {
+    const day = new Date(calendarStart);
+    day.setUTCDate(calendarStart.getUTCDate() + index);
+    return day;
+  });
+}
+
+function utcDayTimestamp(value: string | Date) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function bookingsForCalendarDay(bookings: ShortletBooking[], day: Date) {
+  const timestamp = utcDayTimestamp(day);
+  if (timestamp === null) return [];
+  return bookings.filter((booking) => {
+    const checkIn = utcDayTimestamp(booking.checkIn);
+    const checkOut = utcDayTimestamp(booking.checkOut);
+    if (checkIn === null || checkOut === null) return false;
+    const finalOccupiedDay =
+      checkOut > checkIn ? checkOut - 86_400_000 : checkIn;
+    return timestamp >= checkIn && timestamp <= finalOccupiedDay;
+  });
+}
+
+function sameUtcDay(first: Date, second: Date) {
+  return utcDayTimestamp(first) === utcDayTimestamp(second);
 }
 
 export function ShortletBookingManagement() {
@@ -697,7 +810,7 @@ export function ShortletBookingManagement() {
     );
   }
 
-  const { stats, properties, pricing, calendar, activities } = dashboard.data;
+  const { stats, properties, pricing, activities } = dashboard.data;
   const selectedPricingProperty =
     properties.find((property) => property.id === pricing.propertyId)?.name ??
     "Selected property";
@@ -903,7 +1016,10 @@ export function ShortletBookingManagement() {
           />
 
           <div ref={calendarRef}>
-            <HospitalityCalendar events={calendar} />
+            <HospitalityCalendar
+              bookings={bookings}
+              onSelect={setSelectedBookingId}
+            />
           </div>
         </div>
 
@@ -1013,7 +1129,7 @@ export function ShortletBookingManagement() {
 
           <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle>Today&apos;s Activity</CardTitle>
+              <CardTitle>Recent Activities</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col">

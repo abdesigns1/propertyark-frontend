@@ -1,5 +1,5 @@
-import { FutureFeature } from "@/features/dashboard/components/future-feature";
+import { BuyerInvestmentPortfolio } from "@/features/dashboard/components/buyer-investment-portfolio";
 
 export default function BuyerInvestmentsPage() {
-  return <FutureFeature feature="Investment" />;
+  return <BuyerInvestmentPortfolio />;
 }

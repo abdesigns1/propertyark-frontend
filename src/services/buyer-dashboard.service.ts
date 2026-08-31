@@ -38,6 +38,82 @@ function activeInquiryCount(value: unknown) {
   }).length;
 }
 
+function text(source: UnknownRecord, keys: string[], fallback = "") {
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return fallback;
+}
+
+function findActivityRows(value: unknown): unknown[] {
+  const queue: unknown[] = [value];
+  const activityKeys = new Set([
+    "recentActivities",
+    "recentActivity",
+    "activities",
+    "activity",
+  ]);
+
+  while (queue.length) {
+    const current = queue.shift();
+    if (!current || typeof current !== "object") continue;
+    const source = asRecord(current);
+    for (const [key, candidate] of Object.entries(source)) {
+      if (activityKeys.has(key) && Array.isArray(candidate)) return candidate;
+      if (candidate && typeof candidate === "object") queue.push(candidate);
+    }
+  }
+
+  return [];
+}
+
+function relativeTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Recently";
+  const elapsed = Date.now() - date.getTime();
+  if (elapsed < 60_000) return "Just now";
+  if (elapsed < 3_600_000) return `${Math.floor(elapsed / 60_000)}m ago`;
+  if (elapsed < 86_400_000) return `${Math.floor(elapsed / 3_600_000)}h ago`;
+  return new Intl.DateTimeFormat("en-NG", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function normalizeActivities(value: unknown) {
+  return findActivityRows(value)
+    .slice(0, 6)
+    .map((item) => {
+      const source = asRecord(item);
+      const type = text(source, ["type", "action", "eventType", "category"]);
+      const createdAt = text(source, [
+        "createdAt",
+        "timestamp",
+        "date",
+        "updatedAt",
+      ]);
+      return {
+        title: text(
+          source,
+          ["title", "name", "actionLabel"],
+          type || "Account activity",
+        ),
+        time: relativeTime(createdAt),
+        text: text(
+          source,
+          ["message", "description", "details", "summary"],
+          "Your account activity was updated.",
+        ),
+        color: /inspection|inquiry|viewing/i.test(type)
+          ? "bg-primary"
+          : /payment|escrow|purchase|booking/i.test(type)
+            ? "bg-secondary"
+            : "bg-muted-foreground",
+      };
+    });
+}
+
 export const buyerDashboardService = {
   async getActiveInquiryCount() {
     const { data } = await api.get<unknown>("/inquiries/my", {
@@ -45,5 +121,9 @@ export const buyerDashboardService = {
     });
 
     return activeInquiryCount(data);
+  },
+  async getRecentActivities() {
+    const { data } = await api.get<unknown>("/users/dashboard");
+    return normalizeActivities(data);
   },
 };

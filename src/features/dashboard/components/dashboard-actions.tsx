@@ -2,17 +2,25 @@ import Link from "next/link";
 import { ArrowRight, Calculator, Download, Headphones } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DASHBOARD_ACTIVITIES } from "@/features/dashboard/data/dashboard-data";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useBuyerRecentActivities } from "@/features/dashboard/hooks/use-buyer-dashboard-stats";
 import { cn } from "@/lib/utils";
 import { AnimatedContainer, AnimatedItem, FadeIn } from "@/components/motion";
 
 const quickActions = [
-  { label: "Calculate Mortgage", icon: Calculator },
-  { label: "Contact Vendor", icon: Headphones },
-  { label: "Download Portfolio Report", icon: Download },
+  { label: "Calculate Mortgage", icon: Calculator, href: "/buyer/mortgage" },
+  { label: "Contact Vendor", icon: Headphones, href: "/contact" },
+  {
+    label: "Download Portfolio Report",
+    icon: Download,
+    href: "/buyer/investments",
+  },
 ];
 
 export function DashboardActions() {
+  const activities = useBuyerRecentActivities();
+  const recentActivities = activities.data ?? [];
+
   return (
     <aside>
       <FadeIn>
@@ -21,14 +29,17 @@ export function DashboardActions() {
             <CardTitle className="text-lg">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
-            {quickActions.map(({ label, icon: Icon }) => (
+            {quickActions.map(({ label, icon: Icon, href }) => (
               <Button
                 key={label}
                 variant="outline"
                 className="h-auto min-h-14 justify-start border-white/25 bg-white/10 px-4 text-left text-white hover:bg-white/20 hover:text-white"
+                asChild
               >
-                <Icon data-icon="inline-start" />
-                {label}
+                <Link href={href}>
+                  <Icon data-icon="inline-start" />
+                  {label}
+                </Link>
               </Button>
             ))}
           </CardContent>
@@ -36,36 +47,52 @@ export function DashboardActions() {
       </FadeIn>
       <section className="mt-8">
         <h2 className="text-lg font-semibold">Recent Activity</h2>
-        <AnimatedContainer className="mt-5 flex flex-col">
-          {DASHBOARD_ACTIVITIES.map((activity, index) => (
-            <AnimatedItem
-              key={activity.title}
-              className="relative grid grid-cols-[18px_1fr] gap-3 pb-7"
-            >
-              {index < DASHBOARD_ACTIVITIES.length - 1 && (
-                <span className="absolute left-[5px] top-3 h-full w-px bg-border" />
-              )}
-              <span
-                className={cn(
-                  "relative mt-1 size-3 rounded-full ring-4 ring-surface",
-                  activity.color,
+        {activities.isLoading ? (
+          <div className="mt-5 flex flex-col gap-4">
+            {[1, 2, 3].map((item) => (
+              <Skeleton key={item} className="h-20 rounded-xl" />
+            ))}
+          </div>
+        ) : activities.isError ? (
+          <p className="mt-5 text-sm text-muted-foreground">
+            Recent activity is temporarily unavailable.
+          </p>
+        ) : recentActivities.length ? (
+          <AnimatedContainer className="mt-5 flex flex-col">
+            {recentActivities.map((activity, index) => (
+              <AnimatedItem
+                key={`${activity.title}-${activity.time}-${index}`}
+                className="relative grid grid-cols-[18px_1fr] gap-3 pb-7"
+              >
+                {index < recentActivities.length - 1 && (
+                  <span className="absolute left-[5px] top-3 h-full w-px bg-border" />
                 )}
-              />
-              <div>
-                <h3 className="text-xs font-semibold">{activity.title}</h3>
-                <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
-                  {activity.time}
-                </p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  {activity.text}
-                </p>
-              </div>
-            </AnimatedItem>
-          ))}
-        </AnimatedContainer>
+                <span
+                  className={cn(
+                    "relative mt-1 size-3 rounded-full ring-4 ring-surface",
+                    activity.color,
+                  )}
+                />
+                <div>
+                  <h3 className="text-xs font-semibold">{activity.title}</h3>
+                  <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+                    {activity.time}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    {activity.text}
+                  </p>
+                </div>
+              </AnimatedItem>
+            ))}
+          </AnimatedContainer>
+        ) : (
+          <p className="mt-5 text-sm text-muted-foreground">
+            Your latest account activity will appear here.
+          </p>
+        )}
         <Button variant="ghost" size="sm" className="ml-8" asChild>
-          <Link href="#">
-            View full activity log <ArrowRight data-icon="inline-end" />
+          <Link href="/buyer/notifications">
+            View all updates <ArrowRight data-icon="inline-end" />
           </Link>
         </Button>
       </section>

@@ -16,6 +16,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +34,7 @@ import { Separator } from "@/components/ui/separator";
 import { DashboardBrand } from "./dashboard-brand";
 import { DashboardUserAvatar } from "./dashboard-user-avatar";
 import { DashboardMobileNavigation } from "./dashboard-mobile-navigation";
+import { useDashboardNotificationIndicators } from "@/features/dashboard/hooks/use-vendor-notification-indicators";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/store/auth.store";
 
@@ -42,6 +44,7 @@ export function DashboardTopbar() {
   const [propertySearch, setPropertySearch] = useState("");
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const role = useAuthStore((state) => state.role);
+  const { hasUnread } = useDashboardNotificationIndicators();
   const dashboardPath =
     role === "vendor" ? "/vendor/dashboard" : "/buyer/dashboard";
   const propertiesPath =
@@ -111,13 +114,23 @@ export function DashboardTopbar() {
             asChild
           >
             <Link
+              className="relative"
               href={
                 role === "vendor"
-                  ? `${settingsPath}#notifications`
-                  : `${settingsPath}?tab=notifications`
+                  ? "/vendor/notifications"
+                  : "/buyer/notifications"
               }
             >
               <Bell />
+              {hasUnread && (
+                <>
+                  <Badge
+                    className="absolute right-0.5 top-0.5 size-2 p-0"
+                    aria-hidden="true"
+                  />
+                  <span className="sr-only">Unread notifications</span>
+                </>
+              )}
             </Link>
           </Button>
           <Button

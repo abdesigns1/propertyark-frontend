@@ -14,6 +14,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
+import { AdminTablePagination } from "@/features/admin/components/admin-table-pagination";
 import { useAdminInspections } from "@/features/admin/hooks/use-admin-dashboard";
 import {
   inspectionDateLabel,
@@ -383,14 +384,10 @@ function InspectionRow({ inspection }: { inspection: VendorInspection }) {
       </TableCell>
       <TableCell>
         <Badge
-          variant={
-            label === "Issue Reported"
-              ? "destructive"
-              : label === "Completed"
-                ? "secondary"
-                : "outline"
-          }
+          variant={label === "Issue Reported" ? "destructive" : "outline"}
           className={cn(
+            label === "Completed" &&
+              "border-success/20 bg-success/15 text-success",
             label === "Scheduled" &&
               "border-primary/20 bg-primary/10 text-primary",
             label === "Requested" &&
@@ -446,29 +443,25 @@ function InspectionPagination({
   onPageChange: (page: number) => void;
 }) {
   return (
-    <div className="flex flex-col gap-3 border-t bg-surface/50 p-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-      <p>
-        Showing {total ? (page - 1) * PAGE_SIZE + 1 : 0} to{" "}
-        {Math.min(page * PAGE_SIZE, total)} of {total.toLocaleString()} entries
+    <div className="flex flex-col gap-4 border-t bg-surface/40 px-4 py-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <p className="w-fit rounded-lg border bg-background px-3 py-2 shadow-xs">
+        Showing{" "}
+        <span className="font-semibold text-foreground">
+          {total ? (page - 1) * PAGE_SIZE + 1 : 0}–
+          {Math.min(page * PAGE_SIZE, total)}
+        </span>{" "}
+        of{" "}
+        <span className="font-semibold text-foreground">
+          {total.toLocaleString()}
+        </span>{" "}
+        entries
       </p>
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
-        >
-          Previous
-        </Button>
-        <Badge className="min-w-9 justify-center">{page}</Badge>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={page >= pages}
-          onClick={() => onPageChange(page + 1)}
-        >
-          Next
-        </Button>
+      <div className="rounded-xl border bg-background p-1 shadow-xs [&_[data-active=true]]:border-primary [&_[data-active=true]]:bg-primary [&_[data-active=true]]:text-primary-foreground [&_[data-active=true]]:hover:bg-primary/90">
+        <AdminTablePagination
+          page={page}
+          totalPages={pages}
+          onPageChange={onPageChange}
+        />
       </div>
     </div>
   );

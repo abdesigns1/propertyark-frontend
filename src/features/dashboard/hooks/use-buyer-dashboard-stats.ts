@@ -27,3 +27,20 @@ export function useBuyerDashboardStats() {
     isLoading: favorites.isLoading || inquiries.isLoading,
   };
 }
+
+export function useBuyerRecentActivities() {
+  const ownerKey = useAccountKey();
+  return useQuery({
+    queryKey: [
+      "buyer-dashboard",
+      "recent-activities",
+      ownerKey ?? "unresolved-session",
+    ],
+    queryFn: buyerDashboardService.getRecentActivities,
+    enabled: Boolean(ownerKey),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+  });
+}

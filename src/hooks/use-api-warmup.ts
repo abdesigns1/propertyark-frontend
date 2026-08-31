@@ -16,7 +16,11 @@ export function useApiWarmup() {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 60_000);
 
-    void fetch("/api/v1/health", {
+    const apiBaseUrl = (
+      process.env.NEXT_PUBLIC_API_BASE_URL ??
+      "https://propertyark-backend.onrender.com/api/v1"
+    ).replace(/\/+$/, "");
+    void fetch(`${apiBaseUrl}/health`, {
       method: "GET",
       credentials: "include",
       cache: "no-store",

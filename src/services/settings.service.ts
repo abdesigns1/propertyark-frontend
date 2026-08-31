@@ -92,6 +92,9 @@ export const settingsService = {
     businessDescription?: string;
     cacRegistrationNumber?: string;
     taxId?: string;
+    emailAlerts?: boolean;
+    smsNotifications?: boolean;
+    pushNotifications?: boolean;
   }) => normalizeProfile((await api.patch("/users/update", payload)).data),
   updateAvatar: async (avatar: File) => {
     const form = new FormData();

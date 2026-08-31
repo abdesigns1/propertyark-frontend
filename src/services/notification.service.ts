@@ -54,23 +54,57 @@ function normalizeNotification(
   fallbackId: string,
 ): AdminNotification {
   const source = asRecord(value);
-  const metadata = asRecord(source.data ?? source.metadata);
-  const id = text(source, ["id", "_id", "notificationId"]);
+  const metadata = {
+    ...asRecord(source.metadata),
+    ...asRecord(source.data),
+  };
+  const id = text(
+    source,
+    ["id", "_id", "notificationId"],
+    text(metadata, ["id", "_id", "notificationId"]),
+  );
 
   return {
     id: id || fallbackId,
-    title: text(source, ["title", "subject"], "Platform notification"),
-    message: text(source, ["message", "body", "description"]),
-    type: text(source, ["type", "category"], "GENERAL").toUpperCase(),
-    priority: text(source, ["priority", "severity"], "NORMAL").toUpperCase(),
+    title: text(
+      source,
+      ["title", "subject"],
+      text(metadata, ["title", "subject"], "Platform notification"),
+    ),
+    message: text(
+      source,
+      ["message", "body", "description"],
+      text(metadata, ["message", "body", "description"]),
+    ),
+    type: text(
+      source,
+      ["type", "category", "notificationType", "eventType"],
+      text(
+        metadata,
+        ["type", "category", "notificationType", "eventType"],
+        "GENERAL",
+      ),
+    ).toUpperCase(),
+    priority: text(
+      source,
+      ["priority", "severity"],
+      text(metadata, ["priority", "severity"], "NORMAL"),
+    ).toUpperCase(),
     isRead:
       source.isRead === true ||
       source.read === true ||
-      Boolean(source.readAt ?? source.seenAt),
+      Boolean(source.readAt ?? source.seenAt) ||
+      metadata.isRead === true ||
+      metadata.read === true ||
+      Boolean(metadata.readAt ?? metadata.seenAt),
     createdAt: text(
       source,
       ["createdAt", "sentAt", "timestamp", "updatedAt"],
-      new Date().toISOString(),
+      text(
+        metadata,
+        ["createdAt", "sentAt", "timestamp", "updatedAt"],
+        new Date().toISOString(),
+      ),
     ),
     actionUrl:
       text(source, ["redirect", "actionUrl"], text(metadata, ["redirect"])) ||
@@ -78,6 +112,36 @@ function normalizeNotification(
     actionLabel:
       text(source, ["actionLabel"], text(metadata, ["actionLabel"])) || null,
   };
+}
+
+function getMine(page = 1, limit = 20) {
+  return api
+    .get<unknown>("/notifications/my", { params: { page, limit } })
+    .then(({ data }) => unwrapNotifications(data));
+}
+
+async function getAllMine(limit = 100) {
+  const firstPage = await getMine(1, limit);
+  const remainingPages = await Promise.all(
+    Array.from(
+      { length: Math.max(0, firstPage.pagination.pages - 1) },
+      (_, index) => getMine(index + 2, limit),
+    ),
+  );
+  const notifications = [
+    ...firstPage.notifications,
+    ...remainingPages.flatMap((page) => page.notifications),
+  ];
+
+  return {
+    notifications,
+    pagination: {
+      page: 1,
+      limit: notifications.length || limit,
+      total: firstPage.pagination.total,
+      pages: 1,
+    },
+  } satisfies NotificationPageData;
 }
 
 function unwrapNotifications(value: unknown): NotificationPageData {
@@ -160,10 +224,8 @@ function nestedNumeric(value: unknown, keys: string[]) {
 }
 
 export const notificationService = {
-  getMine: (page = 1, limit = 20) =>
-    api
-      .get<unknown>("/notifications/my", { params: { page, limit } })
-      .then(({ data }) => unwrapNotifications(data)),
+  getMine,
+  getAllMine,
 
   getAdminStats: () =>
     api

@@ -366,6 +366,18 @@ function normalizeDashboard(value: unknown): ShortletDashboardData {
   const properties = Array.from(propertyMap, ([id, name]) => ({ id, name }));
   const pricingSource = asRecord(source.pricing ?? source.rates);
   const firstPropertyId = properties[0]?.id ?? "";
+  const recentBookings = [...bookings]
+    .sort((first, second) => {
+      const firstTime = new Date(first.requestedAt ?? first.checkIn).getTime();
+      const secondTime = new Date(
+        second.requestedAt ?? second.checkIn,
+      ).getTime();
+      return (
+        (Number.isFinite(secondTime) ? secondTime : 0) -
+        (Number.isFinite(firstTime) ? firstTime : 0)
+      );
+    })
+    .slice(0, 5);
 
   return {
     stats: {
@@ -432,7 +444,7 @@ function normalizeDashboard(value: unknown): ShortletDashboardData {
             ? "pending"
             : "confirmed",
     })),
-    activities: bookings.slice(0, 5).map((booking) => ({
+    activities: recentBookings.map((booking) => ({
       id: `activity-${booking.id}`,
       time: booking.checkInTime ?? "—",
       type: booking.status.replaceAll("_", " "),

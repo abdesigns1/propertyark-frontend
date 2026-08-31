@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   BadgePercent,
+  Bell,
   Building2,
   CalendarCheck2,
   FilePlus2,
@@ -21,6 +22,8 @@ import {
 import { DashboardBrand } from "./dashboard-brand";
 import { DashboardUserAvatar } from "./dashboard-user-avatar";
 import { useDashboardUser } from "@/features/dashboard/hooks/use-dashboard-user";
+import { useDashboardNotificationIndicators } from "@/features/dashboard/hooks/use-vendor-notification-indicators";
+import { Badge } from "@/components/ui/badge";
 import { SheetClose } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth.store";
@@ -33,6 +36,7 @@ const buyerNavigation = [
   { label: "Mortgage", icon: FileText, href: "/buyer/mortgage" },
   { label: "Investments", icon: WalletCards, href: "/buyer/investments" },
   { label: "Messages", icon: Mail, href: "#" },
+  { label: "Notifications", icon: Bell, href: "/buyer/notifications" },
   { label: "Settings", icon: Settings, href: "/buyer/settings" },
 ];
 
@@ -60,6 +64,7 @@ const vendorNavigation = [
     icon: MessageSquareText,
     href: "/vendor/dashboard#messages",
   },
+  { label: "Notifications", icon: Bell, href: "/vendor/notifications" },
   { label: "Settings", icon: Settings, href: "/vendor/settings" },
 ];
 
@@ -73,6 +78,8 @@ export function DashboardNavigation({
   const role = useAuthStore((state) => state.role);
   const navigation = role === "vendor" ? vendorNavigation : buyerNavigation;
   const compactVendorNavigation = role === "vendor" && !closeOnSelect;
+  const { hasUnread, hasUnreadBookings, hasUnreadInspections } =
+    useDashboardNotificationIndicators();
 
   useEffect(() => {
     const updateHash = () => setHash(window.location.hash);
@@ -92,6 +99,14 @@ export function DashboardNavigation({
         const active =
           pathname === itemPathname &&
           (itemHash ? hash === `#${itemHash}` : !hash);
+        const hasNewActivity =
+          (role === "vendor" &&
+            ((href === "/vendor/shortlet-bookings" && hasUnreadBookings) ||
+              (href === "/vendor/inspections" && hasUnreadInspections) ||
+              (href === "/vendor/notifications" && hasUnread))) ||
+          (role !== "vendor" &&
+            ((href === "/buyer/inspections" && hasUnreadInspections) ||
+              (href === "/buyer/notifications" && hasUnread)));
         const item = (
           <Link
             key={label}
@@ -106,6 +121,12 @@ export function DashboardNavigation({
           >
             <Icon className="size-5 shrink-0" aria-hidden="true" />
             <span>{label}</span>
+            {hasNewActivity && (
+              <>
+                <Badge className="ml-auto size-2 p-0" aria-hidden="true" />
+                <span className="sr-only">New activity</span>
+              </>
+            )}
           </Link>
         );
         return closeOnSelect ? (

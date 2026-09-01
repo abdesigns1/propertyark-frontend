@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { AdminNotification } from "@/services/notification.service";
 import { cn } from "@/lib/utils";
+import { FormattedNotificationMessage } from "@/components/notifications/formatted-notification-message";
 
 const financialTypes = new Set([
   "FINANCIAL",
@@ -20,6 +21,8 @@ const financialTypes = new Set([
 ]);
 const propertyTypes = new Set(["PROPERTY", "LISTING"]);
 const verificationTypes = new Set(["KYC", "VERIFICATION"]);
+const inspectionTypes = new Set(["INSPECTION", "INQUIRY", "VIEWING"]);
+const bookingTypes = new Set(["BOOKING", "SHORTLET", "SHORTLET_BOOKING"]);
 
 function notificationAppearance(type: string, priority: string) {
   if (priority === "URGENT" || priority === "CRITICAL" || type === "SECURITY") {
@@ -64,10 +67,16 @@ function notificationAppearance(type: string, priority: string) {
 
 function defaultAction(notification: AdminNotification) {
   if (verificationTypes.has(notification.type)) {
-    return { label: "Start Review", href: "/admin/kyc" };
+    return { label: "Review verification", href: "/admin/kyc" };
   }
   if (propertyTypes.has(notification.type)) {
-    return { label: "Audit Price", href: "/admin/properties" };
+    return { label: "View properties", href: "/admin/properties" };
+  }
+  if (inspectionTypes.has(notification.type)) {
+    return { label: "View inspections", href: "/admin/inspections" };
+  }
+  if (bookingTypes.has(notification.type)) {
+    return { label: "View bookings", href: "/admin/shortlet-bookings" };
   }
   return null;
 }
@@ -82,11 +91,11 @@ function formatNotificationTime(value: string) {
 export function AdminNotificationItem({
   notification,
   pending,
-  onDismiss,
+  onMarkRead,
 }: {
   notification: AdminNotification;
   pending: boolean;
-  onDismiss: (id: string) => void;
+  onMarkRead: (id: string) => void;
 }) {
   const appearance = notificationAppearance(
     notification.type,
@@ -120,9 +129,10 @@ export function AdminNotificationItem({
               {formatNotificationTime(notification.createdAt)}
             </time>
           </div>
-          <p className="mt-1 max-w-3xl leading-6 text-muted-foreground">
-            {notification.message}
-          </p>
+          <FormattedNotificationMessage
+            message={notification.message}
+            className="mt-1 max-w-3xl leading-6 text-muted-foreground"
+          />
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Badge className={appearance.badgeClass}>{appearance.label}</Badge>
             {!notification.isRead && (
@@ -134,7 +144,14 @@ export function AdminNotificationItem({
             <div className="ml-auto flex items-center gap-1">
               {actionHref && actionLabel && (
                 <Button variant="link" size="sm" asChild>
-                  <Link href={actionHref}>{actionLabel}</Link>
+                  <Link
+                    href={actionHref}
+                    onClick={() => {
+                      if (!notification.isRead) onMarkRead(notification.id);
+                    }}
+                  >
+                    {actionLabel}
+                  </Link>
                 </Button>
               )}
               {!notification.isRead && (
@@ -142,9 +159,9 @@ export function AdminNotificationItem({
                   variant="ghost"
                   size="sm"
                   disabled={pending}
-                  onClick={() => onDismiss(notification.id)}
+                  onClick={() => onMarkRead(notification.id)}
                 >
-                  Dismiss
+                  Mark as read
                 </Button>
               )}
             </div>

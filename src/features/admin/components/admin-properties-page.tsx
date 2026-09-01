@@ -43,7 +43,12 @@ export function AdminPropertiesPage() {
   const [category, setCategory] = useState("ALL");
   const [priceRange, setPriceRange] = useState("ALL");
   const [search, setSearch] = useState("");
-  const query = useAdminProperties(page, status);
+  const isSearching = Boolean(search.trim());
+  const query = useAdminProperties(
+    isSearching ? 1 : page,
+    status,
+    isSearching ? 1000 : 10,
+  );
   const statsQuery = useAdminProperties(1, "ALL");
   const data = query.data;
   const properties = useMemo(
@@ -121,7 +126,10 @@ export function AdminPropertiesPage() {
           <CardContent className="p-0">
             <PropertyFilters
               search={search}
-              setSearch={setSearch}
+              setSearch={(value) => {
+                setSearch(value);
+                setPage(1);
+              }}
               status={status}
               setStatus={(value) => {
                 setStatus(value);
@@ -138,10 +146,13 @@ export function AdminPropertiesPage() {
               <PropertiesTable properties={properties} />
             )}
             <PropertyPagination
-              page={data?.pagination.page ?? page}
-              pages={data?.pagination.pages ?? 1}
-              total={data?.pagination.total ?? 0}
+              page={isSearching ? 1 : (data?.pagination.page ?? page)}
+              pages={isSearching ? 1 : (data?.pagination.pages ?? 1)}
+              total={
+                isSearching ? properties.length : (data?.pagination.total ?? 0)
+              }
               count={properties.length}
+              pageSize={isSearching ? Math.max(1, properties.length) : 10}
               onPageChange={setPage}
             />
           </CardContent>
@@ -351,16 +362,18 @@ function PropertyPagination({
   pages,
   total,
   count,
+  pageSize,
   onPageChange,
 }: {
   page: number;
   pages: number;
   total: number;
   count: number;
+  pageSize: number;
   onPageChange: (page: number) => void;
 }) {
-  const first = count ? (page - 1) * 10 + 1 : 0;
-  const last = Math.min((page - 1) * 10 + count, total);
+  const first = count ? (page - 1) * pageSize + 1 : 0;
+  const last = Math.min((page - 1) * pageSize + count, total);
   return (
     <div className="flex flex-col gap-4 border-t px-6 py-5 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
       <p>
@@ -416,7 +429,7 @@ function filterProperties(
       0;
     const matchesSearch =
       !search ||
-      `${property.name} ${property.id} ${property.vendor?.fullName ?? ""}`
+      `${property.id} ${property.name} ${property.type} ${property.listingType} ${property.address} ${property.city} ${property.state} ${property.vendor?.id ?? ""} ${property.vendor?.fullName ?? ""} ${property.vendor?.email ?? ""}`
         .toLowerCase()
         .includes(search);
     const matchesCategory =

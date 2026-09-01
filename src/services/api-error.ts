@@ -42,7 +42,13 @@ export function getApiErrorMessage(
 
   const issueMessage = validationIssueMessage(data?.issues ?? data?.errors);
 
-  return (
-    issueMessage ?? data?.message ?? data?.error ?? data?.details ?? fallback
-  );
+  const responseMessage =
+    issueMessage ?? data?.message ?? data?.error ?? data?.details;
+  if (responseMessage) return responseMessage;
+
+  if (!error.response) {
+    return "The notification service could not be reached. Please check your connection and try again.";
+  }
+
+  return `${fallback} (HTTP ${error.response.status})`;
 }

@@ -131,7 +131,7 @@ function InspectionDetails({
 
   function exportReport() {
     const text = [
-      `Inspection: ${inspectionReference(inspection.id)}`,
+      `Inspection: ${inspectionReference(inspection)}`,
       `Property: ${inspection.propertyName}`,
       `Buyer: ${inspection.userName}`,
       `Vendor: ${inspection.vendorName ?? "Not provided"}`,
@@ -143,7 +143,7 @@ function InspectionDetails({
     const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `${inspectionReference(inspection.id)}.txt`;
+    anchor.download = `${inspectionReference(inspection)}.txt`;
     anchor.click();
     URL.revokeObjectURL(url);
   }
@@ -164,7 +164,7 @@ function InspectionDetails({
             <InspectionBadge status={status} />
           </div>
           <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-            <span># {inspectionReference(inspection.id)}</span>
+            <span># {inspectionReference(inspection)}</span>
             <span>{inspectionTypeLabel(inspection.meetingType)}</span>
             <span>
               Created: {inspectionDateLabel(inspection.requestSentAt)}

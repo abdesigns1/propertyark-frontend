@@ -26,7 +26,11 @@ export function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const usersQuery = useAdminUsers(page, 10);
+  const isSearching = Boolean(search.trim());
+  const usersQuery = useAdminUsers(
+    isSearching ? 1 : page,
+    isSearching ? 1000 : 10,
+  );
   const statsQuery = useAdminUserStats();
   const users = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -35,7 +39,7 @@ export function AdminUsersPage() {
         filter === "all" || user.role.toLowerCase() === filter;
       const matchesSearch =
         !normalizedSearch ||
-        `${user.fullName} ${user.email}`
+        `${user.id} ${user.fullName} ${user.email} ${user.phone ?? ""} ${user.role}`
           .toLowerCase()
           .includes(normalizedSearch);
       return matchesRole && matchesSearch;
@@ -136,8 +140,11 @@ export function AdminUsersPage() {
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search users..."
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Search by user ID, name, email or phone..."
               className="pl-10"
             />
           </div>
@@ -149,9 +156,16 @@ export function AdminUsersPage() {
           ) : (
             <AdminUsersTable
               users={users}
-              page={usersQuery.data?.pagination.page ?? page}
-              pages={usersQuery.data?.pagination.pages ?? 1}
-              total={usersQuery.data?.pagination.total ?? 0}
+              page={
+                isSearching ? 1 : (usersQuery.data?.pagination.page ?? page)
+              }
+              pages={isSearching ? 1 : (usersQuery.data?.pagination.pages ?? 1)}
+              total={
+                isSearching
+                  ? users.length
+                  : (usersQuery.data?.pagination.total ?? 0)
+              }
+              pageSize={isSearching ? Math.max(1, users.length) : 10}
               onPageChange={setPage}
             />
           )}

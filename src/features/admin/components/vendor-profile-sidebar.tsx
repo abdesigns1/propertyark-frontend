@@ -1,9 +1,10 @@
+import Link from "next/link";
 import {
+  BellRing,
   CheckCircle2,
   CircleEllipsis,
   ExternalLink,
   Flag,
-  KeyRound,
   Mail,
   Phone,
   Send,
@@ -136,8 +137,15 @@ function VendorAdminActions({ user }: { user: AdminUser }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
-        <Button variant="outline" className="h-14 justify-start" disabled>
-          <KeyRound data-icon="inline-start" /> Reset Password
+        <Button variant="outline" className="h-14 justify-start" asChild>
+          <Link
+            href={{
+              pathname: "/admin/settings/notifications",
+              query: { audience: "VENDOR", recipientId: user.id },
+            }}
+          >
+            <BellRing data-icon="inline-start" /> Send Notification
+          </Link>
         </Button>
         <Button variant="outline" className="h-14 justify-start" asChild>
           <a href={`mailto:${user.email}`}>

@@ -19,22 +19,34 @@ import {
   UserRound,
   UserPlus,
 } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { AdminSidebar } from "@/features/admin/components/admin-sidebar";
 import {
-  overviewStats,
-  recentActivities,
-  verificationQueue,
-} from "@/features/admin/data/dashboard-data";
+  Bar,
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { AdminSidebar } from "@/features/admin/components/admin-sidebar";
+import { overviewStats } from "@/features/admin/data/dashboard-data";
 import {
   useAdminDashboard,
+  useAdminGrowthHistory,
+  useAdminKycRequests,
+  useAdminKycStats,
   useAdminUsers,
 } from "@/features/admin/hooks/use-admin-dashboard";
+import type { AdminGrowthHistory } from "@/features/admin/hooks/use-admin-dashboard";
+import { useAdminActivities } from "@/features/admin/hooks/use-admin-activity";
+import { formatActivityTime } from "@/features/admin/lib/admin-activity-display";
 import type {
   AdminDashboardData,
+  AdminKycRequest,
+  AdminKycStats,
   AdminProperty,
   AdminUser,
 } from "@/services/admin.service";
+import type { AdminActivity } from "@/services/activity.service";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { AdminRoleBadge } from "@/features/admin/components/admin-role-badge";
@@ -206,7 +218,7 @@ function DashboardHeader() {
                 <UserRound />
                 User management
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => router.push("#settings")}>
+              <DropdownMenuItem onSelect={() => router.push("/admin/settings")}>
                 <Settings />
                 System settings
               </DropdownMenuItem>
@@ -271,59 +283,103 @@ function OverviewCards({
   );
 }
 
-function GrowthChart({ data }: { data?: AdminDashboardData["growthRevenue"] }) {
-  const [period, setPeriod] = useState("day");
-  const userPoints = new Map(
-    data?.userGrowth.map((point) => [point.date, point]) ?? [],
+function GrowthChart({
+  data,
+  history,
+}: {
+  data?: AdminDashboardData["growthRevenue"];
+  history?: AdminGrowthHistory;
+}) {
+  const [period, setPeriod] = useState<"day" | "month" | "year">("month");
+  const now = new Date();
+  const bucketDates = Array.from(
+    { length: period === "day" ? 7 : period === "month" ? 12 : 5 },
+    (_, index) => {
+      const date = new Date(now);
+      if (period === "day") date.setDate(now.getDate() - (6 - index));
+      if (period === "month") {
+        date.setDate(1);
+        date.setMonth(now.getMonth() - (11 - index));
+      }
+      if (period === "year") {
+        date.setMonth(0, 1);
+        date.setFullYear(now.getFullYear() - (4 - index));
+      }
+      return date;
+    },
   );
-  const listingPoints = new Map(
-    data?.listingGrowth.map((point) => [point.date, point]) ?? [],
-  );
-  const dates = [
-    ...new Set([...userPoints.keys(), ...listingPoints.keys()]),
-  ].sort();
-  const daily = dates.map((date) => {
-    const users = userPoints.get(date);
-    const listings = listingPoints.get(date);
-    return {
-      date,
-      label: users?.dayShort ?? listings?.dayShort ?? date,
-      users: users?.totalUsers ?? users?.newUsers ?? 0,
-      listings: listings?.totalListings ?? listings?.newListings ?? 0,
-      revenue: users?.revenue ?? listings?.revenue ?? 0,
-    };
+  const keyFor = (value: string | Date) => {
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return period === "year"
+      ? String(year)
+      : period === "month"
+        ? `${year}-${month}`
+        : `${year}-${month}-${day}`;
+  };
+  const chartData = bucketDates.map((date) => ({
+    date: keyFor(date),
+    label:
+      period === "year"
+        ? String(date.getFullYear())
+        : new Intl.DateTimeFormat("en", {
+            ...(period === "day"
+              ? { weekday: "short", day: "numeric" }
+              : { month: "short", year: "2-digit" }),
+          }).format(date),
+    users: 0,
+    listings: 0,
+    revenue: 0,
+  }));
+  const buckets = new Map(chartData.map((point) => [point.date, point]));
+
+  history?.users.forEach((user) => {
+    const point = buckets.get(keyFor(user.createdAt));
+    if (point) point.users += 1;
   });
-  const chartData =
-    period === "day"
-      ? daily
-      : Object.values(
-          daily.reduce<Record<string, (typeof daily)[number]>>(
-            (groups, point) => {
-              const date = new Date(`${point.date}T00:00:00`);
-              const key =
-                period === "month"
-                  ? point.date.slice(0, 7)
-                  : point.date.slice(0, 4);
-              const label =
-                period === "month"
-                  ? new Intl.DateTimeFormat("en", {
-                      month: "short",
-                      year: "numeric",
-                    }).format(date)
-                  : key;
-              const current = groups[key];
-              groups[key] = {
-                date: key,
-                label,
-                users: Math.max(current?.users ?? 0, point.users),
-                listings: Math.max(current?.listings ?? 0, point.listings),
-                revenue: (current?.revenue ?? 0) + point.revenue,
-              };
-              return groups;
-            },
-            {},
-          ),
-        );
+  history?.properties.forEach((property) => {
+    const point = buckets.get(keyFor(property.createdAt));
+    if (point) point.listings += 1;
+  });
+  history?.activities.forEach((activity) => {
+    if (
+      !/PAYMENT|TRANSACTION|ESCROW/.test(
+        `${activity.action} ${activity.entityType}`,
+      )
+    )
+      return;
+    const rawAmount =
+      activity.metadata.amount ??
+      activity.metadata.totalAmount ??
+      activity.metadata.value ??
+      0;
+    const amount =
+      typeof rawAmount === "string"
+        ? Number(rawAmount.replace(/[^0-9.-]/g, ""))
+        : Number(rawAmount);
+    const point = buckets.get(keyFor(activity.createdAt));
+    if (point && Number.isFinite(amount)) point.revenue += amount;
+  });
+
+  if (!history) {
+    data?.userGrowth.forEach((item) => {
+      const point = buckets.get(keyFor(item.date));
+      if (point) {
+        point.users += item.newUsers ?? 0;
+        point.revenue += item.revenue ?? 0;
+      }
+    });
+    data?.listingGrowth.forEach((item) => {
+      const point = buckets.get(keyFor(item.date));
+      if (point) {
+        point.listings += item.newListings ?? 0;
+        point.revenue += item.revenue ?? 0;
+      }
+    });
+  }
 
   return (
     <Card className="min-w-0 bg-card py-0">
@@ -347,7 +403,10 @@ function GrowthChart({ data }: { data?: AdminDashboardData["growthRevenue"] }) {
           <ToggleGroup
             type="single"
             value={period}
-            onValueChange={(value) => value && setPeriod(value)}
+            onValueChange={(value) => {
+              if (value === "day" || value === "month" || value === "year")
+                setPeriod(value);
+            }}
             size="sm"
           >
             <ToggleGroupItem value="day" className="min-w-14">
@@ -367,7 +426,7 @@ function GrowthChart({ data }: { data?: AdminDashboardData["growthRevenue"] }) {
           config={chartConfig}
           className="h-72 w-full aspect-auto"
         >
-          <BarChart
+          <ComposedChart
             data={chartData}
             accessibilityLayer
             barCategoryGap="28%"
@@ -381,10 +440,24 @@ function GrowthChart({ data }: { data?: AdminDashboardData["growthRevenue"] }) {
               tickMargin={12}
             />
             <YAxis
+              yAxisId="activity"
               tickLine={false}
               axisLine={false}
               width={34}
               allowDecimals={false}
+            />
+            <YAxis
+              yAxisId="revenue"
+              orientation="right"
+              tickLine={false}
+              axisLine={false}
+              width={48}
+              tickFormatter={(value) =>
+                new Intl.NumberFormat("en", {
+                  notation: "compact",
+                  maximumFractionDigits: 1,
+                }).format(value)
+              }
             />
             <ChartTooltip
               cursor={{ fill: "var(--surface)" }}
@@ -392,58 +465,87 @@ function GrowthChart({ data }: { data?: AdminDashboardData["growthRevenue"] }) {
             />
             <Bar
               dataKey="users"
+              yAxisId="activity"
               fill="var(--color-users)"
               radius={[6, 6, 0, 0]}
               maxBarSize={28}
             />
             <Bar
               dataKey="listings"
+              yAxisId="activity"
               fill="var(--color-listings)"
               radius={[6, 6, 0, 0]}
               maxBarSize={28}
             />
-            <Bar
+            <Line
               dataKey="revenue"
-              fill="var(--color-revenue)"
-              radius={[6, 6, 0, 0]}
-              maxBarSize={28}
+              yAxisId="revenue"
+              stroke="var(--color-revenue)"
+              strokeWidth={3}
+              dot={{ r: 3, fill: "var(--color-revenue)" }}
             />
-          </BarChart>
+          </ComposedChart>
         </ChartContainer>
       </CardContent>
     </Card>
   );
 }
 
-function ActivitiesCard() {
+function ActivitiesCard({
+  activities,
+  loading,
+}: {
+  activities: AdminActivity[];
+  loading: boolean;
+}) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Recent Activities</CardTitle>
       </CardHeader>
       <CardContent>
-        <ol className="flex flex-col gap-5">
-          {recentActivities.map((item, index) => (
-            <li key={item.title} className="relative flex gap-3">
-              <Avatar className="size-9">
-                <AvatarFallback className="bg-primary/10 text-xs text-primary">
-                  {item.initials}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm font-semibold leading-5">{item.title}</p>
-                <p className="text-xs text-muted-foreground">{item.meta}</p>
-              </div>
-              {index < recentActivities.length - 1 && (
-                <span className="absolute left-[18px] top-10 h-4 w-px bg-border" />
-              )}
-            </li>
-          ))}
-        </ol>
+        {loading ? (
+          <div className="flex flex-col gap-3">
+            {[1, 2, 3].map((item) => (
+              <Skeleton key={item} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : activities.length ? (
+          <ol className="flex flex-col gap-5">
+            {activities.slice(0, 4).map((item, index) => (
+              <li key={item.id} className="relative flex gap-3">
+                <Avatar className="size-9">
+                  <AvatarFallback className="bg-primary/10 text-xs text-primary">
+                    {item.actor.name
+                      .split(" ")
+                      .map((part) => part[0])
+                      .slice(0, 2)
+                      .join("") || "SY"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold leading-5">
+                    {item.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatActivityTime(item.createdAt)} · {item.entityType}
+                  </p>
+                </div>
+                {index < Math.min(activities.length, 4) - 1 && (
+                  <span className="absolute left-[18px] top-10 h-4 w-px bg-border" />
+                )}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No platform activities have been recorded yet.
+          </p>
+        )}
       </CardContent>
       <CardFooter>
-        <Button variant="outline" className="w-full">
-          View All Activity
+        <Button variant="outline" className="w-full" asChild>
+          <Link href="/admin/activity">View All Activity</Link>
         </Button>
       </CardFooter>
     </Card>
@@ -455,14 +557,17 @@ function PropertiesTable({
 }: {
   properties?: AdminProperty[];
 }) {
-  const rows = properties.slice(0, 4);
+  const rows = properties.slice(0, 6);
   const money = new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency: "NGN",
     maximumFractionDigits: 0,
   });
   return (
-    <Card id="properties" className="overflow-hidden py-0">
+    <Card
+      id="properties"
+      className="flex min-h-0 flex-1 flex-col overflow-hidden py-0"
+    >
       <CardHeader className="border-b py-5">
         <CardTitle className="text-xl">Property Management</CardTitle>
         <CardAction>
@@ -530,7 +635,7 @@ function PropertiesTable({
           </TableBody>
         </Table>
       </CardContent>
-      <CardFooter className="justify-between bg-surface/50 py-4 text-xs text-muted-foreground">
+      <CardFooter className="mt-auto justify-between bg-surface/50 py-4 text-xs text-muted-foreground">
         <span>
           Showing 1 to {rows.length} of {properties.length} entries
         </span>
@@ -554,7 +659,15 @@ function PropertiesTable({
   );
 }
 
-function VerificationCard() {
+function VerificationCard({
+  stats,
+  requests,
+  loading,
+}: {
+  stats?: AdminKycStats;
+  requests: AdminKycRequest[];
+  loading: boolean;
+}) {
   return (
     <Card id="kyc">
       <CardHeader>
@@ -563,33 +676,55 @@ function VerificationCard() {
       <CardContent className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-lg border p-4 text-center">
-            <p className="text-2xl font-semibold text-primary">85</p>
+            <p className="text-2xl font-semibold text-primary">
+              {loading ? "—" : (stats?.pending ?? 0).toLocaleString()}
+            </p>
             <p className="text-xs font-medium uppercase text-muted-foreground">
               Pending
             </p>
           </div>
           <div className="rounded-lg border p-4 text-center">
-            <p className="text-2xl font-semibold text-success">1,250</p>
+            <p className="text-2xl font-semibold text-success">
+              {loading ? "—" : (stats?.verified ?? 0).toLocaleString()}
+            </p>
             <p className="text-xs font-medium uppercase text-muted-foreground">
               Approved
             </p>
           </div>
         </div>
         <div className="flex flex-col gap-2">
-          {verificationQueue.map(({ icon: Icon, name }) => (
-            <button
-              key={name}
+          {requests.slice(0, 3).map((request) => (
+            <Link
+              key={request.id}
+              href={`/admin/users/${request.userId}`}
               className="flex items-center gap-3 rounded-lg border p-3 text-left hover:bg-accent"
             >
               <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Icon className="size-4" />
+                <UserRound className="size-4" />
               </span>
-              <span className="flex-1 text-sm font-medium">{name}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">
+                  {request.fullName}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  Awaiting verification
+                </span>
+              </span>
               <ChevronRight className="size-4 text-muted-foreground" />
-            </button>
+            </Link>
           ))}
+          {!loading && requests.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              There are no pending verification submissions.
+            </p>
+          )}
         </div>
       </CardContent>
+      <CardFooter>
+        <Button variant="outline" className="w-full" asChild>
+          <Link href="/admin/kyc">View All Verifications</Link>
+        </Button>
+      </CardFooter>
     </Card>
   );
 }
@@ -799,7 +934,11 @@ export function AdminDashboardHome() {
   const user = useAuthStore((state) => state.user);
   const [usersPage, setUsersPage] = useState(1);
   const dashboard = useAdminDashboard();
+  const growthHistory = useAdminGrowthHistory();
   const adminUsers = useAdminUsers(usersPage);
+  const activities = useAdminActivities(1, 100);
+  const kycStats = useAdminKycStats();
+  const kycRequests = useAdminKycRequests(1, "PENDING", "ALL");
 
   useEffect(() => {
     if (ready && (!isAuthenticated || (role !== "admin" && role !== "staff")))
@@ -876,13 +1015,23 @@ export function AdminDashboardHome() {
           <OverviewCards stats={dashboard.data?.dashboardStats} />
         </section>
         <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(280px,0.95fr)]">
-          <div className="flex min-w-0 flex-col gap-5">
-            <GrowthChart data={dashboard.data?.growthRevenue} />
+          <div className="flex h-full min-w-0 flex-col gap-5">
+            <GrowthChart
+              data={dashboard.data?.growthRevenue}
+              history={growthHistory.data}
+            />
             <PropertiesTable properties={dashboard.data?.properties} />
           </div>
-          <aside className="flex flex-col gap-5">
-            <ActivitiesCard />
-            <VerificationCard />
+          <aside className="flex h-full flex-col gap-5">
+            <ActivitiesCard
+              activities={activities.data?.activities ?? []}
+              loading={activities.isLoading}
+            />
+            <VerificationCard
+              stats={kycStats.data}
+              requests={kycRequests.data?.requests ?? []}
+              loading={kycStats.isLoading || kycRequests.isLoading}
+            />
             <FinancialCard />
           </aside>
         </section>

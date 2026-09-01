@@ -32,7 +32,7 @@ export const adminNavigation = [
     icon: ChartNoAxesCombined,
   },
   { label: "Notifications", href: "/admin/notifications", icon: Bell },
-  { label: "System Settings", href: "#settings", icon: Settings },
+  { label: "System Settings", href: "/admin/settings", icon: Settings },
 ] as const;
 
 export const overviewStats = [

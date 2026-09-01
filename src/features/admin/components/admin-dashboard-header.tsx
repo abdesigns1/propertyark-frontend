@@ -138,7 +138,7 @@ export function AdminDashboardHeader() {
                 <UserRound />
                 User management
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => router.push("#settings")}>
+              <DropdownMenuItem onSelect={() => router.push("/admin/settings")}>
                 <Settings />
                 System settings
               </DropdownMenuItem>

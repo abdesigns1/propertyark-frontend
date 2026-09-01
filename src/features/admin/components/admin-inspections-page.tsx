@@ -55,7 +55,11 @@ export function AdminInspectionsPage() {
   const [status, setStatus] = useState("ALL");
   const [date, setDate] = useState("ALL");
   const [type, setType] = useState("ALL");
-  const query = useAdminInspections(page, PAGE_SIZE);
+  const isSearching = Boolean(search.trim());
+  const query = useAdminInspections(
+    isSearching ? 1 : page,
+    isSearching ? 1000 : PAGE_SIZE,
+  );
   const data = query.data;
   const inspections = useMemo(
     () =>
@@ -72,7 +76,7 @@ export function AdminInspectionsPage() {
     const csv = [
       ["Inspection ID", "Property", "Buyer", "Vendor", "Schedule", "Status"],
       ...inspections.map((item) => [
-        inspectionReference(item.id),
+        inspectionReference(item),
         item.propertyName,
         item.userName,
         item.vendorName ?? "",
@@ -128,7 +132,10 @@ export function AdminInspectionsPage() {
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={search}
-                  onChange={(event) => setSearch(event.target.value)}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setPage(1);
+                  }}
                   className="pl-10"
                   placeholder="Search inspection ID, property, buyer or vendor..."
                 />
@@ -197,9 +204,14 @@ export function AdminInspectionsPage() {
               )}
             </div>
             <InspectionPagination
-              page={page}
-              pages={data?.pagination.pages ?? 1}
-              total={data?.pagination.total ?? 0}
+              page={isSearching ? 1 : page}
+              pages={isSearching ? 1 : (data?.pagination.pages ?? 1)}
+              total={
+                isSearching ? inspections.length : (data?.pagination.total ?? 0)
+              }
+              pageSize={
+                isSearching ? Math.max(1, inspections.length) : PAGE_SIZE
+              }
               onPageChange={setPage}
             />
           </CardContent>
@@ -351,7 +363,7 @@ function InspectionRow({ inspection }: { inspection: VendorInspection }) {
   return (
     <TableRow>
       <TableCell className="font-semibold text-primary">
-        {inspectionReference(inspection.id)}
+        {inspectionReference(inspection)}
       </TableCell>
       <TableCell>
         <div className="flex min-w-48 items-center gap-3">
@@ -435,11 +447,13 @@ function InspectionPagination({
   page,
   pages,
   total,
+  pageSize,
   onPageChange,
 }: {
   page: number;
   pages: number;
   total: number;
+  pageSize: number;
   onPageChange: (page: number) => void;
 }) {
   return (
@@ -447,8 +461,8 @@ function InspectionPagination({
       <p className="w-fit rounded-lg border bg-background px-3 py-2 shadow-xs">
         Showing{" "}
         <span className="font-semibold text-foreground">
-          {total ? (page - 1) * PAGE_SIZE + 1 : 0}–
-          {Math.min(page * PAGE_SIZE, total)}
+          {total ? (page - 1) * pageSize + 1 : 0}–
+          {Math.min(page * pageSize, total)}
         </span>{" "}
         of{" "}
         <span className="font-semibold text-foreground">
@@ -488,9 +502,14 @@ function filterInspections(
             : Math.abs(now - timestamp) < 2_678_400_000));
     return (
       (!term ||
-        [item.id, item.propertyName, item.userName, item.vendorName].some(
-          (value) => value?.toLowerCase().includes(term),
-        )) &&
+        [
+          inspectionReference(item),
+          item.inspectionReference,
+          item.id,
+          item.propertyName,
+          item.userName,
+          item.vendorName,
+        ].some((value) => value?.toLowerCase().includes(term))) &&
       (filters.status === "ALL" || status === filters.status) &&
       (filters.type === "ALL" || item.meetingType === filters.type) &&
       dateMatches

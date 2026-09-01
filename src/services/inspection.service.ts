@@ -5,6 +5,7 @@ type UnknownRecord = Record<string, unknown>;
 
 export interface VendorInspection {
   id: string;
+  inspectionReference: string | null;
   userId: string | null;
   userName: string;
   userEmail: string | null;
@@ -277,6 +278,16 @@ function normalizeInspection(value: unknown, index: number): VendorInspection {
 
   return {
     id: stringFrom(inquiry, ["id", "_id"]) ?? `inspection-${index}`,
+    inspectionReference:
+      stringFrom(inquiry, [
+        "inspectionNumber",
+        "inspectionReference",
+        "inspectionId",
+        "inquiryNumber",
+        "inquiryReference",
+        "referenceNumber",
+        "reference",
+      ]) ?? stringFrom(schedule, ["inspectionNumber", "referenceNumber"]),
     userId:
       stringFrom(inquiry, ["userId", "buyerId"]) ??
       stringFrom(user, ["id", "_id"]),
@@ -301,7 +312,7 @@ function normalizeInspection(value: unknown, index: number): VendorInspection {
       stringFrom(property, ["name", "title"]) ??
       "Property inspection",
     propertyReference:
-      stringFrom(inquiry, ["reference", "propertyReference"]) ??
+      stringFrom(inquiry, ["propertyReference"]) ??
       stringFrom(property, ["reference", "referenceNumber", "code"]),
     propertyImageUrl:
       stringFrom(inquiry, ["propertyImage", "propertyImageUrl"]) ??

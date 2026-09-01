@@ -27,6 +27,28 @@ export interface AdminNotificationStats {
   critical: number;
 }
 
+export interface AdminNotificationPayload {
+  title: string;
+  message: string;
+  type: string;
+  channel: "IN_APP" | "EMAIL" | "BOTH";
+  priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+}
+
+export interface AdminBulkNotificationPayload extends AdminNotificationPayload {
+  target: "ALL" | "VENDOR" | "USER" | "STAFF" | "SPECIFIC";
+  userIds?: string[];
+}
+
+export interface AdminSingleNotificationPayload extends AdminNotificationPayload {
+  userId: string;
+}
+
+// Keep admin sends on the application's origin. The API currently allows only
+// selected browser origins, so direct calls can fail before Axios receives the
+// backend's response body.
+const ADMIN_NOTIFICATION_PROXY_BASE_URL = "/api/backend";
+
 type UnknownRecord = Record<string, unknown>;
 
 function asRecord(value: unknown): UnknownRecord {
@@ -145,20 +167,8 @@ async function getAllMine(limit = 100) {
 }
 
 function unwrapNotifications(value: unknown): NotificationPageData {
-  const root = asRecord(value);
-  const data = root.data ?? value;
-  const payload = asRecord(data);
-  const rows = (
-    Array.isArray(data)
-      ? data
-      : ([
-          payload.notifications,
-          payload.items,
-          payload.records,
-          payload.results,
-        ].find(Array.isArray) ?? [])
-  ) as unknown[];
-  const pagination = asRecord(payload.pagination ?? payload.meta);
+  const rows = findNotificationRows(value);
+  const pagination = findPagination(value);
   const notifications = rows.map((item, index) => {
     const source = asRecord(item);
     const fallbackId = [
@@ -188,6 +198,70 @@ function unwrapNotifications(value: unknown): NotificationPageData {
       ),
     },
   };
+}
+
+function findNotificationRows(value: unknown): unknown[] {
+  const queue: Array<{ value: unknown; depth: number }> = [{ value, depth: 0 }];
+  const visited = new Set<object>();
+  const collectionKeys = [
+    "notifications",
+    "items",
+    "records",
+    "results",
+    "docs",
+    "rows",
+    "data",
+  ];
+
+  while (queue.length) {
+    const current = queue.shift();
+    if (!current || current.depth > 6) continue;
+    if (Array.isArray(current.value)) return current.value;
+    if (!current.value || typeof current.value !== "object") continue;
+    if (visited.has(current.value)) continue;
+    visited.add(current.value);
+
+    const source = asRecord(current.value);
+    for (const key of collectionKeys) {
+      const candidate = source[key];
+      if (Array.isArray(candidate)) return candidate;
+    }
+    for (const key of collectionKeys) {
+      const candidate = source[key];
+      if (candidate && typeof candidate === "object") {
+        queue.push({ value: candidate, depth: current.depth + 1 });
+      }
+    }
+  }
+
+  return [];
+}
+
+function findPagination(value: unknown) {
+  const queue: Array<{ value: unknown; depth: number }> = [{ value, depth: 0 }];
+  const visited = new Set<object>();
+
+  while (queue.length) {
+    const current = queue.shift();
+    if (!current || current.depth > 6) continue;
+    if (!current.value || typeof current.value !== "object") continue;
+    if (visited.has(current.value)) continue;
+    visited.add(current.value);
+
+    const source = asRecord(current.value);
+    const pagination = source.pagination ?? source.meta;
+    if (pagination && typeof pagination === "object") {
+      return asRecord(pagination);
+    }
+    for (const key of ["data", "notifications", "result", "payload"]) {
+      const candidate = source[key];
+      if (candidate && typeof candidate === "object") {
+        queue.push({ value: candidate, depth: current.depth + 1 });
+      }
+    }
+  }
+
+  return {};
 }
 
 function unwrapStats(value: unknown): AdminNotificationStats {
@@ -236,4 +310,14 @@ export const notificationService = {
     api.patch(`/notifications/${notificationId}/read`),
 
   markAllAsRead: () => api.patch("/notifications/read/all"),
+
+  sendBulk: (payload: AdminBulkNotificationPayload) =>
+    api.post("/notifications/admin/send-bulk", payload, {
+      baseURL: ADMIN_NOTIFICATION_PROXY_BASE_URL,
+    }),
+
+  sendToUser: (payload: AdminSingleNotificationPayload) =>
+    api.post("/notifications/admin/send-user", payload, {
+      baseURL: ADMIN_NOTIFICATION_PROXY_BASE_URL,
+    }),
 };

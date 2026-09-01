@@ -1,4 +1,5 @@
 import type { VendorInspection } from "@/services/inspection.service";
+import { formatInspectionReference } from "@/lib/inspection-reference";
 
 const STATUS_LABELS: Record<string, string> = {
   ACCEPTED: "Confirmed",
@@ -33,16 +34,7 @@ export function formatMeetingType(value: string | null) {
 }
 
 export function inspectionCode(inspection: VendorInspection) {
-  // Prefer a backend-issued inspection reference when one is available.
-  if (inspection.propertyReference?.toUpperCase().startsWith("INS-")) {
-    return inspection.propertyReference;
-  }
-
-  const suffix = inspection.id
-    .replace(/[^a-zA-Z0-9]/g, "")
-    .slice(-10)
-    .toUpperCase();
-  return `INS-${suffix}`;
+  return formatInspectionReference(inspection);
 }
 
 export function nameInitials(name: string) {

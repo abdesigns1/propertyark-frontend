@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
-import { CheckCheck, ListFilter, Settings } from "lucide-react";
+import { CheckCheck, ListFilter } from "lucide-react";
 import { toast } from "sonner";
 import { AdminNotificationItem } from "@/features/admin/components/admin-notification-item";
 import { AdminNotificationSidebar } from "@/features/admin/components/admin-notification-sidebar";
@@ -13,7 +12,6 @@ import {
   useMarkAdminNotificationRead,
   useMarkAllAdminNotificationsRead,
 } from "@/features/admin/hooks/use-admin-notifications";
-import { useAdminKycStats } from "@/features/admin/hooks/use-admin-dashboard";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -29,30 +27,15 @@ import type { AdminNotification } from "@/services/notification.service";
 
 const notificationTabs = [
   { value: "ALL", label: "All Notifications" },
-  { value: "SYSTEM", label: "System" },
-  { value: "USER", label: "User" },
-  { value: "PROPERTY", label: "Property" },
-  { value: "FINANCIAL", label: "Financial" },
+  { value: "UNREAD", label: "Unread" },
+  { value: "READ", label: "Read" },
+  { value: "CRITICAL", label: "Critical" },
 ] as const;
-
-const categoryTypes: Record<string, Set<string>> = {
-  SYSTEM: new Set(["SECURITY", "SYSTEM", "GENERAL", "ADMIN"]),
-  USER: new Set(["USER", "ACCOUNT", "KYC", "VERIFICATION"]),
-  PROPERTY: new Set(["PROPERTY", "LISTING"]),
-  FINANCIAL: new Set([
-    "FINANCIAL",
-    "TRANSACTION",
-    "PAYMENT",
-    "ESCROW",
-    "SUBSCRIPTION",
-  ]),
-};
 
 export function AdminNotificationsPage() {
   const [category, setCategory] = useState("ALL");
-  const notificationsQuery = useAdminNotifications(1);
+  const notificationsQuery = useAdminNotifications();
   const statsQuery = useAdminNotificationStats();
-  const kycStatsQuery = useAdminKycStats();
   const markRead = useMarkAdminNotificationRead();
   const markAllRead = useMarkAllAdminNotificationsRead();
   const notifications = useMemo(
@@ -61,11 +44,14 @@ export function AdminNotificationsPage() {
   );
   const visibleNotifications = useMemo(
     () =>
-      category === "ALL"
-        ? notifications
-        : notifications.filter((item) =>
-            categoryTypes[category]?.has(item.type),
-          ),
+      notifications.filter((item) => {
+        if (category === "UNREAD") return !item.isRead;
+        if (category === "READ") return item.isRead;
+        if (category === "CRITICAL") {
+          return ["URGENT", "CRITICAL"].includes(item.priority);
+        }
+        return true;
+      }),
     [category, notifications],
   );
   const groups = useMemo(
@@ -76,12 +62,18 @@ export function AdminNotificationsPage() {
   const derivedCritical = notifications.filter((item) =>
     ["URGENT", "CRITICAL"].includes(item.priority),
   ).length;
+  const unread = Math.max(statsQuery.data?.unread ?? 0, derivedUnread);
+  const total = Math.max(
+    notificationsQuery.data?.pagination.total ?? 0,
+    notifications.length,
+    unread,
+  );
 
-  function dismissNotification(id: string) {
+  function markNotificationRead(id: string) {
     markRead.mutate(id, {
       onError: (error) =>
         toast.error(
-          getApiErrorMessage(error, "The notification could not be dismissed."),
+          getApiErrorMessage(error, "The notification could not be updated."),
         ),
     });
   }
@@ -110,34 +102,23 @@ export function AdminNotificationsPage() {
                   Manage alerts across the platform
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  disabled={markAllRead.isPending || derivedUnread === 0}
-                  onClick={markAllAsRead}
-                >
-                  <CheckCheck data-icon="inline-start" />
-                  Mark all as read
-                </Button>
-                <Button asChild>
-                  <Link href="#settings">
-                    <Settings data-icon="inline-start" />
-                    Settings
-                  </Link>
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                disabled={markAllRead.isPending || derivedUnread === 0}
+                onClick={markAllAsRead}
+              >
+                <CheckCheck data-icon="inline-start" />
+                Mark all as read
+              </Button>
             </header>
 
             <Tabs value={category} onValueChange={setCategory} className="mt-9">
-              <TabsList
-                variant="line"
-                className="h-auto w-full justify-start gap-6 overflow-x-auto border-b px-0 pb-2"
-              >
+              <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto bg-muted/60 p-1.5">
                 {notificationTabs.map((tab) => (
                   <TabsTrigger
                     key={tab.value}
                     value={tab.value}
-                    className="flex-none px-3 py-2 data-active:text-primary data-active:after:bg-primary"
+                    className="flex-none px-4 py-2 data-active:bg-primary data-active:text-primary-foreground data-active:shadow-sm"
                   >
                     {tab.label}
                   </TabsTrigger>
@@ -173,7 +154,7 @@ export function AdminNotificationsPage() {
                             key={notification.id}
                             notification={notification}
                             pending={markRead.isPending}
-                            onDismiss={dismissNotification}
+                            onMarkRead={markNotificationRead}
                           />
                         ))}
                       </div>
@@ -197,9 +178,10 @@ export function AdminNotificationsPage() {
           </section>
 
           <AdminNotificationSidebar
-            unread={Math.max(statsQuery.data?.unread ?? 0, derivedUnread)}
+            total={total}
+            unread={unread}
             critical={Math.max(statsQuery.data?.critical ?? 0, derivedCritical)}
-            pendingReviews={kycStatsQuery.data?.pending ?? 0}
+            read={Math.max(0, total - unread)}
           />
         </div>
       </main>

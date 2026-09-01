@@ -32,6 +32,7 @@ interface AdminUsersTableProps {
   page: number;
   pages: number;
   total: number;
+  pageSize?: number;
   onPageChange: (page: number) => void;
 }
 
@@ -40,11 +41,12 @@ export function AdminUsersTable({
   page,
   pages,
   total,
+  pageSize = 10,
   onPageChange,
 }: AdminUsersTableProps) {
   const router = useRouter();
-  const firstEntry = users.length ? (page - 1) * 10 + 1 : 0;
-  const lastEntry = Math.min(page * 10, total);
+  const firstEntry = users.length ? (page - 1) * pageSize + 1 : 0;
+  const lastEntry = Math.min((page - 1) * pageSize + users.length, total);
 
   return (
     <div className="overflow-hidden rounded-xl border bg-card shadow-sm">

@@ -59,6 +59,7 @@ import {
 import { getApiErrorMessage } from "@/services/api-error";
 import type { AdminNotification } from "@/services/notification.service";
 import { cn } from "@/lib/utils";
+import { FormattedNotificationMessage } from "@/components/notifications/formatted-notification-message";
 
 type NotificationFilter = "ALL" | "UNREAD" | "READ";
 type NotificationDateFilter = "ALL" | "TODAY" | "7_DAYS" | "30_DAYS";
@@ -431,7 +432,11 @@ function NotificationDialog({
         </DialogHeader>
         <Card className="my-2 bg-surface/50">
           <CardContent className="leading-7 text-muted-foreground">
-            {notification.message || "No additional details were provided."}
+            <FormattedNotificationMessage
+              message={
+                notification.message || "No additional details were provided."
+              }
+            />
           </CardContent>
         </Card>
         <DialogFooter showCloseButton>

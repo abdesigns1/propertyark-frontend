@@ -1,10 +1,8 @@
 import type { VendorInspection } from "@/services/inspection.service";
+import { formatInspectionReference } from "@/lib/inspection-reference";
 
-export function inspectionReference(id: string) {
-  const compact = id.replace(/[^a-z0-9]/gi, "").toUpperCase();
-  return id.toUpperCase().startsWith("INS-")
-    ? id.toUpperCase()
-    : `INS-${compact.slice(0, 4)}-${compact.slice(-5)}`;
+export function inspectionReference(inspection: VendorInspection) {
+  return formatInspectionReference(inspection);
 }
 
 export function inspectionTypeLabel(value: string | null) {

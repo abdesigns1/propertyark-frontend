@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Building2,
@@ -14,6 +15,7 @@ import {
   History,
   MapPin,
   MoreVertical,
+  Send,
   Star,
   UserRound,
   X,
@@ -39,6 +41,7 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -52,7 +55,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { getApiErrorMessage } from "@/services/api-error";
 import type { VendorInspection } from "@/services/inspection.service";
+import {
+  notificationService,
+  type AdminNotificationPayload,
+} from "@/services/notification.service";
 import { cn } from "@/lib/utils";
 
 export function AdminInspectionDetailsPage({
@@ -111,23 +126,72 @@ function InspectionDetails({
   inspection: VendorInspection;
   property?: ReturnType<typeof useAdminProperty>["data"];
 }) {
-  const status = inspectionStatusLabel(inspection.status);
+  const queryClient = useQueryClient();
+  const status =
+    inspection.satisfactionStatus === "NOT_SATISFIED"
+      ? "Not Satisfied"
+      : inspection.satisfactionStatus === "OTHERS"
+        ? "Other Feedback"
+        : inspectionStatusLabel(inspection.status);
   const date = inspectionDateLabel(inspection.inspectionDate);
   const [note, setNote] = useState("");
-  const [savedNotes, setSavedNotes] = useState<
-    Array<{ body: string; createdAt: string }>
-  >([]);
-
-  function saveNote() {
-    if (!note.trim()) return;
-    const next = [
-      ...savedNotes,
-      { body: note.trim(), createdAt: new Date().toISOString() },
-    ];
-    setSavedNotes(next);
-    setNote("");
-    toast.success("Internal note saved");
-  }
+  const [recipient, setRecipient] = useState<"USER" | "VENDOR" | "BOTH">(
+    inspection.userId && inspection.vendorId
+      ? "BOTH"
+      : inspection.vendorId
+        ? "VENDOR"
+        : "USER",
+  );
+  const [channel, setChannel] =
+    useState<AdminNotificationPayload["channel"]>("IN_APP");
+  const recipientIds =
+    recipient === "USER"
+      ? inspection.userId
+        ? [inspection.userId]
+        : []
+      : recipient === "VENDOR"
+        ? inspection.vendorId
+          ? [inspection.vendorId]
+          : []
+        : [inspection.userId, inspection.vendorId].filter((id): id is string =>
+            Boolean(id),
+          );
+  const notifyMutation = useMutation({
+    mutationFn: async () => {
+      const payload: AdminNotificationPayload = {
+        title: `Inspection update: ${inspectionReference(inspection)}`,
+        message: note.trim(),
+        type: "GENERAL",
+        channel,
+        priority: inspection.issueReported ? "HIGH" : "NORMAL",
+      };
+      if (recipientIds.length === 1) {
+        return notificationService.sendToUser({
+          ...payload,
+          userId: recipientIds[0],
+        });
+      }
+      return notificationService.sendBulk({
+        ...payload,
+        target: "SPECIFIC",
+        userIds: recipientIds,
+      });
+    },
+    onSuccess: async () => {
+      setNote("");
+      toast.success("Inspection notification sent.");
+      await queryClient.invalidateQueries({
+        queryKey: ["admin", "notifications"],
+      });
+    },
+    onError: (error) =>
+      toast.error(
+        getApiErrorMessage(
+          error,
+          "The inspection notification could not be sent.",
+        ),
+      ),
+  });
 
   function exportReport() {
     const text = [
@@ -239,36 +303,88 @@ function InspectionDetails({
           <FeedbackCard inspection={inspection} />
           <Card>
             <CardHeader>
-              <CardTitle>Internal Admin Notes</CardTitle>
+              <CardTitle>Send Inspection Notification</CardTitle>
+              <CardDescription>
+                Contact the buyer, vendor, or both about this inspection.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              {savedNotes.map((item, index) => (
-                <div
-                  key={`${item.createdAt}-${index}`}
-                  className="rounded-lg bg-surface p-4 text-sm"
-                >
-                  <div className="flex justify-between gap-4 font-semibold">
-                    <span>System Admin (You)</span>
-                    <span className="text-xs text-muted-foreground">
-                      {inspectionDateLabel(item.createdAt)}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-muted-foreground">{item.body}</p>
-                </div>
-              ))}
-              <label className="flex flex-col gap-2 text-sm font-medium">
-                Add New Note
-                <Textarea
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  placeholder="Enter private notes regarding this inspection..."
-                  className="min-h-28"
-                />
-              </label>
+            <CardContent>
+              <FieldGroup>
+                <Field>
+                  <FieldLabel>Recipients</FieldLabel>
+                  <ToggleGroup
+                    type="single"
+                    value={recipient}
+                    onValueChange={(value) =>
+                      value && setRecipient(value as "USER" | "VENDOR" | "BOTH")
+                    }
+                    className="grid grid-cols-1 sm:grid-cols-3"
+                  >
+                    <ToggleGroupItem value="USER" disabled={!inspection.userId}>
+                      User only
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value="VENDOR"
+                      disabled={!inspection.vendorId}
+                    >
+                      Vendor only
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value="BOTH"
+                      disabled={!inspection.userId || !inspection.vendorId}
+                    >
+                      User &amp; Vendor
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                  <FieldDescription>
+                    {recipient === "USER"
+                      ? inspection.userName
+                      : recipient === "VENDOR"
+                        ? (inspection.vendorName ?? "Vendor unavailable")
+                        : `${inspection.userName} and ${inspection.vendorName ?? "vendor"}`}
+                  </FieldDescription>
+                </Field>
+                <Field>
+                  <FieldLabel>Delivery channel</FieldLabel>
+                  <ToggleGroup
+                    type="single"
+                    value={channel}
+                    onValueChange={(value) =>
+                      value &&
+                      setChannel(value as AdminNotificationPayload["channel"])
+                    }
+                    className="grid grid-cols-1 sm:grid-cols-3"
+                  >
+                    <ToggleGroupItem value="IN_APP">In-app</ToggleGroupItem>
+                    <ToggleGroupItem value="EMAIL">Email</ToggleGroupItem>
+                    <ToggleGroupItem value="BOTH">Both</ToggleGroupItem>
+                  </ToggleGroup>
+                </Field>
+                <Field>
+                  <FieldLabel>Message</FieldLabel>
+                  <FieldDescription>
+                    The inspection reference is included automatically.
+                  </FieldDescription>
+                  <Textarea
+                    value={note}
+                    onChange={(event) => setNote(event.target.value)}
+                    placeholder="Write an update or response about this inspection..."
+                    className="min-h-28"
+                  />
+                </Field>
+              </FieldGroup>
             </CardContent>
             <CardFooter className="justify-end">
-              <Button onClick={saveNote} disabled={!note.trim()}>
-                Save Note
+              <Button
+                onClick={() => notifyMutation.mutate()}
+                disabled={
+                  !note.trim() ||
+                  recipientIds.length === 0 ||
+                  notifyMutation.isPending
+                }
+              >
+                <Send data-icon="inline-start" />
+                {notifyMutation.isPending ? "Sending…" : "Send notification"}
               </Button>
             </CardFooter>
           </Card>
@@ -299,9 +415,16 @@ function ExecutionOverview({ inspection }: { inspection: VendorInspection }) {
     },
     {
       label: "Satisfaction",
-      value: inspection.satisfactionScore
-        ? `★ ${inspection.satisfactionScore.toFixed(1)} / 5`
-        : "Not rated",
+      value:
+        inspection.satisfactionStatus === "NOT_SATISFIED"
+          ? "Not satisfied — reported"
+          : inspection.satisfactionStatus === "OTHERS"
+            ? "Other feedback"
+            : inspection.satisfactionStatus === "SATISFIED"
+              ? "Satisfied"
+              : inspection.satisfactionScore
+                ? `★ ${inspection.satisfactionScore.toFixed(1)} / 5`
+                : "Not rated",
     },
   ];
   return (
@@ -511,15 +634,28 @@ function FeedbackCard({ inspection }: { inspection: VendorInspection }) {
       <CardContent className="flex flex-col gap-5">
         <div className="rounded-lg bg-primary/10 p-4">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-semibold">Overall Rating:</span>
-            <span className="flex text-warning">
-              {Array.from({ length: 5 }, (_, index) => (
-                <Star
-                  key={index}
-                  className={cn("size-4", index < rating && "fill-current")}
-                />
-              ))}
-            </span>
+            <span className="text-sm font-semibold">Buyer outcome:</span>
+            <Badge
+              variant={inspection.issueReported ? "destructive" : "outline"}
+            >
+              {inspection.satisfactionStatus === "NOT_SATISFIED"
+                ? "Not satisfied — reported"
+                : inspection.satisfactionStatus === "OTHERS"
+                  ? "Other feedback"
+                  : inspection.satisfactionStatus === "SATISFIED"
+                    ? "Satisfied"
+                    : "Not submitted"}
+            </Badge>
+            {inspection.satisfactionScore !== null && (
+              <span className="flex text-warning">
+                {Array.from({ length: 5 }, (_, index) => (
+                  <Star
+                    key={index}
+                    className={cn("size-4", index < rating && "fill-current")}
+                  />
+                ))}
+              </span>
+            )}
           </div>
           <p className="mt-3 text-sm italic text-muted-foreground">
             {inspection.feedback ??
@@ -630,7 +766,7 @@ function InspectionSummary({
 function InspectionBadge({ status }: { status: string }) {
   return (
     <Badge
-      variant={status === "Issue Reported" ? "destructive" : "secondary"}
+      variant={status === "Not Satisfied" ? "destructive" : "secondary"}
       className={cn(
         status === "Scheduled" && "bg-primary/10 text-primary",
         status === "Requested" && "bg-warning/15 text-warning",

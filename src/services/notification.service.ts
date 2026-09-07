@@ -30,7 +30,7 @@ export interface AdminNotificationStats {
 export interface AdminNotificationPayload {
   title: string;
   message: string;
-  type: string;
+  type: "GENERAL";
   channel: "IN_APP" | "EMAIL" | "BOTH";
   priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
 }

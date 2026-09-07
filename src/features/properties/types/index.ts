@@ -64,6 +64,13 @@ export interface Property {
     start: string;
     end: string;
   }>;
+  shortletDetails?: {
+    checkInTime?: string;
+    checkOutTime?: string;
+    houseRules: string[];
+    cancellationPolicy?: string;
+    paymentPolicy?: string;
+  };
 }
 
 // For property comparison and search/filter features

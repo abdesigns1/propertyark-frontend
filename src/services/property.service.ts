@@ -171,6 +171,40 @@ function normalizeVendorProperty(value: unknown): PropertyApiItem {
   const pricing = asRecord(
     source.pricing ?? source.priceDetails ?? source.rates,
   );
+  const shortlet = asRecord(
+    source.shortletDetails ?? source.shortletPolicies ?? source.policies,
+  );
+  const optionalText = (...values: unknown[]) => {
+    const value = values.find(
+      (candidate) => typeof candidate === "string" && candidate.trim(),
+    );
+    return typeof value === "string" ? value.trim() : null;
+  };
+  const rulesValue =
+    source.houseRules ?? shortlet.houseRules ?? shortlet.rules ?? [];
+  const houseRules = Array.isArray(rulesValue)
+    ? rulesValue
+        .map(String)
+        .map((rule) => rule.trim())
+        .filter(Boolean)
+    : typeof rulesValue === "string"
+      ? (() => {
+          try {
+            const parsed = JSON.parse(rulesValue);
+            if (Array.isArray(parsed))
+              return parsed
+                .map(String)
+                .map((rule) => rule.trim())
+                .filter(Boolean);
+          } catch {
+            // Older API records can store rules as newline-separated text.
+          }
+          return rulesValue
+            .split(/\r?\n/)
+            .map((rule) => rule.trim())
+            .filter(Boolean);
+        })()
+      : [];
   const embeddedMedia =
     [source.media, source.medias, source.photos, source.images].find(
       Array.isArray,
@@ -246,6 +280,25 @@ function normalizeVendorProperty(value: unknown): PropertyApiItem {
       pricing.nightlyRate,
       listingType === "FOR_SHORTLET" ? commonPrice : null,
     ),
+    shortletCheckInTime: optionalText(
+      source.shortletCheckInTime,
+      source.checkInTime,
+      shortlet.checkInTime,
+      // Keep reading the initially proposed names for draft API compatibility.
+      source.shortletCheckInDate,
+    ),
+    shortletCheckOutTime: optionalText(
+      source.shortletCheckOutTime,
+      source.checkOutTime,
+      shortlet.checkOutTime,
+      source.shortletCheckOutDate,
+    ),
+    houseRules,
+    cancellationPolicy: optionalText(
+      source.cancellationPolicy,
+      shortlet.cancellationPolicy,
+    ),
+    paymentPolicy: optionalText(source.paymentPolicy, shortlet.paymentPolicy),
     media: normalizeMediaResponse({ data: embeddedMedia }),
     documents: [...new Map(documents.map((item) => [item.id, item])).values()],
   };

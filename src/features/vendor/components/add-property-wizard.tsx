@@ -197,6 +197,11 @@ export function AddPropertyWizard({
         bedrooms: property.bedrooms == null ? "" : String(property.bedrooms),
         bathrooms: property.bathrooms == null ? "" : String(property.bathrooms),
         amenities: property.amenities ?? [],
+        shortletCheckInTime: property.shortletCheckInTime ?? "",
+        shortletCheckOutTime: property.shortletCheckOutTime ?? "",
+        houseRules: property.houseRules?.join("\n") ?? "",
+        cancellationPolicy: property.cancellationPolicy ?? "",
+        paymentPolicy: property.paymentPolicy ?? "",
       }),
     );
     void (async () => {
@@ -290,6 +295,12 @@ export function AddPropertyWizard({
       if (values.description.trim().length < 20)
         next.description =
           "Add at least 20 characters describing the property.";
+      if (values.listingType === "FOR_SHORTLET") {
+        if (!values.shortletCheckInTime)
+          next.shortletCheckInTime = "Select the standard check-in time.";
+        if (!values.shortletCheckOutTime)
+          next.shortletCheckOutTime = "Select the standard check-out time.";
+      }
     }
     if (index === 1) {
       if (!values.size || Number(values.size) <= 0)
@@ -436,6 +447,20 @@ export function AddPropertyWizard({
       bathrooms: values.bathrooms || "0",
       [PRICE_FIELDS[values.listingType]]: values.price,
       amenities: JSON.stringify(values.amenities),
+      ...(values.listingType === "FOR_SHORTLET"
+        ? {
+            shortletCheckInTime: values.shortletCheckInTime,
+            shortletCheckOutTime: values.shortletCheckOutTime,
+            houseRules: JSON.stringify(
+              values.houseRules
+                .split(/\r?\n/)
+                .map((rule) => rule.trim())
+                .filter(Boolean),
+            ),
+            cancellationPolicy: values.cancellationPolicy.trim(),
+            paymentPolicy: values.paymentPolicy.trim(),
+          }
+        : {}),
     };
     Object.entries(propertyFields).forEach(([key, value]) =>
       form.append(key, value),
@@ -715,6 +740,107 @@ export function AddPropertyWizard({
                   </FieldDescription>
                   <FieldError>{errors.description}</FieldError>
                 </Field>
+                {values.listingType === "FOR_SHORTLET" && (
+                  <Card className="sm:col-span-2">
+                    <CardHeader>
+                      <CardTitle>Shortlet availability and policies</CardTitle>
+                      <CardDescription>
+                        These details will be shown to guests before they book.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <FieldGroup className="grid gap-5 sm:grid-cols-2">
+                        <Field
+                          data-invalid={Boolean(errors.shortletCheckInTime)}
+                        >
+                          <FieldLabel htmlFor="shortlet-check-in-time">
+                            Check-in time
+                          </FieldLabel>
+                          <Input
+                            id="shortlet-check-in-time"
+                            type="time"
+                            value={values.shortletCheckInTime}
+                            onChange={(event) =>
+                              update("shortletCheckInTime", event.target.value)
+                            }
+                            aria-invalid={Boolean(errors.shortletCheckInTime)}
+                          />
+                          <FieldDescription>
+                            The earliest time guests may arrive.
+                          </FieldDescription>
+                          <FieldError>{errors.shortletCheckInTime}</FieldError>
+                        </Field>
+                        <Field
+                          data-invalid={Boolean(errors.shortletCheckOutTime)}
+                        >
+                          <FieldLabel htmlFor="shortlet-check-out-time">
+                            Check-out time
+                          </FieldLabel>
+                          <Input
+                            id="shortlet-check-out-time"
+                            type="time"
+                            value={values.shortletCheckOutTime}
+                            onChange={(event) =>
+                              update("shortletCheckOutTime", event.target.value)
+                            }
+                            aria-invalid={Boolean(errors.shortletCheckOutTime)}
+                          />
+                          <FieldDescription>
+                            The time departing guests must leave.
+                          </FieldDescription>
+                          <FieldError>{errors.shortletCheckOutTime}</FieldError>
+                        </Field>
+                        <Field className="sm:col-span-2">
+                          <FieldLabel htmlFor="shortlet-house-rules">
+                            House rules
+                          </FieldLabel>
+                          <Textarea
+                            id="shortlet-house-rules"
+                            className="min-h-28"
+                            value={values.houseRules}
+                            onChange={(event) =>
+                              update("houseRules", event.target.value)
+                            }
+                            placeholder={
+                              "No smoking\nNo parties or events\nQuiet hours after 10 PM"
+                            }
+                          />
+                          <FieldDescription>
+                            Enter one rule per line.
+                          </FieldDescription>
+                        </Field>
+                        <Field>
+                          <FieldLabel htmlFor="shortlet-cancellation-policy">
+                            Cancellation policy
+                          </FieldLabel>
+                          <Textarea
+                            id="shortlet-cancellation-policy"
+                            className="min-h-28"
+                            value={values.cancellationPolicy}
+                            onChange={(event) =>
+                              update("cancellationPolicy", event.target.value)
+                            }
+                            placeholder="Explain refund deadlines and cancellation charges."
+                          />
+                        </Field>
+                        <Field>
+                          <FieldLabel htmlFor="shortlet-payment-policy">
+                            Payment policy
+                          </FieldLabel>
+                          <Textarea
+                            id="shortlet-payment-policy"
+                            className="min-h-28"
+                            value={values.paymentPolicy}
+                            onChange={(event) =>
+                              update("paymentPolicy", event.target.value)
+                            }
+                            placeholder="Explain deposits, payment deadlines, and accepted terms."
+                          />
+                        </Field>
+                      </FieldGroup>
+                    </CardContent>
+                  </Card>
+                )}
               </FieldGroup>
             </CardContent>
           </Card>
@@ -737,6 +863,49 @@ export function AddPropertyWizard({
                 </p>
               </CardContent>
             </Card>
+            {values.listingType === "FOR_SHORTLET" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Shortlet terms</CardTitle>
+                  <CardDescription>
+                    Guest-facing availability and booking policies.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Check-in and check-out
+                    </p>
+                    <p className="mt-1 font-semibold">
+                      {values.shortletCheckInTime || "Not set"} to{" "}
+                      {values.shortletCheckOutTime || "Not set"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">House rules</p>
+                    <p className="mt-1 whitespace-pre-line">
+                      {values.houseRules || "No house rules supplied."}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Cancellation policy
+                    </p>
+                    <p className="mt-1 whitespace-pre-line">
+                      {values.cancellationPolicy || "Not supplied."}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Payment policy
+                    </p>
+                    <p className="mt-1 whitespace-pre-line">
+                      {values.paymentPolicy || "Not supplied."}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </aside>
         </div>
       )}

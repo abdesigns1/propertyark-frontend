@@ -97,6 +97,7 @@ import type { Property } from "@/features/properties/types";
 import { getApiErrorMessage } from "@/services/api-error";
 import {
   inspectionService,
+  type CompleteInspectionInput,
   type VendorInspection as BuyerInspection,
   type VendorInspectionsResult,
 } from "@/services/inspection.service";
@@ -112,6 +113,7 @@ const HISTORY_STATUSES = [
   "PENDING",
   "CONFIRMED",
   "COMPLETED",
+  "NOT_SATISFIED",
   "CANCELLED",
 ] as const;
 type HistoryStatus = (typeof HISTORY_STATUSES)[number];
@@ -129,6 +131,21 @@ function statusVariant(status: string) {
   if (status === "PENDING") return "secondary" as const;
   if (status === "COMPLETED") return "outline" as const;
   return "destructive" as const;
+}
+
+function inspectionStatusLabel(inspection: BuyerInspection) {
+  if (inspection.satisfactionStatus === "NOT_SATISFIED") {
+    return "Not Satisfied";
+  }
+  if (inspection.satisfactionStatus === "OTHERS") return "Other Feedback";
+  return statusLabel(inspection.status);
+}
+
+function inspectionStatusVariant(inspection: BuyerInspection) {
+  if (inspection.satisfactionStatus === "NOT_SATISFIED") {
+    return "destructive" as const;
+  }
+  return statusVariant(inspection.status);
 }
 
 function formatDate(value: string) {
@@ -208,7 +225,11 @@ export function BuyerInspections() {
   const counts = {
     upcoming: upcoming.length,
     pending: inspections.filter((item) => item.status === "PENDING").length,
-    completed: inspections.filter((item) => item.status === "COMPLETED").length,
+    completed: inspections.filter(
+      (item) =>
+        item.status === "COMPLETED" &&
+        !["NOT_SATISFIED", "OTHERS"].includes(item.satisfactionStatus ?? ""),
+    ).length,
     cancelled: inspections.filter((item) =>
       ["DECLINED", "REJECTED", "CANCELLED"].includes(item.status),
     ).length,
@@ -249,10 +270,12 @@ export function BuyerInspections() {
 
   const completion = useMutation({
     mutationFn: inspectionService.complete,
-    onSuccess: async (_data, inspectionId) => {
-      toast.success("Inspection marked as completed.", {
+    onSuccess: async (_data, variables) => {
+      toast.success("Inspection feedback submitted.", {
         description:
-          "The vendor can now see that you are satisfied with the property inspection.",
+          variables.satisfactionStatus === "NOT_SATISFIED"
+            ? "Your concern has been recorded for the administrator to review."
+            : "The vendor can now see your inspection outcome.",
       });
       setCompletionTarget(null);
       setSelected(null);
@@ -261,6 +284,7 @@ export function BuyerInspections() {
         queryClient.invalidateQueries({ queryKey: ["buyer-dashboard"] }),
         queryClient.invalidateQueries({ queryKey: ["vendor", "inspections"] }),
         queryClient.invalidateQueries({ queryKey: ["vendor", "dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "inspections"] }),
       ]);
       // The completion mutation is authoritative. Preserve the completed state
       // immediately even if a read replica briefly returns the pre-completion row.
@@ -269,8 +293,15 @@ export function BuyerInspections() {
         (current) => {
           if (!current) return current;
           const inspections = current.inspections.map((inspection) =>
-            inspection.id === inspectionId
-              ? { ...inspection, status: "COMPLETED" }
+            inspection.id === variables.inspectionId
+              ? {
+                  ...inspection,
+                  status: "COMPLETED",
+                  satisfactionStatus: variables.satisfactionStatus,
+                  feedback: variables.satisfactionComment ?? null,
+                  issueReported:
+                    variables.satisfactionStatus === "NOT_SATISFIED",
+                }
               : inspection,
           );
           return {
@@ -528,13 +559,19 @@ export function BuyerInspections() {
         onComplete={setCompletionTarget}
       />
       <CompleteInspectionDialog
+        key={completionTarget?.id ?? "closed"}
         inspection={completionTarget}
         submitting={completion.isPending}
         onOpenChange={(open) => {
           if (!open && !completion.isPending) setCompletionTarget(null);
         }}
-        onConfirm={() => {
-          if (completionTarget) completion.mutate(completionTarget.id);
+        onConfirm={(feedback) => {
+          if (completionTarget) {
+            completion.mutate({
+              inspectionId: completionTarget.id,
+              ...feedback,
+            });
+          }
         }}
       />
     </div>
@@ -673,7 +710,8 @@ function HistoryTable({
   const filteredInspections = inspections.filter(
     (inspection) =>
       statusFilter === "ALL" ||
-      statusLabel(inspection.status).toUpperCase() === statusFilter,
+      inspectionStatusLabel(inspection).toUpperCase().replaceAll(" ", "_") ===
+        statusFilter,
   );
   const totalPages = Math.max(
     1,
@@ -745,8 +783,8 @@ function HistoryTable({
                       {formatDate(inspection.requestSentAt)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={statusVariant(inspection.status)}>
-                        {statusLabel(inspection.status)}
+                      <Badge variant={inspectionStatusVariant(inspection)}>
+                        {inspectionStatusLabel(inspection)}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -1163,8 +1201,8 @@ function InspectionDetailsSheet({
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Inspection Details
               </p>
-              <Badge variant={statusVariant(inspection.status)}>
-                {statusLabel(inspection.status)}
+              <Badge variant={inspectionStatusVariant(inspection)}>
+                {inspectionStatusLabel(inspection)}
               </Badge>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -1241,10 +1279,29 @@ function InspectionDetailsSheet({
               </CardContent>
             </Card>
           )}
+          {inspection.satisfactionStatus && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Your feedback</CardTitle>
+                <CardDescription>
+                  {inspection.satisfactionStatus === "NOT_SATISFIED"
+                    ? "Not satisfied — sent to the administrator for review"
+                    : inspection.satisfactionStatus === "OTHERS"
+                      ? "Other outcome"
+                      : "Satisfied"}
+                </CardDescription>
+              </CardHeader>
+              {inspection.feedback && (
+                <CardContent className="text-sm text-muted-foreground">
+                  {inspection.feedback}
+                </CardContent>
+              )}
+            </Card>
+          )}
           {inspection.status === "ACCEPTED" && (
             <Button className="w-full" onClick={() => onComplete(inspection)}>
               <CheckCircle2 data-icon="inline-start" />
-              Satisfactory — Complete Inspection
+              Complete inspection &amp; give feedback
             </Button>
           )}
         </div>
@@ -1262,22 +1319,81 @@ function CompleteInspectionDialog({
   inspection: BuyerInspection | null;
   submitting: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
+  onConfirm: (feedback: Omit<CompleteInspectionInput, "inspectionId">) => void;
 }) {
+  const [satisfactionStatus, setSatisfactionStatus] =
+    useState<CompleteInspectionInput["satisfactionStatus"]>("SATISFIED");
+  const [satisfactionComment, setSatisfactionComment] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const requiresComment = satisfactionStatus !== "SATISFIED";
+  const commentMissing = requiresComment && !satisfactionComment.trim();
+
+  function submitFeedback() {
+    setSubmitted(true);
+    if (commentMissing) return;
+    onConfirm({ satisfactionStatus, satisfactionComment });
+  }
+
   return (
     <Dialog open={Boolean(inspection)} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="items-center text-center sm:text-center">
-          <AnimatedDialogIcon icon={CheckCircle2} tone="success" size="large" />
+          <AnimatedDialogIcon
+            icon={MessageSquare}
+            tone="primary"
+            size="large"
+          />
           <DialogTitle className="mt-2 text-2xl">
             Complete this inspection?
           </DialogTitle>
           <DialogDescription className="max-w-sm leading-6">
-            Confirm that you have inspected {inspection?.propertyName} and are
-            satisfied with the property. This will mark the inspection as
-            completed for you and the vendor.
+            Confirm the outcome of your visit to {inspection?.propertyName}.
+            Choosing Not satisfied records the inspection as reported for an
+            administrator to review.
           </DialogDescription>
         </DialogHeader>
+        <FieldGroup>
+          <Field>
+            <FieldLabel>How did the inspection go?</FieldLabel>
+            <ToggleGroup
+              type="single"
+              value={satisfactionStatus}
+              onValueChange={(value) => {
+                if (value) {
+                  setSatisfactionStatus(
+                    value as CompleteInspectionInput["satisfactionStatus"],
+                  );
+                }
+              }}
+              className="grid grid-cols-1 sm:grid-cols-3"
+            >
+              <ToggleGroupItem value="SATISFIED">Satisfied</ToggleGroupItem>
+              <ToggleGroupItem value="NOT_SATISFIED">
+                Not satisfied
+              </ToggleGroupItem>
+              <ToggleGroupItem value="OTHERS">Other</ToggleGroupItem>
+            </ToggleGroup>
+          </Field>
+          {requiresComment && (
+            <Field data-invalid={submitted && commentMissing}>
+              <FieldLabel>
+                {satisfactionStatus === "NOT_SATISFIED"
+                  ? "What went wrong?"
+                  : "Tell us about the outcome"}
+              </FieldLabel>
+              <Textarea
+                rows={4}
+                value={satisfactionComment}
+                onChange={(event) => setSatisfactionComment(event.target.value)}
+                placeholder="Give enough detail for the vendor and administrator to understand your feedback."
+                aria-invalid={submitted && commentMissing}
+              />
+              {submitted && commentMissing && (
+                <FieldError>Please provide a reason.</FieldError>
+              )}
+            </Field>
+          )}
+        </FieldGroup>
         <DialogFooter>
           <Button
             variant="outline"
@@ -1286,13 +1402,13 @@ function CompleteInspectionDialog({
           >
             Cancel
           </Button>
-          <Button disabled={submitting} onClick={onConfirm}>
+          <Button disabled={submitting} onClick={submitFeedback}>
             {submitting ? (
               <LoaderCircle data-icon="inline-start" className="animate-spin" />
             ) : (
               <CheckCircle2 data-icon="inline-start" />
             )}
-            Yes, I&apos;m Satisfied
+            Submit feedback
           </Button>
         </DialogFooter>
       </DialogContent>

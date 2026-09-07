@@ -51,6 +51,11 @@ export interface PropertyApiItem {
   updatedAt?: string;
   media?: PropertyMediaResponse[];
   bookedSlots?: PropertyBookedSlotResponse[];
+  shortletCheckInTime?: string | null;
+  shortletCheckOutTime?: string | null;
+  houseRules?: string[];
+  cancellationPolicy?: string | null;
+  paymentPolicy?: string | null;
   priceDisplay?: string;
   approvalStatus?: string;
   reviewStatus?: string;

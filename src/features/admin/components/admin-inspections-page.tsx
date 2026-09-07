@@ -150,7 +150,7 @@ export function AdminInspectionsPage() {
                     "REQUESTED",
                     "SCHEDULED",
                     "COMPLETED",
-                    "ISSUE_REPORTED",
+                    "NOT_SATISFIED",
                   ]}
                 />
                 <InspectionSelect
@@ -359,7 +359,12 @@ function InspectionSelect({
 }
 
 function InspectionRow({ inspection }: { inspection: VendorInspection }) {
-  const label = inspectionStatusLabel(inspection.status);
+  const label =
+    inspection.satisfactionStatus === "NOT_SATISFIED"
+      ? "Not Satisfied"
+      : inspection.satisfactionStatus === "OTHERS"
+        ? "Other Feedback"
+        : inspectionStatusLabel(inspection.status);
   return (
     <TableRow>
       <TableCell className="font-semibold text-primary">
@@ -396,7 +401,7 @@ function InspectionRow({ inspection }: { inspection: VendorInspection }) {
       </TableCell>
       <TableCell>
         <Badge
-          variant={label === "Issue Reported" ? "destructive" : "outline"}
+          variant={label === "Not Satisfied" ? "destructive" : "outline"}
           className={cn(
             label === "Completed" &&
               "border-success/20 bg-success/15 text-success",
@@ -410,11 +415,17 @@ function InspectionRow({ inspection }: { inspection: VendorInspection }) {
         </Badge>
       </TableCell>
       <TableCell>
-        {inspection.satisfactionScore
-          ? `${inspection.satisfactionScore.toFixed(1)} / 5`
-          : label === "Completed"
-            ? "Satisfied"
-            : "Pending"}
+        {inspection.satisfactionStatus === "NOT_SATISFIED"
+          ? "Not satisfied"
+          : inspection.satisfactionStatus === "OTHERS"
+            ? "Other feedback"
+            : inspection.satisfactionStatus === "SATISFIED"
+              ? "Satisfied"
+              : inspection.satisfactionScore
+                ? `${inspection.satisfactionScore.toFixed(1)} / 5`
+                : label === "Completed"
+                  ? "Satisfied"
+                  : "Pending"}
       </TableCell>
       <TableCell className="text-right">
         <Button size="sm" variant="outline" asChild>
@@ -488,7 +499,13 @@ function filterInspections(
   const term = filters.search.trim().toLowerCase();
   const now = Date.now();
   return inspections.filter((item) => {
-    const status = inspectionStatusLabel(item.status)
+    const status = (
+      item.satisfactionStatus === "NOT_SATISFIED"
+        ? "Not Satisfied"
+        : item.satisfactionStatus === "OTHERS"
+          ? "Other Feedback"
+          : inspectionStatusLabel(item.status)
+    )
       .toUpperCase()
       .replaceAll(" ", "_");
     const timestamp = new Date(item.inspectionDate).getTime();

@@ -16,6 +16,7 @@ import { ShortletBookingCard } from "@/features/properties/components/shortlet-b
 import { Footer } from "@/components/shared/footer";
 import { getAvailablePropertiesServer } from "@/features/properties/server/get-available-properties";
 import { CONTAINER, cn } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function PropertyDetailPage({
   params,
@@ -70,6 +71,54 @@ export default async function PropertyDetailPage({
                 {property.description}
               </p>
             </section>
+
+            {property.purpose === "shortlet" && property.shortletDetails && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Stay information and policies</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-6 sm:grid-cols-2">
+                  <div>
+                    <h3 className="font-medium">Check-in and check-out</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Check-in:{" "}
+                      {property.shortletDetails.checkInTime || "Contact host"}
+                      {" · "}
+                      Check-out:{" "}
+                      {property.shortletDetails.checkOutTime || "Contact host"}
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="font-medium">House rules</h3>
+                    {property.shortletDetails.houseRules.length ? (
+                      <ul className="mt-2 list-disc pl-5 text-sm text-muted-foreground">
+                        {property.shortletDetails.houseRules.map((rule) => (
+                          <li key={rule}>{rule}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        No additional house rules supplied.
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-medium">Cancellation policy</h3>
+                    <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
+                      {property.shortletDetails.cancellationPolicy ||
+                        "Contact the host for cancellation terms."}
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="font-medium">Payment policy</h3>
+                    <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
+                      {property.shortletDetails.paymentPolicy ||
+                        "Payment terms will be confirmed before booking."}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {property.videoUrl && (
               <PropertyVideo

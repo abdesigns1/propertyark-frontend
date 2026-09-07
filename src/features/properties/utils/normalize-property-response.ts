@@ -45,6 +45,29 @@ function getPrice(property: PropertyApiItem) {
   return property.shortletAmount ?? 0;
 }
 
+function normalizeHouseRules(value: unknown) {
+  if (Array.isArray(value))
+    return value
+      .map(String)
+      .map((rule) => rule.trim())
+      .filter(Boolean);
+  if (typeof value !== "string") return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed))
+      return parsed
+        .map(String)
+        .map((rule) => rule.trim())
+        .filter(Boolean);
+  } catch {
+    // Support older records stored as newline-separated text.
+  }
+  return value
+    .split(/\r?\n/)
+    .map((rule) => rule.trim())
+    .filter(Boolean);
+}
+
 export function normalizePropertyMediaUrl(url: string) {
   return trustedUploadProxyUrl(url, "property") ?? url;
 }
@@ -100,5 +123,15 @@ export function normalizePropertyResponse(property: PropertyApiItem): Property {
         start: slot.checkInDate,
         end: slot.checkOutDate,
       })),
+    shortletDetails:
+      property.listingType === "FOR_SHORTLET"
+        ? {
+            checkInTime: property.shortletCheckInTime ?? undefined,
+            checkOutTime: property.shortletCheckOutTime ?? undefined,
+            houseRules: normalizeHouseRules(property.houseRules),
+            cancellationPolicy: property.cancellationPolicy ?? undefined,
+            paymentPolicy: property.paymentPolicy ?? undefined,
+          }
+        : undefined,
   };
 }

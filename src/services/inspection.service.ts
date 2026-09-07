@@ -29,6 +29,7 @@ export interface VendorInspection {
   requestSentAt: string;
   updatedAt: string | null;
   satisfactionScore: number | null;
+  satisfactionStatus: string | null;
   feedback: string | null;
   issueReported: boolean;
 }
@@ -65,6 +66,12 @@ export interface RescheduleInspectionInput {
   inspectionId: string;
   scheduledDate: string;
   reason?: string;
+}
+
+export interface CompleteInspectionInput {
+  inspectionId: string;
+  satisfactionStatus: "SATISFIED" | "NOT_SATISFIED" | "OTHERS";
+  satisfactionComment?: string;
 }
 
 function record(value: unknown): UnknownRecord {
@@ -196,6 +203,7 @@ function inspectionRows(value: unknown) {
   if (Array.isArray(source.data)) return source.data;
   for (const key of [
     "inquiries",
+    "reportedInquiries",
     "inspections",
     "appointments",
     "items",
@@ -228,6 +236,14 @@ function normalizeInspection(value: unknown, index: number): VendorInspection {
       inquiry.availability ??
       inquiry.slot,
   );
+  const completion = record(
+    inquiry.completion ?? inquiry.satisfaction ?? inquiry.inspectionCompletion,
+  );
+  const satisfactionStatus =
+    (
+      stringFrom(inquiry, ["satisfactionStatus", "satisfaction", "outcome"]) ??
+      stringFrom(completion, ["satisfactionStatus", "status", "outcome"])
+    )?.toUpperCase() ?? null;
   const media = Array.isArray(property.media)
     ? property.media.map(record)
     : Array.isArray(property.images)
@@ -367,8 +383,17 @@ function normalizeInspection(value: unknown, index: number): VendorInspection {
     updatedAt: stringFrom(inquiry, ["updatedAt", "reviewedAt", "approvedAt"]),
     satisfactionScore:
       numberFrom(inquiry, ["satisfactionScore", "rating", "score"]) || null,
-    feedback: stringFrom(inquiry, ["feedback", "review", "comment"]),
+    satisfactionStatus,
+    feedback:
+      stringFrom(inquiry, [
+        "satisfactionComment",
+        "feedback",
+        "review",
+        "comment",
+      ]) ??
+      stringFrom(completion, ["satisfactionComment", "feedback", "comment"]),
     issueReported:
+      satisfactionStatus === "NOT_SATISFIED" ||
       inquiry.issueReported === true ||
       inquiry.hasIssue === true ||
       ["ISSUE_REPORTED", "DISPUTED"].includes(
@@ -489,6 +514,7 @@ function issueCountFrom(value: unknown) {
   const source = record(payload.stats ?? payload.summary ?? payload);
   return optionalNumberFrom(source, [
     "issuesReported",
+    "reported",
     "reportedIssues",
     "issueReported",
     "issues",
@@ -548,9 +574,14 @@ export const inspectionService = {
 
     const directRows = payloads.flatMap(inspectionRows);
     const isAggregated = directRows.length === 0;
-    const allPayloads = !isAggregated
+    const statsPayload =
+      statsResponse.status === "fulfilled" ? statsResponse.value.data : null;
+    const inquiryPayloads = !isAggregated
       ? payloads
       : [...payloads, ...(await getAdminVendorInquiryPayloads())];
+    const allPayloads = statsPayload
+      ? [...inquiryPayloads, statsPayload]
+      : inquiryPayloads;
     const uniqueInspections = new Map<string, VendorInspection>();
     allPayloads.forEach((payload) =>
       inspectionRows(payload)
@@ -567,8 +598,6 @@ export const inspectionService = {
     const inspections = isAggregated
       ? allInspections.slice((page - 1) * limit, page * limit)
       : allInspections;
-    const statsPayload =
-      statsResponse.status === "fulfilled" ? statsResponse.value.data : null;
     const stats = normalizeStats(
       statsPayload ?? allPayloads[0],
       allInspections,
@@ -738,8 +767,17 @@ export const inspectionService = {
       return data;
     }
   },
-  complete: async (inspectionId: string) => {
-    const { data } = await api.patch(`/users/${inspectionId}/complete`, {});
+  complete: async ({
+    inspectionId,
+    satisfactionStatus,
+    satisfactionComment,
+  }: CompleteInspectionInput) => {
+    const { data } = await api.patch(`/users/${inspectionId}/complete`, {
+      satisfactionStatus,
+      ...(satisfactionComment?.trim()
+        ? { satisfactionComment: satisfactionComment.trim() }
+        : {}),
+    });
     return data;
   },
   reschedule: async ({

@@ -163,7 +163,10 @@ export function VendorInspections() {
     () =>
       inspections.filter(
         (inspection) =>
-          (status === "all" || inspection.status === status) &&
+          (status === "all" ||
+            (status === "NOT_SATISFIED"
+              ? inspection.satisfactionStatus === "NOT_SATISFIED"
+              : inspection.status === status)) &&
           (propertyId === "all" ||
             (inspection.propertyId ?? inspection.propertyName) ===
               propertyId) &&
@@ -210,11 +213,21 @@ export function VendorInspections() {
     );
   }
 
-  const stats = query.data?.stats ?? {
+  const apiStats = query.data?.stats ?? {
     upcoming: 0,
     pending: 0,
     completed: 0,
     declined: 0,
+  };
+  const stats = {
+    ...apiStats,
+    completed: inspections.filter(
+      (inspection) =>
+        inspection.status === "COMPLETED" &&
+        !["NOT_SATISFIED", "OTHERS"].includes(
+          inspection.satisfactionStatus ?? "",
+        ),
+    ).length,
   };
 
   const resetFilters = () => {
@@ -298,6 +311,7 @@ export function VendorInspections() {
                     ["ACCEPTED", "Confirmed"],
                     ["RESCHEDULED", "Rescheduled"],
                     ["COMPLETED", "Completed"],
+                    ["NOT_SATISFIED", "Not Satisfied"],
                     ["DECLINED", "Declined"],
                     ["CANCELLED", "Cancelled"],
                   ]}
@@ -606,7 +620,7 @@ function InspectionTableCard({
                   </span>
                 </TableCell>
                 <TableCell>
-                  <InspectionStatus status={inspection.status} />
+                  <InspectionStatus inspection={inspection} />
                 </TableCell>
                 <TableCell className="pr-4 text-right">
                   <InspectionActionsMenu
@@ -898,7 +912,7 @@ function InspectionDetails({
         <SheetHeader className="border-b px-6 py-5 pr-14">
           <SheetTitle className="text-xl">Inspection Details</SheetTitle>
           <SheetDescription id="vendor-inspection-details-description">
-            {inspectionCode(inspection)} · {statusLabel(inspection.status)}
+            {inspectionCode(inspection)} · {displayInspectionStatus(inspection)}
           </SheetDescription>
         </SheetHeader>
         <Separator />
@@ -992,12 +1006,40 @@ function InspectionDetails({
             </div>
           </div>
 
+          {(inspection.satisfactionStatus ||
+            inspection.feedback ||
+            inspection.issueReported) && (
+            <div>
+              <DetailLabel>Buyer outcome</DetailLabel>
+              <div className="mt-2 space-y-3 rounded-lg border bg-surface p-4">
+                <Badge
+                  variant={inspection.issueReported ? "destructive" : "outline"}
+                  className={
+                    inspection.satisfactionStatus === "SATISFIED"
+                      ? "border-success/20 bg-success/15 text-success"
+                      : undefined
+                  }
+                >
+                  {inspection.satisfactionStatus === "NOT_SATISFIED"
+                    ? "Not satisfied — reported"
+                    : inspection.satisfactionStatus === "OTHERS"
+                      ? "Other feedback"
+                      : "Satisfied"}
+                </Badge>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  {inspection.feedback ??
+                    "The buyer did not include an additional comment."}
+                </p>
+              </div>
+            </div>
+          )}
+
           <div>
             <DetailLabel>Timeline</DetailLabel>
             <div className="mt-3 space-y-4 border-l pl-4">
               <TimelineItem
                 active
-                title={statusLabel(inspection.status)}
+                title={displayInspectionStatus(inspection)}
                 date={formatTimelineDate(
                   inspection.updatedAt ?? inspection.inspectionDate,
                 )}
@@ -1240,12 +1282,15 @@ function FilterSelect({
   );
 }
 
-function InspectionStatus({ status }: { status: string }) {
+function InspectionStatus({ inspection }: { inspection: VendorInspection }) {
+  const status = inspection.status;
+  const notSatisfied = inspection.satisfactionStatus === "NOT_SATISFIED";
+  const otherFeedback = inspection.satisfactionStatus === "OTHERS";
   const destructive = ["DECLINED", "REJECTED", "CANCELLED"].includes(status);
   return (
     <Badge
       variant={
-        destructive
+        destructive || notSatisfied
           ? "destructive"
           : status === "PENDING"
             ? "outline"
@@ -1253,12 +1298,23 @@ function InspectionStatus({ status }: { status: string }) {
       }
       className={cn(
         status === "ACCEPTED" && "bg-primary/10 text-primary",
-        status === "COMPLETED" && "bg-success/10 text-success",
+        status === "COMPLETED" &&
+          !notSatisfied &&
+          !otherFeedback &&
+          "bg-success/10 text-success",
       )}
     >
-      {statusLabel(status)}
+      {displayInspectionStatus(inspection)}
     </Badge>
   );
+}
+
+function displayInspectionStatus(inspection: VendorInspection) {
+  if (inspection.satisfactionStatus === "NOT_SATISFIED") {
+    return "Not Satisfied";
+  }
+  if (inspection.satisfactionStatus === "OTHERS") return "Other Feedback";
+  return statusLabel(inspection.status);
 }
 
 function DetailLabel({ children }: { children: React.ReactNode }) {

@@ -19,6 +19,11 @@ export interface AddPropertyFormValues {
   bedrooms: string;
   bathrooms: string;
   amenities: string[];
+  shortletCheckInTime: string;
+  shortletCheckOutTime: string;
+  houseRules: string;
+  cancellationPolicy: string;
+  paymentPolicy: string;
 }
 
 export interface LegalFiles {
@@ -43,6 +48,11 @@ export const INITIAL_PROPERTY_VALUES: AddPropertyFormValues = {
   bedrooms: "",
   bathrooms: "",
   amenities: [],
+  shortletCheckInTime: "",
+  shortletCheckOutTime: "",
+  houseRules: "",
+  cancellationPolicy: "",
+  paymentPolicy: "",
 };
 
 export const PROPERTY_STEPS = [

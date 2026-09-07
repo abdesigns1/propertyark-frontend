@@ -243,9 +243,12 @@ export function AdminNotificationSettings({
               <SettingsSelect
                 label="Notification type"
                 value={form.type}
-                items={["GENERAL", "SECURITY", "PROPERTY"]}
+                items={["GENERAL"]}
                 onChange={(value) =>
-                  setForm((current) => ({ ...current, type: value }))
+                  setForm((current) => ({
+                    ...current,
+                    type: value as AdminNotificationPayload["type"],
+                  }))
                 }
               />
             </div>

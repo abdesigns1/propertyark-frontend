@@ -16,6 +16,8 @@ import {
   Landmark,
   Mail,
   MessageSquareText,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   WalletCards,
 } from "lucide-react";
@@ -35,7 +37,7 @@ const buyerNavigation = [
   { label: "Inspection", icon: FileText, href: "/buyer/inspections" },
   { label: "Mortgage", icon: FileText, href: "/buyer/mortgage" },
   { label: "Investments", icon: WalletCards, href: "/buyer/investments" },
-  { label: "Messages", icon: Mail, href: "#" },
+  { label: "Messages", icon: Mail, href: "/buyer/messages" },
   { label: "Notifications", icon: Bell, href: "/buyer/notifications" },
   { label: "Settings", icon: Settings, href: "/buyer/settings" },
 ];
@@ -62,7 +64,7 @@ const vendorNavigation = [
   {
     label: "Messages",
     icon: MessageSquareText,
-    href: "/vendor/dashboard#messages",
+    href: "/vendor/messages",
   },
   { label: "Notifications", icon: Bell, href: "/vendor/notifications" },
   { label: "Settings", icon: Settings, href: "/vendor/settings" },
@@ -70,8 +72,10 @@ const vendorNavigation = [
 
 export function DashboardNavigation({
   closeOnSelect = false,
+  collapsed = false,
 }: {
   closeOnSelect?: boolean;
+  collapsed?: boolean;
 }) {
   const pathname = usePathname();
   const [hash, setHash] = useState("");
@@ -119,6 +123,7 @@ export function DashboardNavigation({
               "flex min-h-12 items-center gap-4 rounded-xl px-4 py-2.5 text-[15px] font-medium leading-6 text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary",
               compactDesktopNavigation &&
                 "min-h-10 flex-none gap-3 px-3 py-1.5 text-sm leading-5",
+              collapsed && "justify-center px-2",
               active && "bg-primary/10 font-semibold text-primary",
             )}
           >
@@ -129,7 +134,7 @@ export function DashboardNavigation({
               )}
               aria-hidden="true"
             />
-            <span>{label}</span>
+            <span className={cn(collapsed && "sr-only")}>{label}</span>
             {hasNewActivity && (
               <>
                 <Badge className="ml-auto size-2 p-0" aria-hidden="true" />
@@ -150,13 +155,19 @@ export function DashboardNavigation({
   );
 }
 
-export function DashboardUserSummary() {
+export function DashboardUserSummary({
+  collapsed = false,
+}: {
+  collapsed?: boolean;
+}) {
   const user = useDashboardUser();
   const role = useAuthStore((state) => state.role);
   const summary = (
-    <div className="flex items-center gap-3">
+    <div
+      className={cn("flex items-center gap-3", collapsed && "justify-center")}
+    >
       <DashboardUserAvatar />
-      <div className="min-w-0">
+      <div className={cn("min-w-0", collapsed && "sr-only")}>
         <p className="truncate text-sm font-semibold">{user.fullName}</p>
         <p className="text-sm text-muted-foreground">
           {role === "vendor" ? "Vendor" : "User"}
@@ -176,15 +187,42 @@ export function DashboardUserSummary() {
   );
 }
 
-export function DashboardSidebar() {
+export function DashboardSidebar({
+  collapsed = false,
+  onCollapsedChange,
+}: {
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
+}) {
   return (
-    <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col overflow-hidden bg-surface px-4 py-4 lg:flex">
-      <DashboardBrand compact />
+    <aside
+      className={cn(
+        "fixed inset-y-0 left-0 hidden flex-col overflow-hidden bg-surface px-4 py-4 transition-[width] duration-200 lg:flex",
+        collapsed ? "w-20" : "w-64",
+      )}
+    >
+      <div
+        className={cn(
+          "flex items-center",
+          collapsed ? "flex-col justify-center gap-2" : "justify-between",
+        )}
+      >
+        <DashboardBrand compact iconOnly={collapsed} />
+        <button
+          type="button"
+          onClick={() => onCollapsedChange?.(!collapsed)}
+          className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
+        </button>
+      </div>
       <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
-        <DashboardNavigation />
+        <DashboardNavigation collapsed={collapsed} />
       </div>
       <div className="mt-3 shrink-0">
-        <DashboardUserSummary />
+        <DashboardUserSummary collapsed={collapsed} />
       </div>
     </aside>
   );

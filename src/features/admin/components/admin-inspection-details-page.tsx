@@ -35,6 +35,10 @@ import {
   inspectionTypeLabel,
 } from "@/features/admin/lib/admin-inspection-display";
 import { adminPropertyPrice } from "@/features/admin/lib/admin-property-display";
+import {
+  normalizePropertyMediaUrl,
+  showPropertyImageFallback,
+} from "@/features/properties/utils/normalize-property-response";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -463,9 +467,14 @@ function PropertyCard({
         <div className="relative h-32 overflow-hidden rounded-lg bg-muted">
           {image ? (
             <Image
-              src={image}
+              src={normalizePropertyMediaUrl(image)}
               alt=""
               fill
+              crossOrigin="anonymous"
+              unoptimized
+              onError={(event) =>
+                showPropertyImageFallback(event.currentTarget)
+              }
               className="object-cover"
               sizes="190px"
             />

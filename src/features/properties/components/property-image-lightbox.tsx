@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, type TouchEvent } from "react";
 import Image from "next/image";
+import { showPropertyImageFallback } from "@/features/properties/utils/normalize-property-response";
 import {
   ChevronLeft,
   ChevronRight,
@@ -177,6 +178,9 @@ function PropertyImageLightboxContent({
             src={images[index]}
             alt={`Property image ${index + 1} of ${images.length}`}
             fill
+            crossOrigin="anonymous"
+            unoptimized
+            onError={(event) => showPropertyImageFallback(event.currentTarget)}
             className="object-contain transition-transform duration-200 ease-out"
             style={{ transform: `scale(${zoom})` }}
             sizes="100vw"
@@ -217,7 +221,17 @@ function PropertyImageLightboxContent({
                   : "border-transparent opacity-60 hover:opacity-100",
               )}
             >
-              <Image src={src} alt="" fill className="object-cover" />
+              <Image
+                src={src}
+                alt=""
+                fill
+                crossOrigin="anonymous"
+                unoptimized
+                onError={(event) =>
+                  showPropertyImageFallback(event.currentTarget)
+                }
+                className="object-cover"
+              />
             </button>
           ))}
         </div>

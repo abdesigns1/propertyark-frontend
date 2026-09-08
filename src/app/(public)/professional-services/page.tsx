@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ProfessionalServiceForm } from "@/features/professional-services/components/professional-service-form";
 import { PageBanner } from "@/components/shared/page-banner";
-import { PropertyCard } from "@/features/properties/components/property-card";
+import { RecentlyViewedProperties } from "@/features/properties/components/recently-viewed-properties";
 import { BecomeVendorBanner } from "@/components/contact/become-vendor-banner";
 import { Footer } from "@/components/shared/footer";
 import { Button } from "@/components/ui/button";
-import { mockProperties } from "@/lib/markupdata";
 import { CONTAINER, cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -40,8 +39,6 @@ export default async function ProfessionalServicesPage({
   )
     ? (requestedService as ServiceValue)
     : "accountant";
-  const recentlyViewed = mockProperties.slice(3, 6);
-
   return (
     <>
       <PageBanner
@@ -61,11 +58,7 @@ export default async function ProfessionalServicesPage({
           </h2>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {recentlyViewed.map((property) => (
-            <PropertyCard key={property.id} property={property} />
-          ))}
-        </div>
+        <RecentlyViewedProperties />
 
         <div className="mt-8 flex justify-center">
           <Button asChild>

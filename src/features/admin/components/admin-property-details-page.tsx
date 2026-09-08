@@ -59,7 +59,10 @@ import type {
   PropertyApiItem,
   PropertyMediaResponse,
 } from "@/features/properties/types/api";
-import { normalizePropertyMediaUrl } from "@/features/properties/utils/normalize-property-response";
+import {
+  normalizePropertyMediaUrl,
+  showPropertyImageFallback,
+} from "@/features/properties/utils/normalize-property-response";
 import { PropertyImageLightbox } from "@/features/properties/components/property-image-lightbox";
 import { cn } from "@/lib/utils";
 
@@ -114,10 +117,14 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
     [property.media],
   );
   const videos = property.media?.filter((item) => item.type === "VIDEO") ?? [];
-  const status = String(
-    property.listingStatus ?? property.status ?? "PENDING",
+  const approvalStatus = String(
+    property.listingStatus ??
+      property.approvalStatus ??
+      property.reviewStatus ??
+      "PENDING",
   ).toUpperCase();
-  const reviewComplete = isPropertyReviewComplete(property, status);
+  const propertyStatus = String(property.status ?? "AVAILABLE").toUpperCase();
+  const reviewComplete = isPropertyReviewComplete(property, approvalStatus);
 
   const review = useMutation({
     mutationFn: async (action: "approve" | "reject") => {
@@ -168,16 +175,30 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
             <Badge
               variant="outline"
               className={cn(
-                status === "PENDING" &&
+                approvalStatus === "PENDING" &&
                   "border-warning/20 bg-warning/10 text-warning",
-                status === "REJECTED" &&
+                approvalStatus === "REJECTED" &&
                   "border-destructive/20 bg-destructive/10 text-destructive",
                 ["ACTIVE", "APPROVED", "VERIFIED", "ACCEPTED"].includes(
-                  status,
+                  approvalStatus,
                 ) && "border-success/20 bg-success/10 text-success",
               )}
             >
-              {reviewStatusLabel(status)}
+              Approval: {reviewStatusLabel(approvalStatus)}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={cn(
+                propertyStatus === "AVAILABLE" &&
+                  "border-success/20 bg-success/10 text-success",
+                ["SOLD", "RENTED", "OCCUPIED"].includes(propertyStatus) &&
+                  "border-primary/20 bg-primary/10 text-primary",
+                ["UNDER_MAINTENANCE", "UNDER_CONSTRUCTION"].includes(
+                  propertyStatus,
+                ) && "border-warning/20 bg-warning/10 text-warning",
+              )}
+            >
+              Property: {propertyStatusLabel(propertyStatus)}
             </Badge>
           </div>
           <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
@@ -322,6 +343,11 @@ function PropertyMedia({
                     alt={`${selectedImage + 1} of ${images.length} for the property`}
                     fill
                     priority
+                    crossOrigin="anonymous"
+                    unoptimized
+                    onError={(event) =>
+                      showPropertyImageFallback(event.currentTarget)
+                    }
                     sizes="(max-width: 1280px) 100vw, 850px"
                     className="object-cover transition-transform group-hover:scale-[1.01]"
                   />
@@ -354,6 +380,11 @@ function PropertyMedia({
                     src={normalizePropertyMediaUrl(image.url)}
                     alt={`Select property image ${index + 1}`}
                     fill
+                    crossOrigin="anonymous"
+                    unoptimized
+                    onError={(event) =>
+                      showPropertyImageFallback(event.currentTarget)
+                    }
                     sizes="180px"
                     className="object-cover"
                   />
@@ -365,6 +396,7 @@ function PropertyMedia({
             <video
               key={video.id}
               controls
+              crossOrigin="anonymous"
               preload="metadata"
               className="aspect-video w-full rounded-xl bg-foreground"
               src={normalizePropertyMediaUrl(video.url)}
@@ -498,7 +530,10 @@ function DocumentsCard({
   const [preview, setPreview] = useState<
     NonNullable<PropertyApiItem["documents"]>[number] | null
   >(null);
-  const previewUrl = preview?.url ?? preview?.fileUrl;
+  const rawPreviewUrl = preview?.url ?? preview?.fileUrl;
+  const previewUrl = rawPreviewUrl
+    ? normalizePropertyMediaUrl(rawPreviewUrl)
+    : undefined;
 
   return (
     <>
@@ -512,7 +547,10 @@ function DocumentsCard({
         <CardContent className="flex flex-col gap-3">
           {documents.length ? (
             documents.map((document) => {
-              const url = document.url ?? document.fileUrl;
+              const rawUrl = document.url ?? document.fileUrl;
+              const url = rawUrl
+                ? normalizePropertyMediaUrl(rawUrl)
+                : undefined;
               return (
                 <div
                   key={document.id}
@@ -584,6 +622,8 @@ function DocumentsCard({
                 src={previewUrl}
                 alt={preview?.name ?? preview?.fileName ?? "Property document"}
                 fill
+                crossOrigin="anonymous"
+                unoptimized
                 sizes="90vw"
                 className="object-contain"
               />
@@ -904,6 +944,15 @@ function reviewStatusLabel(status: string) {
   return status === "PENDING"
     ? "Pending Verification"
     : status.charAt(0) + status.slice(1).toLowerCase();
+}
+
+function propertyStatusLabel(status: string) {
+  return status === "AVAILABLE"
+    ? "Available / Active"
+    : status
+        .replaceAll("_", " ")
+        .toLowerCase()
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function isPropertyReviewComplete(property: PropertyApiItem, status: string) {

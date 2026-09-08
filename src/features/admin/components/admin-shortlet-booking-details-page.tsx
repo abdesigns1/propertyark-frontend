@@ -23,6 +23,10 @@ import { toast } from "sonner";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
 import { useAdminShortletBooking } from "@/features/admin/hooks/use-admin-dashboard";
 import {
+  normalizePropertyMediaUrl,
+  showPropertyImageFallback,
+} from "@/features/properties/utils/normalize-property-response";
+import {
   bookingDate,
   bookingGuests,
   bookingReference,
@@ -272,9 +276,14 @@ function PropertySummary({ booking }: { booking: ShortletBooking }) {
         <div className="relative h-36 w-full overflow-hidden rounded-lg bg-muted sm:w-48">
           {booking.propertyImageUrl ? (
             <Image
-              src={booking.propertyImageUrl}
+              src={normalizePropertyMediaUrl(booking.propertyImageUrl)}
               alt={booking.propertyName}
               fill
+              crossOrigin="anonymous"
+              unoptimized
+              onError={(event) =>
+                showPropertyImageFallback(event.currentTarget)
+              }
               className="object-cover"
               sizes="192px"
             />

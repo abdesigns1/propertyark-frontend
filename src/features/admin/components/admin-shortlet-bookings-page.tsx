@@ -16,6 +16,10 @@ import {
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
 import { useAdminShortletBookings } from "@/features/admin/hooks/use-admin-dashboard";
 import {
+  normalizePropertyMediaUrl,
+  showPropertyImageFallback,
+} from "@/features/properties/utils/normalize-property-response";
+import {
   bookingDateShort,
   bookingGuests,
   bookingReference,
@@ -278,9 +282,14 @@ function BookingRow({ booking }: { booking: ShortletBooking }) {
           <div className="relative size-12 shrink-0 overflow-hidden rounded-md bg-muted">
             {booking.propertyImageUrl && (
               <Image
-                src={booking.propertyImageUrl}
+                src={normalizePropertyMediaUrl(booking.propertyImageUrl)}
                 alt=""
                 fill
+                crossOrigin="anonymous"
+                unoptimized
+                onError={(event) =>
+                  showPropertyImageFallback(event.currentTarget)
+                }
                 className="object-cover"
                 sizes="48px"
               />

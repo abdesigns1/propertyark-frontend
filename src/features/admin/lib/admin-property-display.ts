@@ -26,7 +26,7 @@ export function adminPropertyImage(
   const media = [...(property.media ?? [])].sort(
     (first, second) => Number(second.isPrimary) - Number(first.isPrimary),
   );
-  const url = media.find((item) => item.type === "IMAGE")?.url;
+  const url = media.find((item) => item.type?.toUpperCase() === "IMAGE")?.url;
   return url
     ? normalizePropertyMediaUrl(url)
     : "/assets/images/hero-property.jpeg";

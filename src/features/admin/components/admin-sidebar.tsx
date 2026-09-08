@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { PropertyArkMark } from "@/components/admin/propertyark-mark";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,15 @@ import { adminNavigation } from "@/features/admin/data/dashboard-data";
 import { useAuthStore } from "@/store/auth.store";
 import { cn } from "@/lib/utils";
 
-export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
+export function AdminSidebar({
+  onNavigate,
+  collapsed = false,
+  onCollapsedChange,
+}: {
+  onNavigate?: () => void;
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
@@ -25,7 +33,30 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <aside className="flex h-dvh min-h-0 flex-col overflow-hidden bg-primary px-4 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-primary-foreground">
-      <PropertyArkMark light className="shrink-0 px-2" />
+      <div
+        className={cn(
+          "flex shrink-0 items-center",
+          collapsed ? "flex-col justify-center gap-2" : "justify-between",
+        )}
+      >
+        <PropertyArkMark
+          light
+          iconOnly={collapsed}
+          className={cn(!collapsed && "px-2")}
+        />
+        {onCollapsedChange && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onCollapsedChange(!collapsed)}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="text-white hover:bg-white/10 hover:text-white"
+          >
+            {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
+          </Button>
+        )}
+      </div>
       <nav className="mt-9 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overscroll-contain pr-1 pb-6 [scrollbar-color:rgb(255_255_255_/_0.25)_transparent] [scrollbar-width:thin] lg:gap-0.5 lg:pb-2">
         {adminNavigation.map(({ label, href, icon: Icon }) => (
           <Link
@@ -34,23 +65,29 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             className={cn(
               "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-primary-foreground/85 transition-colors hover:bg-white/10 hover:text-white lg:py-2",
+              collapsed && "justify-center px-2",
               (pathname === href || pathname.startsWith(`${href}/`)) &&
                 "bg-white/90 text-primary hover:bg-white hover:text-primary",
             )}
           >
             <Icon className="size-5" />
-            {label}
+            <span className={cn(collapsed && "sr-only")}>{label}</span>
           </Link>
         ))}
       </nav>
       <div aria-hidden="true" className="hidden h-16 shrink-0 lg:block" />
-      <div className="mt-5 flex shrink-0 items-center gap-3 rounded-xl bg-white/10 p-3 shadow-sm ring-1 ring-white/10 lg:mt-0">
+      <div
+        className={cn(
+          "mt-5 flex shrink-0 items-center gap-3 rounded-xl bg-white/10 p-3 shadow-sm ring-1 ring-white/10 lg:mt-0",
+          collapsed && "justify-center px-1",
+        )}
+      >
         <Avatar>
           <AvatarFallback className="bg-white text-primary">
             {initials}
           </AvatarFallback>
         </Avatar>
-        <div className="min-w-0 flex-1">
+        <div className={cn("min-w-0 flex-1", collapsed && "sr-only")}>
           <p className="truncate text-sm font-semibold">
             {user?.fullName || "Ayeni Victor"}
           </p>
@@ -62,7 +99,10 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
           variant="ghost"
           size="icon"
           aria-label="Log out"
-          className="text-white hover:bg-white/10 hover:text-white"
+          className={cn(
+            "text-white hover:bg-white/10 hover:text-white",
+            collapsed && "hidden",
+          )}
           onClick={() => {
             clearAuth();
             router.replace("/admin/login");

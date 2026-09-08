@@ -28,6 +28,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
+import { showPropertyImageFallback } from "@/features/properties/utils/normalize-property-response";
 import {
   Table,
   TableBody,
@@ -193,6 +194,11 @@ function RecentProperties({ properties }: { properties: Property[] }) {
                           src={property.images[0]}
                           alt=""
                           fill
+                          crossOrigin="anonymous"
+                          unoptimized
+                          onError={(event) =>
+                            showPropertyImageFallback(event.currentTarget)
+                          }
                           sizes="48px"
                           className="object-cover"
                         />

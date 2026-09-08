@@ -114,6 +114,30 @@ function normalizeActivities(value: unknown) {
     });
 }
 
+function recentlyViewedPropertyIds(value: unknown) {
+  const ids: string[] = [];
+  for (const item of findActivityRows(value)) {
+    const source = asRecord(item);
+    const metadata = asRecord(
+      source.metadata ?? source.data ?? source.details ?? source.payload,
+    );
+    const property = asRecord(source.property ?? metadata.property);
+    const action = text(source, ["action", "type", "eventType", "title"]);
+    const entityType = text(source, ["entityType", "resourceType", "category"]);
+    const isPropertyView =
+      /view(?:ed)?[_\s-]*property|property[_\s-]*view/i.test(action) ||
+      (/view/i.test(action) && /property/i.test(entityType));
+    if (!isPropertyView) continue;
+
+    const propertyId =
+      text(source, ["propertyId", "entityId", "resourceId", "subjectId"]) ||
+      text(metadata, ["propertyId", "entityId", "resourceId"]) ||
+      text(property, ["id", "_id"]);
+    if (propertyId && !ids.includes(propertyId)) ids.push(propertyId);
+  }
+  return ids;
+}
+
 export const buyerDashboardService = {
   async getActiveInquiryCount() {
     const { data } = await api.get<unknown>("/inquiries/my", {
@@ -125,5 +149,9 @@ export const buyerDashboardService = {
   async getRecentActivities() {
     const { data } = await api.get<unknown>("/users/dashboard");
     return normalizeActivities(data);
+  },
+  async getRecentlyViewedPropertyIds() {
+    const { data } = await api.get<unknown>("/users/dashboard");
+    return recentlyViewedPropertyIds(data);
   },
 };

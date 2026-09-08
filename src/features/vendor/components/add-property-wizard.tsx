@@ -186,6 +186,16 @@ export function AddPropertyWizard({
         type: property.type as AddPropertyFormValues["type"],
         listingType:
           property.listingType as AddPropertyFormValues["listingType"],
+        status: [
+          "AVAILABLE",
+          "OCCUPIED",
+          "UNDER_MAINTENANCE",
+          "UNDER_CONSTRUCTION",
+          "SOLD",
+          "RENTED",
+        ].includes(property.status?.toUpperCase())
+          ? (property.status.toUpperCase() as AddPropertyFormValues["status"])
+          : "AVAILABLE",
         price: price == null ? "" : String(price),
         address: property.address ?? "",
         city: property.city ?? "",
@@ -436,7 +446,7 @@ export function AddPropertyWizard({
       listingType: values.listingType,
       // `status` is the property's availability state. The backend separately
       // resets the admin-controlled `listingStatus` to PENDING on resubmission.
-      status: "AVAILABLE",
+      status: values.status,
       address: values.address.trim(),
       city: values.city.trim(),
       state: values.state.trim(),
@@ -600,7 +610,7 @@ export function AddPropertyWizard({
                   />
                   <FieldError>{errors.name}</FieldError>
                 </Field>
-                <div className="grid gap-5 sm:grid-cols-2">
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   <Field>
                     <FieldLabel>Property Type</FieldLabel>
                     <Select
@@ -651,6 +661,36 @@ export function AddPropertyWizard({
                         </SelectGroup>
                       </SelectContent>
                     </Select>
+                  </Field>
+                  <Field>
+                    <FieldLabel>Property Status</FieldLabel>
+                    <Select
+                      value={values.status}
+                      onValueChange={(value) => update("status", value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {[
+                            ["AVAILABLE", "Available / Active"],
+                            ["OCCUPIED", "Occupied"],
+                            ["UNDER_MAINTENANCE", "Under Maintenance"],
+                            ["UNDER_CONSTRUCTION", "Under Construction"],
+                            ["SOLD", "Sold"],
+                            ["RENTED", "Rented"],
+                          ].map(([value, label]) => (
+                            <SelectItem key={value} value={value}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <FieldDescription>
+                      Controls the property&apos;s current availability.
+                    </FieldDescription>
                   </Field>
                 </div>
                 <Field data-invalid={Boolean(errors.price)}>
@@ -1369,6 +1409,16 @@ export function AddPropertyWizard({
                   </p>
                   <p className="mt-1">
                     {readablePropertyValue(values.listingType)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">
+                    Property status
+                  </p>
+                  <p className="mt-1">
+                    {values.status === "AVAILABLE"
+                      ? "Available / Active"
+                      : readablePropertyValue(values.status)}
                   </p>
                 </div>
                 <div className="sm:col-span-2">

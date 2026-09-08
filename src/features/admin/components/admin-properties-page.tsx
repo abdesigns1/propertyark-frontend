@@ -7,6 +7,7 @@ import { Download, Eye, Plus, Search } from "lucide-react";
 import { AdminPropertyStats } from "@/features/admin/components/admin-property-stats";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
 import { useAdminProperties } from "@/features/admin/hooks/use-admin-dashboard";
+import { showPropertyImageFallback } from "@/features/properties/utils/normalize-property-response";
 import {
   adminPropertyCategory,
   adminPropertyImage,
@@ -68,10 +69,19 @@ export function AdminPropertiesPage() {
       adminPropertyPrice(property),
       adminPropertyCategory(property),
       property.createdAt,
-      property.listingStatus,
+      property.listingStatus ?? "PENDING",
+      property.status ?? "AVAILABLE",
     ]);
     const csv = [
-      ["Property", "Vendor", "Price", "Category", "Date Listed", "Status"],
+      [
+        "Property",
+        "Vendor",
+        "Price",
+        "Category",
+        "Date Listed",
+        "Approval Status",
+        "Property Status",
+      ],
       ...rows,
     ]
       .map((row) =>
@@ -262,7 +272,8 @@ function PropertiesTable({
             <TableHead>Price (₦)</TableHead>
             <TableHead>Category</TableHead>
             <TableHead>Date Listed</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead>Approval</TableHead>
+            <TableHead>Property Status</TableHead>
             <TableHead className="pr-6 text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -282,7 +293,8 @@ function PropertiesTable({
 }
 
 function PropertyRow({ property }: { property: AdminManagedProperty }) {
-  const status = (property.listingStatus || property.status).toUpperCase();
+  const approvalStatus = (property.listingStatus || "PENDING").toUpperCase();
+  const propertyStatus = (property.status || "AVAILABLE").toUpperCase();
   return (
     <TableRow className="h-[110px]">
       <TableCell className="pl-6">
@@ -292,6 +304,11 @@ function PropertyRow({ property }: { property: AdminManagedProperty }) {
               src={adminPropertyImage(property)}
               alt={property.name}
               fill
+              crossOrigin="anonymous"
+              unoptimized
+              onError={(event) =>
+                showPropertyImageFallback(event.currentTarget)
+              }
               sizes="56px"
               className="object-cover"
             />
@@ -326,7 +343,10 @@ function PropertyRow({ property }: { property: AdminManagedProperty }) {
         }).format(new Date(property.createdAt))}
       </TableCell>
       <TableCell>
-        <StatusBadge status={status} />
+        <StatusBadge status={approvalStatus} />
+      </TableCell>
+      <TableCell>
+        <PropertyStatusBadge status={propertyStatus} />
       </TableCell>
       <TableCell className="pr-6 text-right">
         <Button variant="outline" size="sm" asChild>
@@ -337,6 +357,27 @@ function PropertyRow({ property }: { property: AdminManagedProperty }) {
         </Button>
       </TableCell>
     </TableRow>
+  );
+}
+
+function PropertyStatusBadge({ status }: { status: string }) {
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "capitalize",
+        status === "AVAILABLE" &&
+          "border-success/20 bg-success/10 text-success",
+        ["SOLD", "RENTED", "OCCUPIED"].includes(status) &&
+          "border-primary/20 bg-primary/10 text-primary",
+        ["UNDER_MAINTENANCE", "UNDER_CONSTRUCTION"].includes(status) &&
+          "border-warning/20 bg-warning/10 text-warning",
+      )}
+    >
+      {status === "AVAILABLE"
+        ? "Available / Active"
+        : status.replaceAll("_", " ").toLowerCase()}
+    </Badge>
   );
 }
 
@@ -429,7 +470,7 @@ function filterProperties(
       0;
     const matchesSearch =
       !search ||
-      `${property.id} ${property.name} ${property.type} ${property.listingType} ${property.address} ${property.city} ${property.state} ${property.vendor?.id ?? ""} ${property.vendor?.fullName ?? ""} ${property.vendor?.email ?? ""}`
+      `${property.id} ${property.name} ${property.type} ${property.listingType} ${property.listingStatus ?? ""} ${property.status ?? ""} ${property.address} ${property.city} ${property.state} ${property.vendor?.id ?? ""} ${property.vendor?.fullName ?? ""} ${property.vendor?.email ?? ""}`
         .toLowerCase()
         .includes(search);
     const matchesCategory =

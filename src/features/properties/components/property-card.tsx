@@ -15,6 +15,7 @@ import {
 } from "@/features/properties/utils/property-labels";
 import type { Property } from "@/features/properties/types";
 import { PropertyCardActions } from "@/features/properties/components/property-card-actions";
+import { PROPERTY_IMAGE_FALLBACK } from "@/features/properties/utils/normalize-property-response";
 
 interface PropertyCardProps {
   property: Property;
@@ -35,8 +36,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
     sizeSqm,
     images,
   } = property;
-  const displayedImage =
-    images[imageIndex] ?? "/assets/images/hero-property.jpeg";
+  const displayedImage = images[imageIndex] ?? PROPERTY_IMAGE_FALLBACK;
 
   return (
     <div className="group overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
@@ -47,10 +47,12 @@ export function PropertyCard({ property }: PropertyCardProps) {
           src={displayedImage}
           alt={title}
           fill
+          crossOrigin="anonymous"
+          unoptimized
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           className="object-cover transition-transform duration-300 group-hover:scale-105"
           onError={() => {
-            if (imageIndex <= images.length - 1) {
+            if (imageIndex < images.length) {
               setImageIndex((current) => current + 1);
             }
           }}

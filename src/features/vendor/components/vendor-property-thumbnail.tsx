@@ -8,6 +8,7 @@ import type { PropertyApiItem } from "@/features/properties/types/api";
 import { propertyImage } from "@/features/vendor/lib/vendor-property-display";
 import { getDraftMedia } from "@/features/vendor/lib/property-drafts";
 import { propertyService } from "@/services/property.service";
+import { showPropertyImageFallback } from "@/features/properties/utils/normalize-property-response";
 
 interface VendorPropertyThumbnailProps {
   property: PropertyApiItem;
@@ -63,6 +64,9 @@ export function VendorPropertyThumbnail({
       src={draftImageUrl ?? propertyImage(propertyWithMedia)}
       alt=""
       fill
+      crossOrigin="anonymous"
+      unoptimized
+      onError={(event) => showPropertyImageFallback(event.currentTarget)}
       sizes={sizes}
       className={className}
     />

@@ -6,6 +6,8 @@ import { AdminDashboardHeader } from "@/features/admin/components/admin-dashboar
 import { AdminSidebar } from "@/features/admin/components/admin-sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/store/auth.store";
+import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
+import { cn } from "@/lib/utils";
 
 export function AdminWorkspace({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -18,6 +20,9 @@ export function AdminWorkspace({ children }: { children: React.ReactNode }) {
   const role = useAuthStore((state) => state.role);
   const hasAdminAccess =
     isAuthenticated && (role === "admin" || role === "staff");
+  const [collapsed, setCollapsed] = useSidebarCollapse(
+    "propertyark-admin-sidebar-collapsed",
+  );
 
   useEffect(() => {
     if (ready && !hasAdminAccess) router.replace("/admin/login");
@@ -33,9 +38,19 @@ export function AdminWorkspace({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background lg:pl-64">
-      <div className="fixed inset-y-0 left-0 hidden h-dvh w-64 overflow-hidden lg:block">
-        <AdminSidebar />
+    <div
+      className={cn(
+        "min-h-screen bg-background transition-[padding] duration-200",
+        collapsed ? "lg:pl-20" : "lg:pl-64",
+      )}
+    >
+      <div
+        className={cn(
+          "fixed inset-y-0 left-0 hidden h-dvh overflow-hidden transition-[width] duration-200 lg:block",
+          collapsed ? "w-20" : "w-64",
+        )}
+      >
+        <AdminSidebar collapsed={collapsed} onCollapsedChange={setCollapsed} />
       </div>
       <AdminDashboardHeader />
       {children}

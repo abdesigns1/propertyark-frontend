@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import axios from "axios";
 import Image from "next/image";
+import { showPropertyImageFallback } from "@/features/properties/utils/normalize-property-response";
 import { useMutation } from "@tanstack/react-query";
 import { differenceInCalendarDays, format } from "date-fns";
 import {
@@ -320,6 +321,11 @@ export function ShortletBookingForm({
                 src={property.images[0]}
                 alt=""
                 fill
+                crossOrigin="anonymous"
+                unoptimized
+                onError={(event) =>
+                  showPropertyImageFallback(event.currentTarget)
+                }
                 className="object-cover"
               />
             </div>

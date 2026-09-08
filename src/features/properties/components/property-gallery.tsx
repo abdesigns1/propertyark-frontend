@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { PropertyImageLightbox } from "./property-image-lightbox";
+import { showPropertyImageFallback } from "@/features/properties/utils/normalize-property-response";
 
 interface PropertyGalleryProps {
   images: string[];
@@ -41,6 +42,9 @@ export function PropertyGallery({ images }: PropertyGalleryProps) {
             src={main}
             alt="Property main view"
             fill
+            crossOrigin="anonymous"
+            unoptimized
+            onError={(event) => showPropertyImageFallback(event.currentTarget)}
             className="object-cover transition-transform hover:scale-[1.02]"
             priority
           />
@@ -62,6 +66,11 @@ export function PropertyGallery({ images }: PropertyGalleryProps) {
                     src={src}
                     alt={`Property view ${i + 2}`}
                     fill
+                    crossOrigin="anonymous"
+                    unoptimized
+                    onError={(event) =>
+                      showPropertyImageFallback(event.currentTarget)
+                    }
                     className="object-cover transition-transform hover:scale-[1.02]"
                   />
                   {showOverlay && (

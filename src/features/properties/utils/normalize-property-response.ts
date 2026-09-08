@@ -5,7 +5,9 @@ import type {
   PropertyType,
 } from "@/features/properties/types";
 import type { PropertyApiItem } from "@/features/properties/types/api";
-import { trustedUploadProxyUrl } from "@/lib/property-media-security";
+
+const PROPERTY_MEDIA_HOST = "propertyark-backend.onrender.com";
+export const PROPERTY_IMAGE_FALLBACK = "/assets/images/hero-property.jpeg";
 
 const TYPE_MAP: Record<string, PropertyType> = {
   RESIDENTIAL: "apartment",
@@ -69,7 +71,35 @@ function normalizeHouseRules(value: unknown) {
 }
 
 export function normalizePropertyMediaUrl(url: string) {
-  return trustedUploadProxyUrl(url, "property") ?? url;
+  const value = url.trim();
+  if (!value) return value;
+
+  try {
+    const parsed = new URL(value);
+    // The backend returns the complete media URL. Keep that origin intact and
+    // upgrade legacy HTTP records so deployed HTTPS pages do not hit mixed
+    // content blocking in the browser.
+    if (
+      parsed.hostname === PROPERTY_MEDIA_HOST &&
+      parsed.protocol === "http:"
+    ) {
+      parsed.protocol = "https:";
+    }
+    return parsed.toString();
+  } catch {
+    // Older records may contain only an upload path. Resolve those against the
+    // backend—not the frontend origin—without changing current absolute URLs.
+    if (/^\/?uploads\//i.test(value)) {
+      return `https://${PROPERTY_MEDIA_HOST}/${value.replace(/^\/+/, "")}`;
+    }
+    return value;
+  }
+}
+
+export function showPropertyImageFallback(image: HTMLImageElement) {
+  if (image.src.endsWith(PROPERTY_IMAGE_FALLBACK)) return;
+  image.srcset = "";
+  image.src = PROPERTY_IMAGE_FALLBACK;
 }
 
 export function normalizePropertyResponse(property: PropertyApiItem): Property {
@@ -103,7 +133,7 @@ export function normalizePropertyResponse(property: PropertyApiItem): Property {
     bathrooms: property.bathrooms,
     sizeSqm: property.size,
     sizeUnit: property.sizeUnit?.toLowerCase() === "sqft" ? "sqft" : "sqm",
-    images: images.length ? images : ["/assets/images/hero-property.jpeg"],
+    images: images.length ? images : [PROPERTY_IMAGE_FALLBACK],
     videos,
     videoUrl: videos[0],
     amenities: property.amenities ?? [],

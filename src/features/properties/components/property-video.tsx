@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Play } from "lucide-react";
+import { showPropertyImageFallback } from "@/features/properties/utils/normalize-property-response";
 
 interface PropertyVideoProps {
   thumbnailSrc: string;
@@ -22,6 +23,7 @@ export function PropertyVideo({ thumbnailSrc, videoUrl }: PropertyVideoProps) {
             poster={thumbnailSrc}
             className="h-full w-full"
             controls
+            crossOrigin="anonymous"
             autoPlay
             playsInline
             preload="metadata"
@@ -39,6 +41,11 @@ export function PropertyVideo({ thumbnailSrc, videoUrl }: PropertyVideoProps) {
               src={thumbnailSrc}
               alt="Video preview"
               fill
+              crossOrigin="anonymous"
+              unoptimized
+              onError={(event) =>
+                showPropertyImageFallback(event.currentTarget)
+              }
               className="object-cover"
             />
             <span className="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors group-hover:bg-black/40">

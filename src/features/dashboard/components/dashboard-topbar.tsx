@@ -37,8 +37,13 @@ import { DashboardMobileNavigation } from "./dashboard-mobile-navigation";
 import { useDashboardNotificationIndicators } from "@/features/dashboard/hooks/use-vendor-notification-indicators";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/store/auth.store";
+import { cn } from "@/lib/utils";
 
-export function DashboardTopbar() {
+export function DashboardTopbar({
+  collapsed = false,
+}: {
+  collapsed?: boolean;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [propertySearch, setPropertySearch] = useState("");
@@ -84,7 +89,12 @@ export function DashboardTopbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-[70px] items-center border-b bg-background px-4 shadow-sm md:px-6 lg:ml-64 lg:px-8">
+    <header
+      className={cn(
+        "sticky top-0 z-40 flex h-[70px] items-center border-b bg-background px-4 shadow-sm transition-[margin] duration-200 md:px-6 lg:px-8",
+        collapsed ? "lg:ml-20" : "lg:ml-64",
+      )}
+    >
       <div className="flex w-full items-center gap-3">
         <DashboardMobileNavigation />
         <div className="lg:hidden">

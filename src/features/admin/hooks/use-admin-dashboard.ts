@@ -202,9 +202,54 @@ export function useAdminVendorInspections({
 export function useAdminProperties(page: number, status: string, limit = 10) {
   return useQuery({
     queryKey: ["admin", "properties", page, status, limit],
-    queryFn: () => adminService.getPropertyManagement({ page, limit, status }),
+    queryFn: async () => {
+      const result = await adminService.getPropertyManagement({
+        page,
+        limit,
+        status,
+      });
+      const properties = await Promise.all(
+        result.properties.map(async (property) => {
+          const hasImage = property.media?.some(
+            (item) => item.type?.toUpperCase() === "IMAGE",
+          );
+          if (hasImage) return property;
+
+          try {
+            // The admin statistics endpoint can omit image media while the
+            // vendor and single-property endpoints include it. Read the same
+            // property payload used by the vendor view before falling back to
+            // the dedicated media collection.
+            const detail = await propertyService.getById(property.id);
+            const detailImages = (detail.media ?? []).filter(
+              (item) => item.type?.toUpperCase() === "IMAGE",
+            );
+            const fetchedMedia = detailImages.length
+              ? detailImages
+              : await propertyService.getMedia(property.id);
+            if (!fetchedMedia.length) return property;
+
+            const mergedMedia = new Map(
+              [...(property.media ?? []), ...fetchedMedia].map((item) => [
+                item.id,
+                item,
+              ]),
+            );
+            return { ...property, media: [...mergedMedia.values()] };
+          } catch {
+            // One unavailable media collection must not prevent the remaining
+            // admin property rows from rendering.
+            return property;
+          }
+        }),
+      );
+
+      return { ...result, properties };
+    },
     placeholderData: (previous) => previous,
     staleTime: 30_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 }
 

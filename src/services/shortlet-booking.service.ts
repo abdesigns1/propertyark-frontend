@@ -139,21 +139,34 @@ function numberFrom(source: UnknownRecord, keys: string[]) {
 
 function findBookings(value: unknown): unknown[] {
   if (Array.isArray(value)) return value;
-  const root = asRecord(value);
-  if (Array.isArray(root.data)) return root.data;
-  const source = unwrap(value);
-  for (const key of [
+  const bookingKeys = [
     "bookings",
+    "allBookings",
+    "shortletBookings",
     "recentBookings",
     "vendorBookings",
     "items",
     "records",
     "results",
-  ]) {
-    if (Array.isArray(source[key])) return source[key];
-    const nested = asRecord(source[key]);
-    if (Array.isArray(nested.data)) return nested.data;
-    if (Array.isArray(nested.items)) return nested.items;
+  ];
+  const queue: Array<{ value: unknown; depth: number }> = [{ value, depth: 0 }];
+  const visited = new Set<unknown>();
+
+  while (queue.length) {
+    const current = queue.shift();
+    if (!current || current.depth > 4 || visited.has(current.value)) continue;
+    visited.add(current.value);
+    const source = asRecord(current.value);
+
+    for (const key of bookingKeys) {
+      if (Array.isArray(source[key])) return source[key];
+    }
+
+    for (const nested of Object.values(source)) {
+      if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+        queue.push({ value: nested, depth: current.depth + 1 });
+      }
+    }
   }
   return [];
 }
@@ -327,7 +340,7 @@ function normalizeBooking(value: unknown, index: number): ShortletBooking {
 
 async function adminVendorBookingPayloads() {
   const { data } = await api.get<unknown>("/users/", {
-    params: { page: 1, limit: 1000 },
+    params: { page: 1, limit: 100, role: "VENDOR" },
   });
   const payload = asRecord(asRecord(data).data ?? data);
   const vendors = (Array.isArray(payload.users) ? payload.users : [])

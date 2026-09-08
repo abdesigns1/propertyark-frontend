@@ -3,11 +3,20 @@ export type ListingType = "FOR_SALE" | "FOR_RENT" | "FOR_LAND" | "FOR_SHORTLET";
 export type PropertyType =
   "RESIDENTIAL" | "COMMERCIAL" | "INDUSTRIAL" | "LAND" | "MIXED_USE";
 
+export type PropertyStatus =
+  | "AVAILABLE"
+  | "OCCUPIED"
+  | "UNDER_MAINTENANCE"
+  | "UNDER_CONSTRUCTION"
+  | "SOLD"
+  | "RENTED";
+
 export interface AddPropertyFormValues {
   name: string;
   description: string;
   type: PropertyType;
   listingType: ListingType;
+  status: PropertyStatus;
   price: string;
   address: string;
   city: string;
@@ -37,6 +46,7 @@ export const INITIAL_PROPERTY_VALUES: AddPropertyFormValues = {
   description: "",
   type: "RESIDENTIAL",
   listingType: "FOR_SALE",
+  status: "AVAILABLE",
   price: "",
   address: "",
   city: "",

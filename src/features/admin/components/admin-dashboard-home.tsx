@@ -101,6 +101,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useAuthStore } from "@/store/auth.store";
+import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
 import { cn } from "@/lib/utils";
 
 const chartConfig = {
@@ -933,6 +934,9 @@ export function AdminDashboardHome() {
   const role = useAuthStore((state) => state.role);
   const user = useAuthStore((state) => state.user);
   const [usersPage, setUsersPage] = useState(1);
+  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapse(
+    "propertyark-admin-sidebar-collapsed",
+  );
   const dashboard = useAdminDashboard();
   const growthHistory = useAdminGrowthHistory();
   const adminUsers = useAdminUsers(usersPage);
@@ -953,9 +957,22 @@ export function AdminDashboardHome() {
     );
 
   return (
-    <div className="min-h-screen bg-background lg:pl-64">
-      <div className="fixed inset-y-0 left-0 hidden w-64 lg:block">
-        <AdminSidebar />
+    <div
+      className={cn(
+        "min-h-screen bg-background transition-[padding] duration-200",
+        sidebarCollapsed ? "lg:pl-20" : "lg:pl-64",
+      )}
+    >
+      <div
+        className={cn(
+          "fixed inset-y-0 left-0 hidden transition-[width] duration-200 lg:block",
+          sidebarCollapsed ? "w-20" : "w-64",
+        )}
+      >
+        <AdminSidebar
+          collapsed={sidebarCollapsed}
+          onCollapsedChange={setSidebarCollapsed}
+        />
       </div>
       <DashboardHeader />
       <main className="mx-auto max-w-[1500px] p-4 sm:p-6 lg:p-7">

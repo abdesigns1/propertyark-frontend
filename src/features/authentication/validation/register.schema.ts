@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const MAX_FILE_SIZE_MB = 50;
+const MAX_FILE_SIZE_MB = 10;
 const ACCEPTED_KYC_TYPES = ["image/jpeg", "image/png", "application/pdf"];
 
 const baseFields = {

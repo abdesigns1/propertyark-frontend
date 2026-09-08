@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { authService } from "@/services/auth.service";
 import type {
@@ -13,8 +14,17 @@ export function useRegisterBuyer() {
 }
 
 export function useRegisterVendor() {
-  return useMutation({
-    mutationFn: (values: VendorRegisterValues) =>
-      authService.registerVendor(values),
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const mutation = useMutation({
+    mutationFn: (values: VendorRegisterValues) => {
+      setUploadProgress(0);
+      return authService.registerVendor(values, ({ loaded, total }) => {
+        if (total) {
+          setUploadProgress(Math.min(100, Math.round((loaded / total) * 100)));
+        }
+      });
+    },
   });
+
+  return { ...mutation, uploadProgress };
 }

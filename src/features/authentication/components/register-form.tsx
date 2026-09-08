@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,6 +17,8 @@ import { ChevronLeft } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
+import { Spinner } from "@/components/ui/spinner";
 import { FieldError } from "@/components/ui/field";
 import { TextField } from "./text-field";
 import { CountryPhoneField } from "./country-phone-field";
@@ -70,6 +72,10 @@ export function RegisterForm() {
       kycDocument: undefined as unknown as File,
     },
   });
+
+  useEffect(() => {
+    router.prefetch("/verify");
+  }, [router]);
 
   function saveRegistrationProfile(
     values: BuyerRegisterValues | VendorRegisterValues,
@@ -223,6 +229,7 @@ export function RegisterForm() {
             disabled={registerBuyer.isPending}
             className="h-12 rounded-lg bg-primary text-primary-foreground hover:bg-primary-hover"
           >
+            {registerBuyer.isPending && <Spinner data-icon="inline-start" />}
             {registerBuyer.isPending ? "Creating account..." : "Register"}
           </Button>
         </form>
@@ -282,8 +289,23 @@ export function RegisterForm() {
             disabled={registerVendor.isPending}
             className="h-12 rounded-lg bg-primary text-primary-foreground hover:bg-primary-hover"
           >
+            {registerVendor.isPending && <Spinner data-icon="inline-start" />}
             {registerVendor.isPending ? "Creating account..." : "Register"}
           </Button>
+          {registerVendor.isPending && (
+            <div
+              className="flex flex-col gap-2"
+              role="status"
+              aria-live="polite"
+            >
+              <Progress value={registerVendor.uploadProgress} />
+              <p className="text-center text-xs text-muted-foreground">
+                {registerVendor.uploadProgress < 100
+                  ? `Uploading identification… ${registerVendor.uploadProgress}%`
+                  : "Upload complete. Finishing account setup…"}
+              </p>
+            </div>
+          )}
         </form>
       )}
 

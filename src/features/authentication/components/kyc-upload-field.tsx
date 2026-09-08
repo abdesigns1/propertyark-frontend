@@ -63,7 +63,7 @@ export function KycUploadField<T extends FieldValues>({
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   National ID, Driver&apos;s Licence, or International Passport.
-                  JPEG, PNG, and PDF formats, up to 50 MB.
+                  JPEG, PNG, and PDF formats, up to 10 MB.
                 </p>
               </div>
               <Button

@@ -1,3 +1,4 @@
+import type { AxiosProgressEvent } from "axios";
 import { api } from "@/services/axios";
 import type {
   BuyerRegisterValues,
@@ -70,12 +71,19 @@ function registrationFields(
 
 export const authService = {
   registerBuyer: (payload: BuyerRegisterValues) =>
-    api.post("/auth/reg", {
-      ...registrationFields(payload),
-      role: "USER",
-    }),
+    api.post(
+      "/auth/reg",
+      {
+        ...registrationFields(payload),
+        role: "USER",
+      },
+      { baseURL: "/api/v1" },
+    ),
 
-  registerVendor: (payload: VendorRegisterValues) => {
+  registerVendor: (
+    payload: VendorRegisterValues,
+    onUploadProgress?: (event: AxiosProgressEvent) => void,
+  ) => {
     const formData = new FormData();
     const fields = { ...registrationFields(payload), role: "VENDOR" };
 
@@ -84,7 +92,10 @@ export const authService = {
     });
     formData.append("ninPhoto", payload.kycDocument);
 
-    return api.post("/auth/reg", formData);
+    return api.post("/auth/reg", formData, {
+      baseURL: "/api/v1",
+      onUploadProgress,
+    });
   },
 
   login: ({ email, password }: { email: string; password: string }) =>

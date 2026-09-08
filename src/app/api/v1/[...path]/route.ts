@@ -35,6 +35,7 @@ async function proxyRequest(
     const upstreamResponse = await fetch(upstreamUrl, {
       method: request.method,
       headers,
+      signal: request.signal,
       body:
         request.method === "GET" || request.method === "HEAD"
           ? undefined

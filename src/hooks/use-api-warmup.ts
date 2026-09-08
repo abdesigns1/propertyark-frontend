@@ -16,18 +16,14 @@ export function useApiWarmup() {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 60_000);
 
-    const apiBaseUrl = (
-      process.env.NEXT_PUBLIC_API_BASE_URL ??
-      "https://propertyark-backend.onrender.com/api/v1"
-    ).replace(/\/+$/, "");
-    void fetch(`${apiBaseUrl}/health`, {
+    void fetch("/api/v1/properties/available?page=1&limit=1", {
       method: "GET",
       credentials: "include",
       cache: "no-store",
       signal: controller.signal,
     })
       .catch(() => {
-        // The request may return a CORS/404 response and still wake the host.
+        // Registration remains usable if this best-effort warm-up fails.
       })
       .finally(() => window.clearTimeout(timeout));
 

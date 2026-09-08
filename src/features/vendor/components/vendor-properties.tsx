@@ -467,6 +467,11 @@ export function VendorProperties() {
                 <TableBody>
                   {visible.map((property) => {
                     const propertyStatus = getPropertyStatus(property);
+                    const viewHref = property.id.startsWith("draft:")
+                      ? `/vendor/properties/new?draft=${property.id.slice("draft:".length)}`
+                      : propertyStatus.key === "published"
+                        ? `/properties/${property.id}`
+                        : `/vendor/properties/${property.id}`;
                     return (
                       <TableRow key={property.id} className="h-24">
                         <TableCell className="pl-6">
@@ -536,9 +541,11 @@ export function VendorProperties() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuGroup>
                                 <DropdownMenuItem asChild>
-                                  <Link href={`/properties/${property.id}`}>
+                                  <Link href={viewHref}>
                                     <Eye />
-                                    View listing
+                                    {propertyStatus.key === "published"
+                                      ? "View listing"
+                                      : "Preview listing"}
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild>

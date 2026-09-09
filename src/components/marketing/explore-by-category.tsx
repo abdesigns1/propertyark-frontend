@@ -10,7 +10,7 @@ import {
 const CATEGORIES = [
   {
     label: "Land",
-    description: "Raw opportunities",
+    description: "Prime plots for development",
     href: "/properties?type=land",
     icon: Mountain,
     iconBg: "bg-orange-100",
@@ -18,7 +18,7 @@ const CATEGORIES = [
   },
   {
     label: "Rent",
-    description: "Family homes",
+    description: "Comfortable living",
     href: "/properties?type=rent",
     icon: Home,
     iconBg: "bg-blue-100",
@@ -26,7 +26,7 @@ const CATEGORIES = [
   },
   {
     label: "Shortlet",
-    description: "Business spaces",
+    description: "Temporary stays",
     href: "/properties?type=shortlet",
     icon: Briefcase,
     iconBg: "bg-slate-100",
@@ -34,7 +34,7 @@ const CATEGORIES = [
   },
   {
     label: "Sale",
-    description: "Elite living",
+    description: "Investment opportunities",
     href: "/properties?type=sale",
     icon: Gem,
     iconBg: "bg-amber-100",

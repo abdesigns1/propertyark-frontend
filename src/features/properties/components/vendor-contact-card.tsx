@@ -124,10 +124,7 @@ export function VendorContactCard({ property }: { property: Property }) {
 
   return (
     <div className="sticky top-24 rounded-2xl border border-border bg-card p-6">
-      <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-        <span className="text-secondary">★</span>
-        {property.title}
-      </p>
+      <p className="text-sm font-semibold text-foreground">{property.title}</p>
 
       <div className="mt-2 flex items-center gap-2">
         <span
@@ -138,11 +135,7 @@ export function VendorContactCard({ property }: { property: Property }) {
         >
           {PURPOSE_LABELS[property.purpose]}
         </span>
-        {property.rating && (
-          <span className="text-xs text-muted-foreground">
-            ★★★★★ ({property.reviewCount} Reviews)
-          </span>
-        )}
+        {/* Vendor ratings and review counts will be restored with reviews. */}
       </div>
 
       <p className="mt-2 text-xs text-muted-foreground">

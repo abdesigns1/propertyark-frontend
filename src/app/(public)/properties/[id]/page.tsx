@@ -8,7 +8,6 @@ import { PropertyInformation } from "@/features/properties/components/property-i
 import { PropertyAmenities } from "@/features/properties/components/property-amenities";
 import { PropertyVideo } from "@/features/properties/components/property-video";
 import { PropertyMap } from "@/features/properties/components/property-map";
-import { PropertyReviews } from "@/features/properties/components/property-reviews";
 import { VendorContactCard } from "@/features/properties/components/vendor-contact-card";
 import { SimilarPropertiesCarousel } from "@/features/properties/components/similar-properties-carousel";
 import { PropertyViewTracker } from "@/features/properties/components/property-view-tracker";
@@ -131,13 +130,7 @@ export default async function PropertyDetailPage({
               address={`${property.location.address}, ${property.location.city}`}
             />
 
-            {property.reviews && (
-              <PropertyReviews
-                reviews={property.reviews}
-                averageRating={property.rating ?? 5}
-                totalReviews={1540}
-              />
-            )}
+            {/* The property reviews section will be restored later. */}
           </div>
 
           <div>

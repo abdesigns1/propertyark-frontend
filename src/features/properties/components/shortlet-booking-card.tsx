@@ -27,7 +27,6 @@ import {
   Minus,
   Phone,
   Plus,
-  Star,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -186,30 +185,13 @@ export function ShortletBookingCard({ property }: { property: Property }) {
   return (
     <Card className="gap-0 rounded-2xl py-0 shadow-sm lg:sticky lg:top-28">
       <CardHeader className="gap-3 px-6 pb-5 pt-6">
-        <CardTitle className="flex items-start gap-2 text-base font-semibold">
-          <Star className="mt-0.5 fill-secondary text-secondary" />
-          <span className="leading-snug">{property.title}</span>
+        <CardTitle className="text-base font-semibold leading-snug">
+          {property.title}
         </CardTitle>
 
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary">Short Let</Badge>
-          <span
-            className="flex items-center gap-0.5 text-warning"
-            aria-label={`${property.rating ?? 5} out of 5 stars`}
-          >
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Star
-                key={index}
-                className={cn(
-                  "size-3.5",
-                  index < Math.round(property.rating ?? 5) && "fill-warning",
-                )}
-              />
-            ))}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            ({property.reviewCount ?? 2} Reviews)
-          </span>
+          {/* Rating and review count are hidden until real review data is available. */}
         </div>
 
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">

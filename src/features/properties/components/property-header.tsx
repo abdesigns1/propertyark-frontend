@@ -1,4 +1,4 @@
-import { Star, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { Price } from "@/components/shared/price";
 import {
   PURPOSE_LABELS,
@@ -23,26 +23,7 @@ export function PropertyHeader({ property }: { property: Property }) {
           >
             {PURPOSE_LABELS[property.purpose]}
           </span>
-          {property.rating && (
-            <span className="flex items-center gap-1 text-sm">
-              <span className="flex text-secondary">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star
-                    key={i}
-                    className={cn(
-                      "h-4 w-4",
-                      i < Math.round(property.rating!)
-                        ? "fill-secondary"
-                        : "fill-none text-border",
-                    )}
-                  />
-                ))}
-              </span>
-              <span className="text-muted-foreground">
-                ({property.reviewCount ?? 0} Reviews)
-              </span>
-            </span>
-          )}
+          {/* Property ratings and review counts will be restored with reviews. */}
         </div>
         <p className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
           <MapPin className="h-4 w-4" />

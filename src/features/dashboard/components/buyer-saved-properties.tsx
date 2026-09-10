@@ -306,6 +306,7 @@ function SavedProperties({ audience }: { audience: "buyer" | "vendor" }) {
         <SimilarPropertiesCarousel
           properties={recommendations}
           title="Recommended Properties"
+          maxColumns={3}
           viewAllHref={
             audience === "buyer" ? "/buyer/properties" : "/properties"
           }

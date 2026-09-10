@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PropertyCard } from "@/features/properties/components/property-card";
 import type { Property } from "@/features/properties/types";
+import { cn } from "@/lib/utils";
 
 const AUTO_SCROLL_DELAY = 4_500;
 
@@ -14,11 +15,13 @@ export function SimilarPropertiesCarousel({
   title = "Similar Properties",
   viewAllHref = "/properties",
   viewAllLabel = "View All Properties",
+  maxColumns = 4,
 }: {
   properties: Property[];
   title?: string;
   viewAllHref?: string;
   viewAllLabel?: string;
+  maxColumns?: 3 | 4;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [isInteracting, setIsInteracting] = useState(false);
@@ -113,9 +116,12 @@ export function SimilarPropertiesCarousel({
         {properties.map((property) => (
           <div
             key={property.id}
-            className="w-[88%] shrink-0 snap-start sm:w-[calc((100%_-_1.5rem)/2)] lg:w-[calc((100%_-_3rem)/3)] xl:w-[calc((100%_-_4.5rem)/4)]"
+            className={cn(
+              "w-[88%] shrink-0 snap-start sm:w-[calc((100%_-_1.5rem)/2)] lg:w-[calc((100%_-_3rem)/3)]",
+              maxColumns === 4 && "xl:w-[calc((100%_-_4.5rem)/4)]",
+            )}
           >
-            <PropertyCard property={property} />
+            <PropertyCard property={property} compactPrice={maxColumns === 3} />
           </div>
         ))}
       </div>

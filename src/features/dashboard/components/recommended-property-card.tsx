@@ -11,5 +11,5 @@ interface RecommendedPropertyCardProps {
 export function RecommendedPropertyCard({
   property,
 }: RecommendedPropertyCardProps) {
-  return <PropertyCard property={property} />;
+  return <PropertyCard property={property} compactPrice />;
 }

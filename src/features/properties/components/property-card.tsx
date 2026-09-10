@@ -19,9 +19,13 @@ import { PROPERTY_IMAGE_FALLBACK } from "@/features/properties/utils/normalize-p
 
 interface PropertyCardProps {
   property: Property;
+  compactPrice?: boolean;
 }
 
-export function PropertyCard({ property }: PropertyCardProps) {
+export function PropertyCard({
+  property,
+  compactPrice = false,
+}: PropertyCardProps) {
   const [imageIndex, setImageIndex] = useState(0);
   const {
     id,
@@ -114,11 +118,19 @@ export function PropertyCard({ property }: PropertyCardProps) {
         </div>
 
         <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-          <span className="font-numeric text-lg font-bold text-primary">
+          <span
+            className={cn(
+              "min-w-0 font-numeric font-bold text-primary",
+              compactPrice ? "text-base" : "text-lg",
+            )}
+          >
             <Price
               amount={price}
               currency={currency}
-              className="text-lg font-bold text-primary"
+              className={cn(
+                "font-bold text-primary",
+                compactPrice ? "text-base" : "text-lg",
+              )}
             />
           </span>
           <Button

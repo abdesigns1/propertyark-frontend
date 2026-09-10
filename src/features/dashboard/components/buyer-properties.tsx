@@ -146,9 +146,9 @@ export function BuyerProperties() {
             onReset={handleFiltersReset}
           />
         </div>
-        <div>
+        <div className="min-w-0">
           {availableProperties.isLoading ? (
-            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 2xl:grid-cols-3">
               {Array.from({ length: 6 }, (_, index) => (
                 <Skeleton key={index} className="h-[410px] rounded-xl" />
               ))}
@@ -163,7 +163,7 @@ export function BuyerProperties() {
               </CardContent>
             </Card>
           ) : properties.length ? (
-            <AnimatedContainer className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <AnimatedContainer className="grid gap-5 sm:grid-cols-2 2xl:grid-cols-3">
               {properties.map((property, index) => (
                 <AnimatedItem key={`${property.id}-${index}`}>
                   <RecommendedPropertyCard

@@ -23,7 +23,7 @@ export function BuyerDashboard() {
     <>
       <DashboardOverview />
       <div className="mt-9 grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <section>
+        <section className="min-w-0">
           <FadeIn>
             <div className="mb-6 flex items-center justify-between gap-4">
               <h2 className="text-2xl font-semibold tracking-tight">
@@ -37,7 +37,7 @@ export function BuyerDashboard() {
             </div>
           </FadeIn>
           {availableProperties.isLoading ? (
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
               {Array.from({ length: 6 }, (_, index) => (
                 <Skeleton key={index} className="h-[410px] rounded-xl" />
               ))}
@@ -47,7 +47,7 @@ export function BuyerDashboard() {
               Recommendations are temporarily unavailable.
             </p>
           ) : (
-            <AnimatedContainer className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <AnimatedContainer className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
               {recommendations.map((property, index) => (
                 <AnimatedItem key={property.id}>
                   <RecommendedPropertyCard

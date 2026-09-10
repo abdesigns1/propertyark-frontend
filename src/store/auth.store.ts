@@ -24,6 +24,7 @@ interface AuthState {
     role: Role;
     user?: AuthUser | null;
   }) => void;
+  setAccessToken: (accessToken: string) => void;
   updateUser: (payload: Partial<AuthUser>) => void;
   clearAuth: () => void;
 }
@@ -44,6 +45,7 @@ export const useAuthStore = create<AuthState>()(
           user: user === undefined ? state.user : user,
           isAuthenticated: true,
         })),
+      setAccessToken: (accessToken) => set({ accessToken }),
       updateUser: (payload) =>
         set((state) => ({
           user: state.user ? { ...state.user, ...payload } : state.user,
@@ -59,21 +61,31 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "propertyark-auth-session",
-      version: 1,
+      version: 2,
       /*
-       * Temporary development session persistence.
+       * Persist only non-secret session metadata. Access tokens remain in
+       * memory and are restored through the secure refresh-cookie flow.
        *
-       * This keeps authentication stable across Next.js development reloads and
-       * browser refreshes. Replace this with HTTP-only refresh-cookie hydration
-       * before production so the access token is no longer stored in localStorage.
+       * Version 2 intentionally invalidates the previous persisted shape so a
+       * bearer token written by an older deployment is removed on hydration.
        */
       partialize: (state) => ({
-        accessToken: state.accessToken,
         userId: state.userId,
         role: state.role,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      migrate: (persistedState) => {
+        if (!persistedState || typeof persistedState !== "object") {
+          return persistedState as AuthState;
+        }
+
+        const safeState = {
+          ...(persistedState as Partial<AuthState>),
+          accessToken: null,
+        };
+        return safeState as AuthState;
+      },
     },
   ),
 );

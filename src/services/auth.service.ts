@@ -100,7 +100,11 @@ export const authService = {
 
   login: ({ email, password }: { email: string; password: string }) =>
     api
-      .post<LoginResponse>("/auth/login", { email, password })
+      .post<LoginResponse>(
+        "/auth/login",
+        { email, password },
+        { baseURL: "/api/v1" },
+      )
       .then(({ data }) => data),
 
   registerStaff: (payload: StaffRegistrationPayload) =>
@@ -111,7 +115,12 @@ export const authService = {
 
   resendVerification: (email: string) => api.post("/auth/resend", { email }),
 
-  refresh: () => api.post("/auth/refresh", {}, { withCredentials: true }),
+  refresh: () =>
+    api.post(
+      "/auth/refresh",
+      {},
+      { baseURL: "/api/v1", withCredentials: true },
+    ),
 
-  logout: () => api.post("/auth/logout"),
+  logout: () => api.post("/auth/logout", {}, { baseURL: "/api/v1" }),
 };

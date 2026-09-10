@@ -5,6 +5,15 @@ const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   "https://propertyark-backend.onrender.com/api/v1"
 ).replace(/\/+$/, "");
+const AUTH_PROXY_BASE_URL = "/api/v1";
+
+function accessTokenFrom(value: unknown): string | null {
+  if (!value || typeof value !== "object") return null;
+  const source = value as Record<string, unknown>;
+  const token = source.accessToken ?? source.token;
+  if (typeof token === "string" && token) return token;
+  return accessTokenFrom(source.data) ?? accessTokenFrom(source.result);
+}
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -32,13 +41,20 @@ api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    const accessToken = useAuthStore.getState().accessToken;
+    const authState = useAuthStore.getState();
+    const requestPath = originalRequest.url ?? "";
+    const isPublicAuthRequest = [
+      "/auth/login",
+      "/auth/reg",
+      "/auth/refresh",
+    ].some((path) => requestPath.includes(path));
 
     // Login and other public requests can legitimately return 401. Only try to
     // refresh an authenticated session; otherwise preserve the backend error.
     if (
       error.response?.status === 401 &&
-      accessToken &&
+      authState.isAuthenticated &&
+      !isPublicAuthRequest &&
       !originalRequest._retry
     ) {
       originalRequest._retry = true;
@@ -55,14 +71,20 @@ api.interceptors.response.use(
       isRefreshing = true;
       try {
         const { data } = await axios.post(
-          `${API_BASE_URL}/auth/refresh`,
+          `${AUTH_PROXY_BASE_URL}/auth/refresh`,
           {},
           { withCredentials: true, timeout: 90_000 },
         );
-        useAuthStore.getState().setAuth(data);
-        refreshQueue.forEach((cb) => cb(data.accessToken));
+        const refreshedAccessToken = accessTokenFrom(data);
+        if (!refreshedAccessToken) {
+          throw new Error(
+            "The refresh response did not include an access token.",
+          );
+        }
+        useAuthStore.getState().setAccessToken(refreshedAccessToken);
+        refreshQueue.forEach((cb) => cb(refreshedAccessToken));
         refreshQueue = [];
-        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        originalRequest.headers.Authorization = `Bearer ${refreshedAccessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
         useAuthStore.getState().clearAuth();

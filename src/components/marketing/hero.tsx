@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/shared/navbar";
+import { HeroMarketActivity } from "@/components/marketing/hero-market-activity";
 
 export function Hero() {
   return (
@@ -69,21 +69,7 @@ export function Hero() {
               />
             </div>
 
-            <div className="absolute -bottom-8 left-4 w-64 rounded-xl bg-card p-4 shadow-xl sm:-bottom-10 sm:left-8">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <span className="h-2 w-2 rounded-full bg-success" />
-                Market Activity
-              </div>
-              <div className="mt-1 flex items-center gap-1.5">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                <span className="font-numeric text-xl font-semibold text-primary">
-                  +12.4%
-                </span>
-              </div>
-              <p className="mt-1 text-xs leading-snug text-muted-foreground">
-                Avg. ROI for urban luxury apartments this quarter.
-              </p>
-            </div>
+            <HeroMarketActivity />
           </div>
         </div>
       </section>

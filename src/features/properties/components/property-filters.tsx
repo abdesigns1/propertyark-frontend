@@ -50,9 +50,7 @@ export function PropertyFilters({
   }
 
   function toggleType(type: string) {
-    const next = types.includes(type)
-      ? types.filter((t) => t !== type)
-      : [...types, type];
+    const next = types.includes(type) ? [] : [type];
     emit({ types: next });
   }
 

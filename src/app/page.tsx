@@ -25,7 +25,7 @@ export default function HomePage() {
       <JourneySteps />
       <CtaBanner />
       {/* <TrustStats /> */}
-      <Testimonials />
+      {/* <Testimonials /> */}
 
       <Footer />
     </>

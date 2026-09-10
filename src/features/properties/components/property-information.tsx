@@ -11,20 +11,30 @@ export function PropertyInformation({
   compact?: boolean;
   showHeading?: boolean;
 }) {
+  const formatLabel = (value: string) =>
+    value
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+
   const items = [
     {
       label: "Price",
       value: <Price amount={property.price} currency={property.currency} />,
     },
-    { label: "Area size", value: `${property.sizeSqm ?? "—"} Sq Ft` },
-    { label: "Rooms", value: property.roomsCount ?? "—" },
-    { label: "Year built", value: property.yearBuilt ?? "—" },
-    {
-      label: "Land area",
-      value: `${property.landSizeSqm ?? "—"} Sq Ft`,
-    },
-    { label: "Bedrooms", value: property.bedrooms },
-    { label: "Property ID", value: property.id.toUpperCase(), wide: true },
+    { label: "Property type", value: formatLabel(property.type) },
+    { label: "Listing status", value: formatLabel(property.status) },
+    ...(property.roomsCount
+      ? [{ label: "Rooms", value: property.roomsCount }]
+      : []),
+    ...(property.landSizeSqm
+      ? [
+          {
+            label: "Land area",
+            value: `${property.landSizeSqm.toLocaleString()} sqm`,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -42,22 +52,11 @@ export function PropertyInformation({
         )}
       >
         {items.map((item) => (
-          <div
-            key={item.label}
-            className={cn(
-              "min-w-0",
-              compact && item.wide && "col-span-2 border-t pt-5",
-            )}
-          >
+          <div key={item.label} className="min-w-0">
             <p className="text-xs font-medium text-muted-foreground">
               {item.label}
             </p>
-            <p
-              className={cn(
-                "mt-1 font-numeric text-sm font-semibold text-foreground",
-                item.wide ? "break-all" : "break-words",
-              )}
-            >
+            <p className="mt-1 break-words font-numeric text-sm font-semibold text-foreground">
               {item.value}
             </p>
           </div>

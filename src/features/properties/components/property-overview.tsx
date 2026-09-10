@@ -1,13 +1,30 @@
 import { BedDouble, Bath, Car, Calendar, Ruler } from "lucide-react";
 import type { Property } from "@/features/properties/types";
+import { isLandType } from "@/features/properties/utils/property-labels";
 
 export function PropertyOverview({ property }: { property: Property }) {
   const stats = [
-    { icon: BedDouble, value: property.bedrooms, label: "Bedrooms" },
-    { icon: Bath, value: property.bathrooms, label: "Bathrooms" },
-    { icon: Car, value: property.garageSpaces ?? 0, label: "Garage" },
-    { icon: Calendar, value: property.yearBuilt ?? "—", label: "Year Built" },
-    { icon: Ruler, value: property.sizeSqm ?? "—", label: "Area Size" },
+    ...(!isLandType(property.type)
+      ? [
+          { icon: BedDouble, value: property.bedrooms, label: "Bedrooms" },
+          { icon: Bath, value: property.bathrooms, label: "Bathrooms" },
+        ]
+      : []),
+    ...(property.garageSpaces
+      ? [{ icon: Car, value: property.garageSpaces, label: "Garage" }]
+      : []),
+    ...(property.yearBuilt
+      ? [{ icon: Calendar, value: property.yearBuilt, label: "Year Built" }]
+      : []),
+    ...(property.sizeSqm
+      ? [
+          {
+            icon: Ruler,
+            value: `${property.sizeSqm.toLocaleString()} ${property.sizeUnit ?? "sqm"}`,
+            label: "Area Size",
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -19,7 +36,7 @@ export function PropertyOverview({ property }: { property: Property }) {
         </span>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-4 rounded-2xl border border-border bg-card p-6 sm:grid-cols-5">
+      <div className="mt-4 grid grid-cols-2 gap-4 rounded-2xl border border-border bg-card p-6 sm:grid-cols-[repeat(auto-fit,minmax(7rem,1fr))]">
         {stats.map(({ icon: Icon, value, label }) => (
           <div
             key={label}

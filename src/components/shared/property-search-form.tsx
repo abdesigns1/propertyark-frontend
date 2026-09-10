@@ -104,7 +104,7 @@ export function PropertySearchForm() {
     } else {
       if (location !== "all") params.set("location", location);
       if (category !== "all") params.set("category", category);
-      if (purpose === "rent" && beds !== "all") {
+      if ((purpose === "sale" || purpose === "rent") && beds !== "all") {
         params.set("bedrooms", beds);
       }
 
@@ -154,14 +154,7 @@ export function PropertySearchForm() {
         onSubmit={handleSearch}
         className="w-full rounded-b-2xl rounded-tr-2xl bg-card p-4 shadow-xl ring-1 ring-foreground/5 sm:rounded-tl-none lg:p-3"
       >
-        <FieldGroup
-          className={cn(
-            "grid gap-0 lg:items-center",
-            purpose === "shortlet" || purpose === "rent"
-              ? "lg:grid-cols-[1.15fr_0.72fr_0.72fr_0.62fr_0.62fr_auto]"
-              : "lg:grid-cols-[1.35fr_0.82fr_0.82fr_0.72fr_auto]",
-          )}
-        >
+        <FieldGroup className="grid gap-0 lg:grid-cols-[1.15fr_0.72fr_0.72fr_0.62fr_0.62fr_auto] lg:items-center">
           {purpose === "shortlet" ? (
             <>
               <Field className="px-4 py-3 lg:border-r">
@@ -325,34 +318,32 @@ export function PropertySearchForm() {
                 </Select>
               </Field>
 
-              {purpose === "rent" && (
-                <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
-                  <FieldLabel
-                    htmlFor="home-rent-beds"
-                    className="font-semibold"
+              <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
+                <FieldLabel
+                  htmlFor={`home-${purpose}-beds`}
+                  className="font-semibold"
+                >
+                  <BedDouble aria-hidden="true" className="size-4" />
+                  Beds
+                </FieldLabel>
+                <Select value={beds} onValueChange={setBeds}>
+                  <SelectTrigger
+                    id={`home-${purpose}-beds`}
+                    className="h-7 w-full border-0 px-0 shadow-none focus-visible:ring-0"
                   >
-                    <BedDouble aria-hidden="true" className="size-4" />
-                    Beds
-                  </FieldLabel>
-                  <Select value={beds} onValueChange={setBeds}>
-                    <SelectTrigger
-                      id="home-rent-beds"
-                      className="h-7 w-full border-0 px-0 shadow-none focus-visible:ring-0"
-                    >
-                      <SelectValue placeholder="Any beds" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {BED_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </Field>
-              )}
+                    <SelectValue placeholder="Any beds" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {BED_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
 
               <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
                 <FieldLabel

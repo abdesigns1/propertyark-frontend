@@ -23,9 +23,10 @@ export default function HomePage() {
       <FeaturedListings />
       <PopularCities />
       <JourneySteps />
-      <TrustStats />
-      <Testimonials />
       <CtaBanner />
+      {/* <TrustStats /> */}
+      <Testimonials />
+
       <Footer />
     </>
   );

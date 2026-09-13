@@ -29,7 +29,7 @@ export function Hero() {
             sizes="100vw"
             className="object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/70 via-slate-950/45 to-slate-950/75" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/48 via-slate-950/25 to-slate-950/52" />
         </div>
 
         <div className="mx-auto grid max-w-7xl grid-cols-1 items-center px-6 lg:px-8">

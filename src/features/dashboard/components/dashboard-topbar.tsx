@@ -155,16 +155,15 @@ export function DashboardTopbar({
             orientation="vertical"
             className="mx-2 hidden h-8 sm:block"
           />
-          <DashboardUserAvatar />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon"
-                className="hidden sm:inline-flex"
-                aria-label="Open profile menu"
+                className="h-auto gap-1 rounded-full p-0.5 sm:pl-0.5 sm:pr-1"
+                aria-label="Open account menu"
               >
-                <ChevronDown />
+                <DashboardUserAvatar />
+                <ChevronDown className="hidden sm:block" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -173,7 +172,7 @@ export function DashboardTopbar({
               className="min-w-52 p-2"
             >
               <DropdownMenuGroup>
-                <DropdownMenuItem asChild className="py-2">
+                <DropdownMenuItem asChild className="hidden py-2 sm:flex">
                   <Link href={profilePath}>
                     <UserRound />
                     Profile
@@ -191,7 +190,7 @@ export function DashboardTopbar({
                     Dashboard
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="py-2">
+                <DropdownMenuItem asChild className="hidden py-2 sm:flex">
                   <Link href={settingsPath}>
                     <Settings />
                     Settings
@@ -199,14 +198,16 @@ export function DashboardTopbar({
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                className="py-2"
-                onSelect={handleLogout}
-              >
-                <LogOut />
-                Logout
-              </DropdownMenuItem>
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  variant="destructive"
+                  className="py-2"
+                  onSelect={handleLogout}
+                >
+                  <LogOut />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

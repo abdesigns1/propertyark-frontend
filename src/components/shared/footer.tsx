@@ -9,16 +9,16 @@ const FOOTER_COLUMNS = [
     title: "Explore",
     links: [
       { label: "Properties", href: "/properties" },
-      { label: "Investments", href: "/investments" },
+      // { label: "Investments", href: "/investments" },
       { label: "Market Insights", href: "/insights" },
     ],
   },
   {
     title: "Resources",
     links: [
-      { label: "Pricing", href: "/pricing" },
+      // { label: "Pricing", href: "/pricing" },
       { label: "Help Center", href: "/faq" },
-      { label: "Guides & Blog", href: "/blog" },
+      // { label: "Guides & Blog", href: "/blog" },
     ],
   },
   {

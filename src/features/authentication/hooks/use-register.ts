@@ -20,7 +20,13 @@ export function useRegisterVendor() {
       setUploadProgress(0);
       return authService.registerVendor(values, ({ loaded, total }) => {
         if (total) {
-          setUploadProgress(Math.min(100, Math.round((loaded / total) * 100)));
+          const nextProgress = Math.min(
+            100,
+            Math.round((loaded / total) * 100),
+          );
+          setUploadProgress((currentProgress) =>
+            currentProgress === nextProgress ? currentProgress : nextProgress,
+          );
         }
       });
     },

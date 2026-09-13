@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { BedDouble, Bath, Ruler, MapPin } from "lucide-react";
+import { BedDouble, Bath, Images, MapPin, Play, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Price } from "@/components/shared/price";
@@ -27,6 +27,7 @@ export function PropertyCard({
   compactPrice = false,
 }: PropertyCardProps) {
   const [imageIndex, setImageIndex] = useState(0);
+  const [showingWalkthrough, setShowingWalkthrough] = useState(false);
   const {
     id,
     title,
@@ -39,6 +40,7 @@ export function PropertyCard({
     bathrooms,
     sizeSqm,
     images,
+    videoUrl,
   } = property;
   const displayedImage = images[imageIndex] ?? PROPERTY_IMAGE_FALLBACK;
 
@@ -46,36 +48,73 @@ export function PropertyCard({
     <div className="group overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
       {/* Image */}
       <div className="relative aspect-[4/3] w-full overflow-hidden">
-        <Image
-          key={displayedImage}
-          src={displayedImage}
-          alt={title}
-          fill
-          crossOrigin="anonymous"
-          unoptimized
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          className="object-cover transition-transform duration-300 group-hover:scale-105"
-          onError={() => {
-            if (imageIndex < images.length) {
-              setImageIndex((current) => current + 1);
-            }
-          }}
-        />
+        {showingWalkthrough && videoUrl ? (
+          <video
+            src={videoUrl}
+            poster={displayedImage}
+            className="size-full bg-black object-cover"
+            controls
+            autoPlay
+            playsInline
+            preload="metadata"
+          >
+            Your browser does not support video playback.
+          </video>
+        ) : (
+          <Image
+            key={displayedImage}
+            src={displayedImage}
+            alt={title}
+            fill
+            crossOrigin="anonymous"
+            unoptimized
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            onError={() => {
+              if (imageIndex < images.length) {
+                setImageIndex((current) => current + 1);
+              }
+            }}
+          />
+        )}
 
-        <span
-          className={cn(
-            "absolute left-3 top-3 rounded-md px-2.5 py-1 text-xs font-semibold",
-            PURPOSE_BADGE_STYLES[purpose],
-          )}
-        >
-          {PURPOSE_LABELS[purpose]}
-        </span>
+        {!showingWalkthrough && (
+          <span
+            className={cn(
+              "absolute left-3 top-3 rounded-md px-2.5 py-1 text-xs font-semibold",
+              PURPOSE_BADGE_STYLES[purpose],
+            )}
+          >
+            {PURPOSE_LABELS[purpose]}
+          </span>
+        )}
 
         <PropertyCardActions
           propertyId={id}
           propertyTitle={title}
           className="absolute right-3 top-3"
         />
+
+        {videoUrl && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className={cn(
+              "absolute left-3 rounded-full shadow-md",
+              showingWalkthrough ? "top-3" : "bottom-3",
+            )}
+            onClick={() => setShowingWalkthrough((current) => !current)}
+            aria-pressed={showingWalkthrough}
+          >
+            {showingWalkthrough ? (
+              <Images data-icon="inline-start" />
+            ) : (
+              <Play data-icon="inline-start" />
+            )}
+            {showingWalkthrough ? "View photos" : "Walkthrough"}
+          </Button>
+        )}
       </div>
 
       {/* Content */}

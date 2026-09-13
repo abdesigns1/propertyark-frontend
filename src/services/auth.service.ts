@@ -71,14 +71,10 @@ function registrationFields(
 
 export const authService = {
   registerBuyer: (payload: BuyerRegisterValues) =>
-    api.post(
-      "/auth/reg",
-      {
-        ...registrationFields(payload),
-        role: "USER",
-      },
-      { baseURL: "/api/v1" },
-    ),
+    api.post("/auth/reg", {
+      ...registrationFields(payload),
+      role: "USER",
+    }),
 
   registerVendor: (
     payload: VendorRegisterValues,
@@ -92,10 +88,7 @@ export const authService = {
     });
     formData.append("ninPhoto", payload.kycDocument);
 
-    return api.post("/auth/reg", formData, {
-      baseURL: "/api/v1",
-      onUploadProgress,
-    });
+    return api.post("/auth/reg", formData, { onUploadProgress });
   },
 
   login: ({ email, password }: { email: string; password: string }) =>

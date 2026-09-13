@@ -1,15 +1,23 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/shared/navbar";
-import { HeroMarketActivity } from "@/components/marketing/hero-market-activity";
+import { getDashboardPath } from "@/features/authentication/utils/dashboard-route";
+import { useAuthStore } from "@/store/auth.store";
+// import { HeroMarketActivity } from "@/components/marketing/hero-market-activity";
 
 export function Hero() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const role = useAuthStore((state) => state.role);
+  const investmentHref = isAuthenticated ? getDashboardPath(role) : "/login";
+
   return (
     <>
       <Navbar />
 
-      <section className="relative isolate overflow-hidden pb-40 pt-32 sm:pb-36 lg:pb-36">
+      <section className="relative isolate overflow-hidden pb-24 pt-24 sm:pb-28 sm:pt-28 lg:pb-28">
         {/* Background image + overlay */}
         <div className="absolute inset-0 -z-10">
           <Image
@@ -24,7 +32,7 @@ export function Hero() {
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/70 via-slate-950/45 to-slate-950/75" />
         </div>
 
-        <div className="mx-auto mt-8 grid max-w-7xl grid-cols-1 items-center gap-12 px-6 lg:px-8 lg:mt-8 lg:grid-cols-2 lg:gap-8">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 items-center px-6 lg:px-8">
           {/* Left: copy */}
           <div className="text-center lg:text-left">
             <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
@@ -51,14 +59,15 @@ export function Hero() {
                 variant="secondary"
                 className="rounded-2xl bg-white px-8 py-6 text-foreground hover:bg-white/90"
               >
-                <Link href="/investments">View Investments</Link>
+                <Link href={investmentHref}>View Investments</Link>
               </Button>
             </div>
           </div>
 
-          {/* Right: property image + stat card */}
+          {/* Right-side property showcase is temporarily hidden so the search
+              form remains visible within the initial viewport.
           <div className="relative">
-            <div className="relative overflow-hidden rounded-2xl border-4 border-white/90 shadow-2xl h-[340px] sm:h-[400px]">
+            <div className="relative h-[340px] overflow-hidden rounded-2xl border-4 border-white/90 shadow-2xl sm:h-[400px]">
               <Image
                 src="https://images.unsplash.com/photo-1707074743640-4cd022c3e58c?q=80&w=889&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
                 alt="Featured luxury property"
@@ -71,6 +80,7 @@ export function Hero() {
 
             <HeroMarketActivity />
           </div>
+          */}
         </div>
       </section>
     </>

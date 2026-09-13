@@ -129,13 +129,13 @@ export function PropertySearchForm() {
       <TabsList
         variant="line"
         aria-label="Listing purpose"
-        className="h-14 shrink-0 justify-start gap-0 rounded-b-none rounded-t-xl bg-card px-2 shadow-sm"
+        className="h-14 w-full shrink-0 justify-start gap-0 rounded-b-none rounded-t-xl bg-card px-2 shadow-sm sm:w-auto"
       >
         {PURPOSES.map((item) => (
           <TabsTrigger
             key={item.value}
             value={item.value}
-            className="h-full min-w-16 px-3 text-sm font-semibold text-muted-foreground sm:min-w-20"
+            className="h-full min-w-16 flex-1 px-3 text-sm font-semibold text-muted-foreground sm:min-w-20 sm:flex-none"
           >
             <span className={cn(purpose === item.value && "text-primary")}>
               {item.label}
@@ -152,7 +152,7 @@ export function PropertySearchForm() {
 
       <form
         onSubmit={handleSearch}
-        className="w-full rounded-b-2xl rounded-tr-2xl bg-card p-4 shadow-xl ring-1 ring-foreground/5 sm:rounded-tl-none lg:p-3"
+        className="w-full rounded-b-2xl bg-card p-4 shadow-xl ring-1 ring-foreground/5 sm:rounded-tl-none sm:rounded-tr-2xl lg:p-3"
       >
         <FieldGroup className="grid gap-0 lg:grid-cols-[1.15fr_0.72fr_0.72fr_0.62fr_0.62fr_auto] lg:items-center">
           {purpose === "shortlet" ? (

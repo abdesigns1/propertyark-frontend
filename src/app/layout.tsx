@@ -26,11 +26,11 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/property%20arc%20logo-7.png",
-        type: "image/png",
+        url: "/favicon.ico",
+        sizes: "any",
       },
     ],
-    shortcut: "/property%20arc%20logo-7.png",
+    shortcut: "/favicon.ico",
     apple: "/property%20arc%20logo-7.png",
   },
 };

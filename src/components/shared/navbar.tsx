@@ -77,8 +77,8 @@ function MainNavLink({
         mobile && "rounded-lg px-3 py-2",
         isActive
           ? mobile
-            ? "bg-primary/10 text-primary"
-            : "border-b-2 border-primary pb-0.5 text-primary"
+            ? "bg-secondary/10 text-secondary"
+            : "border-b-2 border-secondary pb-0.5 text-secondary"
           : mobile
             ? "text-muted-foreground hover:bg-accent hover:text-foreground"
             : "text-navbar-foreground/80 hover:text-navbar-foreground",
@@ -116,7 +116,7 @@ export function Navbar({ reserveSpace = false }: NavbarProps) {
   return (
     <>
       <header className="fixed inset-x-0 top-4 z-40 mx-auto w-full max-w-7xl px-6 lg:px-8">
-        <nav className="flex items-center justify-between rounded-full border border-white/15 bg-navbar/90 px-6 py-2.5 text-navbar-foreground shadow-lg backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-navbar/75 lg:px-8">
+        <nav className="flex items-center justify-between rounded-2xl border border-white/15 bg-navbar/90 px-6 py-2.5 text-navbar-foreground shadow-lg backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-navbar/75 lg:px-8">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
             <Image
@@ -311,16 +311,17 @@ export function Navbar({ reserveSpace = false }: NavbarProps) {
                   </>
                 ) : (
                   <>
-                    <Link
-                      href="/login"
-                      onClick={() => setMobileOpen(false)}
-                      className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      Login
-                    </Link>
                     <Button
                       asChild
-                      className="w-full rounded-full bg-secondary text-secondary-foreground hover:bg-secondary-hover"
+                      className="w-full rounded-2xl bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                    >
+                      <Link href="/login" onClick={() => setMobileOpen(false)}>
+                        Login
+                      </Link>
+                    </Button>
+                    <Button
+                      asChild
+                      className="w-full rounded-2xl bg-secondary text-secondary-foreground hover:bg-secondary-hover"
                     >
                       <Link
                         href="/register"
@@ -353,7 +354,7 @@ export function Navbar({ reserveSpace = false }: NavbarProps) {
                 </Link>
                 <Button
                   asChild
-                  className="rounded-full bg-secondary p-5 text-secondary-foreground hover:bg-secondary-hover"
+                  className="rounded-2xl bg-secondary p-5 text-secondary-foreground hover:bg-secondary-hover"
                 >
                   <Link href="/register">Get Started</Link>
                 </Button>

@@ -138,6 +138,9 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+  a[href] {
+    cursor: pointer;
+  }
   /* Visible keyboard focus, never removed */
   :focus-visible {
     outline: 2px solid var(--ring);

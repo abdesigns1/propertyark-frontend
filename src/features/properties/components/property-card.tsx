@@ -121,7 +121,7 @@ export function PropertyCard({
       <div className="p-4">
         <Link
           href={`/properties/${id}`}
-          className="line-clamp-1 text-base font-semibold text-primary transition-colors hover:text-primary-hover"
+          className="line-clamp-1 text-base font-semibold text-foreground transition-colors hover:text-primary-hover"
         >
           {title}
         </Link>
@@ -175,7 +175,7 @@ export function PropertyCard({
           <Button
             asChild
             size="sm"
-            className="rounded-4 p-5 bg-primary text-primary-foreground hover:bg-primary-hover"
+            className="rounded-4 border border-white bg-white p-5 text-primary-hover hover:bg-primary/5 hover:text-primary-hover"
           >
             <Link href={`/properties/${id}`}>View Details</Link>
           </Button>

@@ -26,7 +26,11 @@ import {
   TopLocationsCard,
   TransactionFeedCard,
 } from "@/features/admin/components/admin-reports-panels";
-import { financeDataForPeriod } from "@/features/admin/data/admin-reports-finance-mock";
+import {
+  financeDataFromActivities,
+  transactionCountsByLocation,
+} from "@/features/admin/lib/admin-reports-finance";
+import { useAdminGrowthHistory } from "@/features/admin/hooks/use-admin-dashboard";
 import { useAdminReportsAnalytics } from "@/features/admin/hooks/use-admin-reports";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -54,6 +58,7 @@ export function AdminReportsPage() {
   const [showCustomRange, setShowCustomRange] = useState(false);
   const [customRange, setCustomRange] = useState(() => defaultCustomRange());
   const reportsQuery = useAdminReportsAnalytics();
+  const growthHistoryQuery = useAdminGrowthHistory();
   const analytics = useMemo(
     () =>
       reportsQuery.data
@@ -65,20 +70,33 @@ export function AdminReportsPage() {
         : undefined,
     [customRange.end, customRange.start, period, reportsQuery.data],
   );
-  const customDays = Math.max(
-    1,
-    Math.ceil(
-      (new Date(customRange.end).getTime() -
-        new Date(customRange.start).getTime()) /
-        86_400_000,
-    ),
-  );
   const finance = useMemo(
-    () => financeDataForPeriod(period, customDays),
-    [customDays, period],
+    () =>
+      financeDataFromActivities(growthHistoryQuery.data?.activities ?? [], {
+        period,
+        startDate: customRange.start,
+        endDate: customRange.end,
+      }),
+    [
+      customRange.end,
+      customRange.start,
+      growthHistoryQuery.data?.activities,
+      period,
+    ],
   );
   const periodLabel =
     periodOptions.find((option) => option.value === period)?.label ?? "Default";
+  const locations = useMemo(() => {
+    if (!analytics) return [];
+    const counts = transactionCountsByLocation(
+      growthHistoryQuery.data?.activities ?? [],
+      analytics.sourceProperties,
+    );
+    return analytics.locations.map((location) => ({
+      ...location,
+      successTransactions: counts.get(location.location) ?? 0,
+    }));
+  }, [analytics, growthHistoryQuery.data?.activities]);
 
   const stats = [
     {
@@ -123,6 +141,9 @@ export function AdminReportsPage() {
       ["Report", "Value"],
       ["Active Users", analytics?.activeUsers ?? 0],
       ["Total Listings", analytics?.totalListings ?? 0],
+      ["Total Revenue", finance.summary.totalRevenue],
+      ["Total Transactions", finance.summary.totalTransactions],
+      ["Transaction Completion Rate", `${finance.summary.conversionRate}%`],
       ...(analytics?.categories ?? []).map((item) => [
         `Category: ${item.label}`,
         `${item.value}%`,
@@ -230,7 +251,7 @@ export function AdminReportsPage() {
         </header>
 
         <section className="mt-9 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          {reportsQuery.isLoading
+          {reportsQuery.isLoading || growthHistoryQuery.isLoading
             ? Array.from({ length: 5 }, (_, index) => (
                 <Skeleton key={index} className="h-36 rounded-xl" />
               ))
@@ -261,7 +282,7 @@ export function AdminReportsPage() {
                 }
               />
             </div>
-            <TopLocationsCard locations={analytics?.locations ?? []} />
+            <TopLocationsCard locations={locations} />
           </section>
           <aside className="space-y-6">
             <InsightsCard periodLabel={periodLabel} />

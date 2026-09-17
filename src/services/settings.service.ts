@@ -95,7 +95,8 @@ export const settingsService = {
     emailAlerts?: boolean;
     smsNotifications?: boolean;
     pushNotifications?: boolean;
-  }) => normalizeProfile((await api.patch("/users/update", payload)).data),
+  }) =>
+    normalizeProfile((await api.patch("/users/update", payload)).data),
   updateAvatar: async (avatar: File) => {
     const form = new FormData();
     form.append("avatar", avatar);

@@ -46,6 +46,8 @@ api.interceptors.response.use(
     const isPublicAuthRequest = [
       "/auth/login",
       "/auth/reg",
+      "/auth/forgot-password",
+      "/auth/reset-password",
       "/auth/refresh",
     ].some((path) => requestPath.includes(path));
 

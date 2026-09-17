@@ -16,7 +16,7 @@ export function DashboardBrand({
       className={cn("block", iconOnly && "size-9 overflow-hidden rounded-lg")}
     >
       <Image
-        src="/property arc logo-11.png"
+        src="/Property Ark logo Dark.png"
         alt="PropertyArk"
         width={170}
         height={40}

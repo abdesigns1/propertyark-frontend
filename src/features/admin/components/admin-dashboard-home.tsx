@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bell,
+  Building2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -16,19 +17,20 @@ import {
   Menu,
   Search,
   Settings,
+  ShieldCheck,
+  Users,
   UserRound,
   UserPlus,
+  WalletCards,
 } from "lucide-react";
 import {
   Bar,
   CartesianGrid,
   ComposedChart,
-  Line,
   XAxis,
   YAxis,
 } from "recharts";
 import { AdminSidebar } from "@/features/admin/components/admin-sidebar";
-import { overviewStats } from "@/features/admin/data/dashboard-data";
 import {
   useAdminDashboard,
   useAdminGrowthHistory,
@@ -119,6 +121,86 @@ const userTabs = [
   { value: "vendors", label: "Vendors" },
   { value: "admins", label: "Admins" },
 ] as const;
+
+function transactionAmount(metadata: Record<string, unknown>) {
+  const amountKeys = [
+    "amountPaid",
+    "amount_paid",
+    "paymentAmount",
+    "payment_amount",
+    "totalAmount",
+    "total_amount",
+    "totalPrice",
+    "total_price",
+    "amount",
+    "value",
+  ];
+  const queue: unknown[] = [metadata];
+  const visited = new Set<object>();
+
+  while (queue.length) {
+    const current = queue.shift();
+    if (Array.isArray(current)) {
+      queue.push(...current);
+      continue;
+    }
+    if (!current || typeof current !== "object" || visited.has(current))
+      continue;
+    visited.add(current);
+    const record = current as Record<string, unknown>;
+    for (const key of amountKeys) {
+      const value = record[key];
+      const amount =
+        typeof value === "string"
+          ? Number(value.replace(/[^\d.-]/g, ""))
+          : Number(value);
+      if (value !== null && value !== undefined && Number.isFinite(amount))
+        return amount;
+    }
+    queue.push(...Object.values(record));
+  }
+
+  return null;
+}
+
+type PlatformTransaction = {
+  amount: number;
+  createdAt: string;
+};
+
+function platformTransactions(activities: AdminActivity[]) {
+  const transactions = new Map<string, PlatformTransaction>();
+
+  activities.forEach((activity) => {
+    const searchable = `${activity.action} ${activity.entityType} ${activity.title} ${activity.description}`.toUpperCase();
+    if (
+      !/CREDIT|POINT|PAYMENT|PAYSTACK|TRANSACTION|PURCHASE|REFUND|ESCROW/.test(
+        searchable,
+      )
+    )
+      return;
+
+    const amount = transactionAmount(activity.metadata);
+    if (amount === null || amount <= 0) return;
+
+    // A payment may create several activity events. Count the stable entity
+    // once so initialization and completion logs do not inflate the total.
+    const key = activity.entityId || activity.id;
+    const existing = transactions.get(key);
+    if (!existing || amount >= existing.amount) {
+      transactions.set(key, { amount, createdAt: activity.createdAt });
+    }
+  });
+
+  return Array.from(transactions.values());
+}
+
+function transactionVolume(activities: AdminActivity[]) {
+  return platformTransactions(activities).reduce(
+    (total, transaction) => total + transaction.amount,
+    0,
+  );
+}
 
 function DashboardHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -240,23 +322,54 @@ function DashboardHeader() {
 
 function OverviewCards({
   stats,
+  totalTransactionVolume,
 }: {
   stats?: AdminDashboardData["dashboardStats"];
+  totalTransactionVolume: number;
 }) {
-  const values = [
-    stats?.totalUsers,
-    stats?.activeVendors,
-    stats?.totalProperties,
-    undefined,
-    stats?.pendingReviews,
+  const cards = [
+    {
+      label: "Total Users",
+      value: stats?.totalUsers,
+      note: "Registered buyers and vendors",
+      icon: Users,
+    },
+    {
+      label: "Active Vendors",
+      value: stats?.activeVendors,
+      note: "Verified property providers",
+      icon: Building2,
+    },
+    {
+      label: "Total Properties",
+      value: stats?.totalProperties,
+      note: "Active property listings",
+      icon: Building2,
+    },
+    {
+      label: "Transaction Volume",
+      value: new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+        maximumFractionDigits: 0,
+      }).format(totalTransactionVolume),
+      note: "Total recorded platform transaction value",
+      icon: WalletCards,
+    },
+    {
+      label: "Pending Reviews",
+      value: stats?.pendingReviews,
+      note: "Requires admin attention",
+      icon: ShieldCheck,
+    },
   ];
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-      {overviewStats.map(
-        ({ label, value, note, change, icon: Icon }, index) => (
+      {cards.map(
+        ({ label, value, note, icon: Icon }, index) => (
           <Card key={label} className="py-0">
             <CardContent className="p-5">
-              <div className="flex items-start justify-between">
+              <div className="flex items-start">
                 <span
                   className={cn(
                     "flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary",
@@ -265,13 +378,10 @@ function OverviewCards({
                 >
                   <Icon className="size-5" />
                 </span>
-                <Badge variant={index === 4 ? "destructive" : "secondary"}>
-                  {change}
-                </Badge>
               </div>
               <p className="mt-4 text-sm text-muted-foreground">{label}</p>
               <p className="text-2xl font-semibold tracking-tight">
-                {values[index]?.toLocaleString() ?? value}
+                {typeof value === "number" ? value.toLocaleString() : value}
               </p>
               <p className="mt-2 text-xs leading-5 text-muted-foreground">
                 {note}
@@ -280,6 +390,35 @@ function OverviewCards({
           </Card>
         ),
       )}
+    </div>
+  );
+}
+
+function DashboardContentSkeleton() {
+  return (
+    <div className="mt-5 space-y-5" aria-label="Loading dashboard data">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Card key={index} className="py-0">
+            <CardContent className="space-y-4 p-5">
+              <Skeleton className="size-10 rounded-lg" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-8 w-28" />
+              <Skeleton className="h-3 w-36" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(280px,0.95fr)]">
+        <div className="space-y-5">
+          <Card><CardHeader><Skeleton className="h-7 w-44" /></CardHeader><CardContent><Skeleton className="h-72 w-full" /></CardContent></Card>
+          <Card><CardHeader><Skeleton className="h-7 w-52" /></CardHeader><CardContent className="space-y-3">{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-14 w-full" />)}</CardContent></Card>
+        </div>
+        <div className="space-y-5">
+          {Array.from({ length: 2 }).map((_, index) => <Card key={index}><CardHeader><Skeleton className="h-7 w-40" /></CardHeader><CardContent className="space-y-3">{Array.from({ length: 4 }).map((__, row) => <Skeleton key={row} className="h-12 w-full" />)}</CardContent></Card>)}
+        </div>
+      </div>
+      <Card><CardHeader><Skeleton className="h-7 w-36" /></CardHeader><CardContent className="space-y-3">{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-14 w-full" />)}</CardContent></Card>
     </div>
   );
 }
@@ -345,24 +484,9 @@ function GrowthChart({
     const point = buckets.get(keyFor(property.createdAt));
     if (point) point.listings += 1;
   });
-  history?.activities.forEach((activity) => {
-    if (
-      !/PAYMENT|TRANSACTION|ESCROW/.test(
-        `${activity.action} ${activity.entityType}`,
-      )
-    )
-      return;
-    const rawAmount =
-      activity.metadata.amount ??
-      activity.metadata.totalAmount ??
-      activity.metadata.value ??
-      0;
-    const amount =
-      typeof rawAmount === "string"
-        ? Number(rawAmount.replace(/[^0-9.-]/g, ""))
-        : Number(rawAmount);
-    const point = buckets.get(keyFor(activity.createdAt));
-    if (point && Number.isFinite(amount)) point.revenue += amount;
+  platformTransactions(history?.activities ?? []).forEach((transaction) => {
+    const point = buckets.get(keyFor(transaction.createdAt));
+    if (point) point.revenue += transaction.amount;
   });
 
   if (!history) {
@@ -478,12 +602,12 @@ function GrowthChart({
               radius={[6, 6, 0, 0]}
               maxBarSize={28}
             />
-            <Line
+            <Bar
               dataKey="revenue"
               yAxisId="revenue"
-              stroke="var(--color-revenue)"
-              strokeWidth={3}
-              dot={{ r: 3, fill: "var(--color-revenue)" }}
+              fill="var(--color-revenue)"
+              radius={[6, 6, 0, 0]}
+              maxBarSize={28}
             />
           </ComposedChart>
         </ChartContainer>
@@ -730,27 +854,53 @@ function VerificationCard({
   );
 }
 
-function FinancialCard() {
+function TransactionSummaryCard({
+  activities,
+}: {
+  activities: AdminActivity[];
+}) {
+  const transactions = platformTransactions(activities);
+  const total = transactions.reduce(
+    (sum, transaction) => sum + transaction.amount,
+    0,
+  );
+  const money = new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  });
+
   return (
     <Card className="border-primary bg-primary text-primary-foreground">
       <CardHeader>
-        <CardTitle>Financials</CardTitle>
+        <CardTitle>Transactions</CardTitle>
         <CardDescription className="text-primary-foreground/70">
-          Escrow balance
+          Total platform transaction volume
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <p className="text-3xl font-semibold">₦85,000,000</p>
-        <div className="mt-6 grid grid-cols-2 gap-6 border-t border-white/20 pt-5">
+        <p className="text-3xl font-semibold">{money.format(total)}</p>
+        <div className="mt-6 grid grid-cols-2 gap-6 border-t border-primary-foreground/20 pt-5">
           <div>
-            <p className="text-xs text-white/65">Revenue</p>
-            <p className="text-xl font-semibold">₦12.4M</p>
+            <p className="text-xs text-primary-foreground/65">
+              Transactions
+            </p>
+            <p className="text-xl font-semibold">
+              {transactions.length.toLocaleString("en-NG")}
+            </p>
           </div>
           <div>
-            <p className="text-xs text-white/65">Commissions</p>
-            <p className="text-xl font-semibold">₦4.2M</p>
+            <p className="text-xs text-primary-foreground/65">Currency</p>
+            <p className="text-xl font-semibold">NGN</p>
           </div>
         </div>
+        <Button
+          variant="secondary"
+          className="mt-6 w-full bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+          asChild
+        >
+          <Link href="/admin/transactions">View Transactions</Link>
+        </Button>
       </CardContent>
     </Card>
   );
@@ -943,6 +1093,17 @@ export function AdminDashboardHome() {
   const activities = useAdminActivities(1, 100);
   const kycStats = useAdminKycStats();
   const kycRequests = useAdminKycRequests(1, "PENDING", "ALL");
+  const totalTransactionVolume = useMemo(
+    () => transactionVolume(growthHistory.data?.activities ?? []),
+    [growthHistory.data?.activities],
+  );
+  const initialDataLoading =
+    dashboard.isPending ||
+    growthHistory.isPending ||
+    adminUsers.isPending ||
+    activities.isPending ||
+    kycStats.isPending ||
+    kycRequests.isPending;
 
   useEffect(() => {
     if (ready && (!isAuthenticated || (role !== "admin" && role !== "staff")))
@@ -982,7 +1143,9 @@ export function AdminDashboardHome() {
               <h1 className="text-3xl font-semibold tracking-tight">
                 Platform Overview
               </h1>
-              {dashboard.isFetching && <Badge variant="outline">Syncing</Badge>}
+              {!dashboard.isPending && dashboard.isFetching && (
+                <Badge variant="outline">Syncing</Badge>
+              )}
             </div>
             <p className="mt-1 text-muted-foreground">
               Monitor and manage all activities happening across PropertyArk.
@@ -1028,8 +1191,15 @@ export function AdminDashboardHome() {
             </Button>
           </div>
         </section> */}
+        {initialDataLoading ? (
+          <DashboardContentSkeleton />
+        ) : (
+          <>
         <section className="mt-5">
-          <OverviewCards stats={dashboard.data?.dashboardStats} />
+          <OverviewCards
+            stats={dashboard.data?.dashboardStats}
+            totalTransactionVolume={totalTransactionVolume}
+          />
         </section>
         <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(280px,0.95fr)]">
           <div className="flex h-full min-w-0 flex-col gap-5">
@@ -1049,7 +1219,9 @@ export function AdminDashboardHome() {
               requests={kycRequests.data?.requests ?? []}
               loading={kycStats.isLoading || kycRequests.isLoading}
             />
-            <FinancialCard />
+            <TransactionSummaryCard
+              activities={growthHistory.data?.activities ?? []}
+            />
           </aside>
         </section>
         <section className="mt-5">
@@ -1061,6 +1233,8 @@ export function AdminDashboardHome() {
             onPageChange={setUsersPage}
           />
         </section>
+          </>
+        )}
       </main>
     </div>
   );

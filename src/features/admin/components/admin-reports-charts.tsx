@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
 import { useInView } from "framer-motion";
 
@@ -43,7 +44,7 @@ import {
 
 const revenueConfig = {
   revenue: { label: "Revenue", color: "var(--primary)" },
-  subscriptions: { label: "Subscriptions", color: "var(--secondary)" },
+  transactions: { label: "Transactions", color: "var(--secondary)" },
 } satisfies ChartConfig;
 
 const growthConfig = {
@@ -58,7 +59,7 @@ export function RevenuePerformanceCard({
   data: Array<{
     label: string;
     revenue: number;
-    subscriptions: number;
+    transactions: number;
   }>;
   periodLabel: string;
 }) {
@@ -71,7 +72,7 @@ export function RevenuePerformanceCard({
         </CardDescription>
         <div className="mt-1 flex items-center gap-5 text-xs font-medium sm:absolute sm:right-6 sm:top-6">
           <ChartLegend color="bg-primary" label="Revenue" />
-          <ChartLegend color="bg-secondary" label="Subscriptions" />
+          <ChartLegend color="bg-secondary" label="Transactions" />
         </div>
       </CardHeader>
       <CardContent className="pt-2">
@@ -83,10 +84,24 @@ export function RevenuePerformanceCard({
             <CartesianGrid vertical={false} />
             <XAxis dataKey="label" tickLine={false} axisLine={false} />
             <YAxis
-              tickFormatter={(value) => `${value}M`}
+              yAxisId="revenue"
+              tickFormatter={(value) =>
+                new Intl.NumberFormat("en", {
+                  notation: "compact",
+                  maximumFractionDigits: 1,
+                }).format(value)
+              }
               tickLine={false}
               axisLine={false}
-              width={44}
+              width={52}
+            />
+            <YAxis
+              yAxisId="transactions"
+              orientation="right"
+              allowDecimals={false}
+              tickLine={false}
+              axisLine={false}
+              width={32}
             />
             <ChartTooltip
               cursor={{ strokeDasharray: "4 4" }}
@@ -100,7 +115,15 @@ export function RevenuePerformanceCard({
                             ?.label
                         }
                       </span>
-                      <span className="font-semibold">₦{value}M</span>
+                      <span className="font-semibold">
+                        {name === "revenue"
+                          ? new Intl.NumberFormat("en-NG", {
+                              style: "currency",
+                              currency: "NGN",
+                              maximumFractionDigits: 0,
+                            }).format(Number(value))
+                          : Number(value).toLocaleString("en-NG")}
+                      </span>
                     </div>
                   )}
                 />
@@ -109,6 +132,7 @@ export function RevenuePerformanceCard({
             <Line
               type="monotone"
               dataKey="revenue"
+              yAxisId="revenue"
               stroke="var(--color-revenue)"
               strokeWidth={4}
               dot={false}
@@ -116,8 +140,9 @@ export function RevenuePerformanceCard({
             />
             <Line
               type="monotone"
-              dataKey="subscriptions"
-              stroke="var(--color-subscriptions)"
+              dataKey="transactions"
+              yAxisId="transactions"
+              stroke="var(--color-transactions)"
               strokeWidth={4}
               dot={false}
               activeDot={{ r: 6 }}
@@ -126,10 +151,15 @@ export function RevenuePerformanceCard({
         </ChartContainer>
         <div className="flex flex-col justify-between gap-2 border-t py-4 text-sm text-muted-foreground sm:flex-row">
           <p>
-            Revenue increased by <span className="text-success">18%</span>{" "}
-            compared to previous period.
+            Revenue and transaction activity are calculated from recorded
+            platform payment events.
           </p>
-          <span className="font-medium text-primary">View Full Ledger →</span>
+          <Link
+            href="/admin/transactions"
+            className="font-medium text-primary"
+          >
+            View Full Ledger →
+          </Link>
         </div>
       </CardContent>
     </Card>

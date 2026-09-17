@@ -8,6 +8,7 @@ import {
   Bell,
   ChevronDown,
   CircleHelp,
+  Coins,
   Gauge,
   House,
   LogOut,
@@ -35,6 +36,7 @@ import { DashboardBrand } from "./dashboard-brand";
 import { DashboardUserAvatar } from "./dashboard-user-avatar";
 import { DashboardMobileNavigation } from "./dashboard-mobile-navigation";
 import { useDashboardNotificationIndicators } from "@/features/dashboard/hooks/use-vendor-notification-indicators";
+import { useCreditInfo } from "@/features/vendor/hooks/use-credit-payment";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/store/auth.store";
 import { cn } from "@/lib/utils";
@@ -50,6 +52,8 @@ export function DashboardTopbar({
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const role = useAuthStore((state) => state.role);
   const { hasUnread } = useDashboardNotificationIndicators();
+  const creditInfo = useCreditInfo(role === "vendor");
+  const creditBalance = creditInfo.data?.balance ?? 0;
   const dashboardPath =
     role === "vendor" ? "/vendor/dashboard" : "/buyer/dashboard";
   const propertiesPath =
@@ -117,6 +121,26 @@ export function DashboardTopbar({
           </InputGroup>
         </form>
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
+          {role === "vendor" && (
+            <Button
+              variant="ghost"
+              className="h-9 gap-1.5 px-2 sm:px-3"
+              aria-label={`${creditBalance.toLocaleString("en-NG")} credit points available`}
+              asChild
+            >
+              <Link href="/vendor/subscription-rewards">
+                <Coins className="size-4 text-secondary" />
+                <span className="text-sm font-semibold tabular-nums">
+                  {creditInfo.isPending
+                    ? "—"
+                    : creditBalance.toLocaleString("en-NG")}
+                </span>
+                <span className="hidden text-xs text-muted-foreground sm:inline">
+                  points
+                </span>
+              </Link>
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"

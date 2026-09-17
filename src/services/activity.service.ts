@@ -132,6 +132,9 @@ function findActivity(value: unknown): unknown {
 function normalizeActivity(value: unknown, index = 0): AdminActivity {
   const source = record(value);
   const metadata = {
+    // Retain transaction fields that some activity responses expose directly
+    // on the row instead of inside metadata/details/data.
+    ...source,
     ...record(source.details),
     ...record(source.metadata),
     ...record(source.data),
@@ -186,8 +189,30 @@ function normalizeActivity(value: unknown, index = 0): AdminActivity {
     ),
     createdAt: text(
       source,
-      ["createdAt", "timestamp", "occurredAt", "updatedAt"],
-      new Date().toISOString(),
+      [
+        "createdAt",
+        "created_at",
+        "timeline",
+        "timestamp",
+        "occurredAt",
+        "occurred_at",
+        "eventTime",
+        "event_time",
+        "updatedAt",
+        "updated_at",
+      ],
+      text(metadata, [
+        "createdAt",
+        "created_at",
+        "timeline",
+        "timestamp",
+        "occurredAt",
+        "occurred_at",
+        "eventTime",
+        "event_time",
+        "updatedAt",
+        "updated_at",
+      ]),
     ),
     actor: {
       id:

@@ -184,7 +184,7 @@ export function RescheduleInspectionDialog({
             </FieldGroup>
           </div>
 
-          <DialogFooter className="grid grid-cols-2 gap-3 bg-muted/30 p-5 sm:grid-cols-2">
+          <DialogFooter className="mx-0 mb-0 grid grid-cols-2 gap-3 bg-muted/30 p-5 sm:grid-cols-2">
             <Button
               type="button"
               variant="outline"

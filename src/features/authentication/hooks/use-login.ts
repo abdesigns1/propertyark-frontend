@@ -7,3 +7,9 @@ export function useLogin() {
     mutationFn: (values: LoginValues) => authService.login(values),
   });
 }
+
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: (email: string) => authService.forgotPassword(email),
+  });
+}

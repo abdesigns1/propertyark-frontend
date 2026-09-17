@@ -527,6 +527,31 @@ function isUncertainInquiryDelivery(error: unknown) {
   return !error.response || [502, 503, 504].includes(error.response.status);
 }
 
+async function submitInquiryReview(
+  inspectionId: string,
+  payload: {
+    status: "ACCEPTED" | "DECLINED";
+    scheduledDate?: string;
+    reason?: string;
+  },
+) {
+  const url = `/inquiries/${encodeURIComponent(inspectionId)}/review`;
+  const requestPayload = {
+    ...payload,
+    // Keep the documented field and its deployed DTO alias together. The
+    // current backend error names scheduledDate, while some deployments bind
+    // the request property as scheduleDate.
+    ...(payload.scheduledDate
+      ? { scheduleDate: payload.scheduledDate }
+      : {}),
+  };
+
+  const { data } = await api.patch(url, requestPayload, {
+    headers: { "Content-Type": "application/json" },
+  });
+  return data;
+}
+
 async function findRecentlyCreatedInquiry(
   propertyId: string,
   requestedAfter: number,
@@ -730,42 +755,21 @@ export const inspectionService = {
   review: async ({
     inspectionId,
     status,
+    scheduledDate,
     reason,
   }: {
     inspectionId: string;
     status: "ACCEPTED" | "DECLINED";
+    scheduledDate?: string;
     reason?: string;
   }) => {
     const payload = {
       status,
+      ...(status === "ACCEPTED" && scheduledDate ? { scheduledDate } : {}),
       ...(reason ? { reason } : {}),
     };
 
-    try {
-      // The current API collection documents this operation as GET with a
-      // JSON body. Use request() so Axios preserves that documented body.
-      const { data } = await api.request({
-        method: "GET",
-        url: `/inquiries/${inspectionId}/review`,
-        data: payload,
-      });
-      return data;
-    } catch (error) {
-      if (
-        !axios.isAxiosError(error) ||
-        ![400, 404, 405].includes(error.response?.status ?? 0)
-      ) {
-        throw error;
-      }
-
-      // Keep compatibility with the previous API contract while deployments
-      // transition to the newly documented review method.
-      const { data } = await api.patch(
-        `/inquiries/${inspectionId}/review`,
-        payload,
-      );
-      return data;
-    }
+    return submitInquiryReview(inspectionId, payload);
   },
   complete: async ({
     inspectionId,
@@ -785,18 +789,16 @@ export const inspectionService = {
     scheduledDate,
     reason,
   }: RescheduleInspectionInput) => {
-    const url = `/inquiries/${encodeURIComponent(inspectionId)}/review`;
     const payload = {
       // The review endpoint accepts ACCEPTED or DECLINED. Re-submitting an
       // accepted inquiry with a new scheduledDate is the backend's
       // reschedule operation; RESCHEDULED is a response/display status, not
       // a valid review command.
-      status: "ACCEPTED",
+      status: "ACCEPTED" as const,
       scheduledDate,
       ...(reason?.trim() ? { reason: reason.trim() } : {}),
     };
-    const { data } = await api.patch(url, payload);
-    return data;
+    return submitInquiryReview(inspectionId, payload);
   },
   schedule: async (input: ScheduleInspectionInput) => {
     const requestedAt = Date.now();

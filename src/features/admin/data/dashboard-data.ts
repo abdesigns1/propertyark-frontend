@@ -4,15 +4,13 @@ import {
   Building2,
   ChartNoAxesCombined,
   ClipboardCheck,
-  CreditCard,
-  FileText,
+  Coins,
   Hotel,
   LayoutDashboard,
   MessageSquareText,
   Settings,
-  ShieldCheck,
   Users,
-  WalletCards,
+  ReceiptText,
 } from "lucide-react";
 
 export const adminNavigation = [
@@ -23,9 +21,11 @@ export const adminNavigation = [
   { label: "Shortlet Bookings", href: "/admin/shortlet-bookings", icon: Hotel },
   { label: "KYC Verification", href: "/admin/kyc", icon: BadgeCheck },
   // { label: "Documents Review", href: "#documents", icon: FileCheck2 },
-  { label: "Transactions", href: "#transactions", icon: FileText },
-  { label: "Escrow Management", href: "#escrow", icon: WalletCards },
-  { label: "Subscriptions", href: "#subscriptions", icon: CreditCard },
+  // Preserved for later implementation:
+  // { label: "Escrow Management", href: "#escrow", icon: WalletCards },
+  // { label: "Subscriptions", href: "#subscriptions", icon: CreditCard },
+  { label: "Points Management", href: "/admin/points", icon: Coins },
+  { label: "Transactions", href: "/admin/transactions", icon: ReceiptText },
   {
     label: "Reports & Analytics",
     href: "/admin/reports",
@@ -33,44 +33,6 @@ export const adminNavigation = [
   },
   { label: "Notifications", href: "/admin/notifications", icon: Bell },
   { label: "System Settings", href: "/admin/settings", icon: Settings },
-] as const;
-
-export const overviewStats = [
-  {
-    label: "Total Users",
-    value: "25,840",
-    note: "Registered buyers and vendors",
-    change: "+12%",
-    icon: Users,
-  },
-  {
-    label: "Active Vendors",
-    value: "2,450",
-    note: "Verified property providers",
-    change: "+5%",
-    icon: Building2,
-  },
-  {
-    label: "Total Properties",
-    value: "8,920",
-    note: "Active property listings",
-    change: "New",
-    icon: Building2,
-  },
-  {
-    label: "Transaction Vol.",
-    value: "₦5.8B",
-    note: "Completed property sales",
-    change: "+28%",
-    icon: WalletCards,
-  },
-  {
-    label: "Pending Reviews",
-    value: "124",
-    note: "Requires admin attention",
-    change: "Urgent",
-    icon: ShieldCheck,
-  },
 ] as const;
 
 export const growthData = [

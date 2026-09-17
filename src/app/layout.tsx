@@ -24,14 +24,9 @@ export const metadata: Metadata = {
   description:
     "PropertyArk is a verified property marketplace where buyers browse, inspect, and invest in real estate, and vendors list and manage properties — all in one platform.",
   icons: {
-    icon: [
-      {
-        url: "/favicon.ico",
-        sizes: "any",
-      },
-    ],
-    shortcut: "/favicon.ico",
-    apple: "/property%20arc%20logo-7.png",
+    icon: "/PropertyArk%20Logo%20Icon%201.png",
+    shortcut: "/PropertyArk%20Logo%20Icon%201.png",
+    apple: "/PropertyArk%20Logo%20Icon%201.png",
   },
 };
 

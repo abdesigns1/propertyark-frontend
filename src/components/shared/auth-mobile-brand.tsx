@@ -9,7 +9,7 @@ export function AuthMobileBrand() {
       className="mb-8 block w-fit lg:hidden"
     >
       <Image
-        src="/property arc logo-11.png"
+        src="/Property Ark logo Dark.png"
         alt="PropertyArk"
         width={170}
         height={40}

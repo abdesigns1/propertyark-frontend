@@ -56,6 +56,7 @@ import { propertyService } from "@/services/property.service";
 import { cn } from "@/lib/utils";
 import { useAccountKey } from "@/lib/account-identity";
 import { vendorDashboardQueryKey } from "@/features/vendor/hooks/use-vendor-dashboard";
+import { creditPaymentKeys } from "@/features/vendor/hooks/use-credit-payment";
 import {
   useVendorProperties,
   vendorPropertiesQueryKey,
@@ -502,6 +503,7 @@ export function AddPropertyWizard({
         queryClient.invalidateQueries({
           queryKey: ["properties", "available"],
         }),
+        queryClient.invalidateQueries({ queryKey: creditPaymentKeys.info }),
         queryClient.invalidateQueries({ queryKey: ["admin", "properties"] }),
         queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] }),
       ];

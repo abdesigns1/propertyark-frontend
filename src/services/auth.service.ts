@@ -100,6 +100,11 @@ export const authService = {
       )
       .then(({ data }) => data),
 
+  forgotPassword: (email: string) =>
+    api
+      .post<{ message?: string }>("/auth/forgot-password", { email })
+      .then(({ data }) => data),
+
   registerStaff: (payload: StaffRegistrationPayload) =>
     api.post("/auth/reg/staff", payload).then(({ data }) => data),
 

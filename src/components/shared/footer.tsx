@@ -109,7 +109,7 @@ export function Footer() {
             <div>
               <Link href="/" className="inline-flex items-center">
                 <Image
-                  src="/property%20arc%20logo-11.png"
+                  src="/Property%20Ark%20logo%20Dark.png"
                   alt="PropertyArk logo"
                   width={120}
                   height={24}

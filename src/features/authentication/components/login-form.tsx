@@ -126,20 +126,28 @@ export function LoginForm() {
           type="password"
         />
 
-        <Controller
-          control={control}
-          name="rememberMe"
-          render={({ field }) => (
-            <label className="flex w-fit items-center gap-2 text-sm text-muted-foreground">
-              <Checkbox
-                checked={field.value}
-                onCheckedChange={field.onChange}
-                className="mt-0.5 data-[state=checked]:border-secondary data-[state=checked]:bg-secondary"
-              />
-              Remember me
-            </label>
-          )}
-        />
+        <div className="flex items-center justify-between gap-4">
+          <Controller
+            control={control}
+            name="rememberMe"
+            render={({ field }) => (
+              <label className="flex w-fit items-center gap-2 text-sm text-muted-foreground">
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  className="mt-0.5 data-[state=checked]:border-secondary data-[state=checked]:bg-secondary"
+                />
+                Remember me
+              </label>
+            )}
+          />
+          <Link
+            href="/forgot-password"
+            className="text-sm font-medium text-primary hover:text-primary-hover"
+          >
+            Forgot password?
+          </Link>
+        </div>
 
         <Button
           type="submit"

@@ -434,10 +434,24 @@ export function VendorInspections() {
         }}
         onConfirm={() => {
           if (!reviewTarget) return;
+          const scheduledDate = parseInspectionDate(
+            reviewTarget.inspection.inspectionDate,
+          );
+          if (reviewTarget.decision === "ACCEPTED" && !scheduledDate) {
+            toast.error(
+              "A valid inspection date is required before confirmation.",
+            );
+            return;
+          }
           review.mutate(
             {
               inspectionId: reviewTarget.inspection.id,
               status: reviewTarget.decision,
+              ...(reviewTarget.decision === "ACCEPTED"
+                ? {
+                    scheduledDate: scheduledDate!.toISOString(),
+                  }
+                : {}),
               ...(reviewTarget.decision === "DECLINED"
                 ? { reason: "Declined by vendor" }
                 : {}),
@@ -853,7 +867,7 @@ function ReviewInspectionDialog({
           )}
         </div>
 
-        <DialogFooter className="grid grid-cols-2 gap-3 border-t bg-muted/30 p-5 sm:grid-cols-2">
+        <DialogFooter className="mx-0 mb-0 grid grid-cols-2 gap-3 border-t bg-muted/30 px-6 py-5 sm:grid-cols-2">
           <Button
             variant="outline"
             disabled={submitting}

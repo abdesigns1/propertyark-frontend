@@ -54,10 +54,14 @@ const vendorNavigation = [
   },
   { label: "Inspections", icon: FileText, href: "/vendor/inspections" },
   { label: "Mortgage", icon: Landmark, href: "/vendor/mortgage" },
-  { label: "Finance", icon: WalletCards, href: "/vendor/finance" },
+  {
+    label: "Transaction History",
+    icon: WalletCards,
+    href: "/vendor/finance",
+  },
 
   {
-    label: "Subscription & Rewards",
+    label: "Credit Points & Payments",
     icon: BadgePercent,
     href: "/vendor/subscription-rewards",
   },

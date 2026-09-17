@@ -24,8 +24,8 @@ export function PropertyArkMark({
       <Image
         src={
           light
-            ? "/property%20arc%20logo-12.png"
-            : "/property%20arc%20logo-11.png"
+            ? "/PropertyArk%20Logo%20Light.png"
+            : "/Property%20Ark%20logo%20Dark.png"
         }
         alt="PropertyArk"
         width={230}

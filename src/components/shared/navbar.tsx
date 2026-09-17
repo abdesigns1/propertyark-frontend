@@ -120,7 +120,7 @@ export function Navbar({ reserveSpace = false }: NavbarProps) {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
             <Image
-              src="/property%20arc%20logo-12.png"
+              src="/PropertyArk%20Logo%20Light.png"
               alt="PropertyArk logo"
               width={100}
               height={20}

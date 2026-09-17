@@ -44,7 +44,7 @@ export function AdminActionDialog({
           </DialogHeader>
           {children ? <div className="w-full text-left">{children}</div> : null}
         </div>
-        <DialogFooter className="grid grid-cols-2 gap-3 border-t bg-muted/30 px-6 pb-7 pt-5 sm:grid-cols-2 sm:px-8">
+        <DialogFooter className="mx-0 mb-0 grid grid-cols-2 gap-3 border-t bg-muted/30 px-6 pb-7 pt-5 sm:grid-cols-2 sm:px-8">
           {footer}
         </DialogFooter>
       </DialogContent>

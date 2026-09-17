@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-  ArrowDownToLine,
   ArrowUpRight,
   FileSpreadsheet,
   FileText,
@@ -40,10 +39,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import {
-  recentReportsMock,
-  transactionFeedMock,
-} from "@/features/admin/data/admin-reports-finance-mock";
+import type { ReportTransactionFeedItem } from "@/features/admin/lib/admin-reports-finance";
 import type {
   ReportCategory,
   ReportLocation,
@@ -280,25 +276,6 @@ export function CustomReportCard() {
         >
           Download Report
         </Button>
-        <div className="border-t pt-5">
-          <p className="mb-4 text-sm">Recent Reports</p>
-          <div className="space-y-4">
-            {recentReportsMock.map((report) => (
-              <div key={report.name} className="flex items-center gap-3">
-                {report.format === "PDF" ? (
-                  <FileText className="text-destructive" />
-                ) : (
-                  <FileSpreadsheet className="text-emerald-500" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{report.name}</p>
-                  <p className="text-xs text-muted-foreground">{report.meta}</p>
-                </div>
-                <ArrowDownToLine className="size-4 text-muted-foreground" />
-              </div>
-            ))}
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
@@ -307,7 +284,7 @@ export function CustomReportCard() {
 export function TransactionFeedCard({
   items,
 }: {
-  items: ReadonlyArray<(typeof transactionFeedMock)[number]>;
+  items: ReadonlyArray<ReportTransactionFeedItem>;
 }) {
   return (
     <Card className="overflow-hidden py-0">
@@ -316,39 +293,47 @@ export function TransactionFeedCard({
         <Badge className="bg-emerald-100 text-emerald-700">Live</Badge>
       </CardHeader>
       <CardContent className="p-0">
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className="grid gap-3 border-b px-6 py-4 last:border-0 sm:grid-cols-[1fr_auto_auto] sm:items-center"
-          >
-            <div className="flex items-center gap-3">
-              <span className="grid size-9 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                {item.initials}
-              </span>
-              <div>
-                <p className="text-sm font-medium">{item.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {item.description}
-                </p>
+        {items.length ? (
+          items.map((item) => (
+            <div
+              key={item.id}
+              className="grid gap-3 border-b px-6 py-4 last:border-0 sm:grid-cols-[1fr_auto_auto] sm:items-center"
+            >
+              <div className="flex items-center gap-3">
+                <span className="grid size-9 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                  {item.initials}
+                </span>
+                <div>
+                  <p className="text-sm font-medium">{item.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.description}
+                  </p>
+                </div>
+              </div>
+              <p className="font-mono text-sm font-semibold">
+                ₦{item.amount.toLocaleString()}
+              </p>
+              <div className="flex min-w-44 items-center justify-between gap-5">
+                <Badge
+                  className={
+                    /COMPLETED|SUCCESS|PAID|RECORDED/.test(item.status)
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-amber-100 text-amber-700"
+                  }
+                >
+                  {item.status}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  {item.time}
+                </span>
               </div>
             </div>
-            <p className="font-mono text-sm font-semibold">
-              ₦{item.amount.toLocaleString()}
-            </p>
-            <div className="flex min-w-44 items-center justify-between gap-5">
-              <Badge
-                className={
-                  item.status === "COMPLETED"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-amber-100 text-amber-700"
-                }
-              >
-                {item.status}
-              </Badge>
-              <span className="text-xs text-muted-foreground">{item.time}</span>
-            </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <p className="px-6 py-10 text-center text-sm text-muted-foreground">
+            No transactions were recorded for this period.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

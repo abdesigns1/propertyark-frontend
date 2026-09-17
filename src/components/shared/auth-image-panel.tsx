@@ -86,7 +86,7 @@ export function AuthImagePanel({
 
       <Link href="/" className="absolute left-8 top-8 z-10">
         <Image
-          src="/property%20arc%20logo-12.png"
+          src="/PropertyArk%20Logo%20Light.png"
           alt="PropertyArk logo"
           width={140}
           height={28}

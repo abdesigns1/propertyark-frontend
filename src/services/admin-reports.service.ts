@@ -174,8 +174,6 @@ function buildLocations(properties: AdminManagedProperty[]): ReportLocation[] {
     };
     current.listings += 1;
     current.views += Number(source.viewCount ?? source.views) || 0;
-    // Finance endpoint pending: deterministic placeholder based on listing volume.
-    current.successTransactions = Math.round(current.listings * 0.14);
     groups.set(location || "Location not provided", current);
   });
 

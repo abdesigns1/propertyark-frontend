@@ -15,7 +15,8 @@ import { PaginationControls } from "@/components/shared/pagination-controls";
 import { BecomeVendorBanner } from "@/components/contact/become-vendor-banner";
 import { Footer } from "@/components/shared/footer";
 import { CONTAINER, cn } from "@/lib/utils";
-import { usePaginatedAvailableProperties } from "@/features/properties/hooks/use-available-properties";
+import { useAllAvailableProperties } from "@/features/properties/hooks/use-available-properties";
+import type { Property } from "@/features/properties/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,62 @@ const PROPERTY_CATEGORY_MAP: Record<string, string> = {
   "mixed-use": "MIXED_USE",
 };
 
+function normalizedLocation(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function editDistance(first: string, second: string) {
+  const previous = Array.from(
+    { length: second.length + 1 },
+    (_, index) => index,
+  );
+  for (let firstIndex = 1; firstIndex <= first.length; firstIndex += 1) {
+    const current = [firstIndex];
+    for (let secondIndex = 1; secondIndex <= second.length; secondIndex += 1) {
+      current[secondIndex] = Math.min(
+        current[secondIndex - 1] + 1,
+        previous[secondIndex] + 1,
+        previous[secondIndex - 1] +
+          (first[firstIndex - 1] === second[secondIndex - 1] ? 0 : 1),
+      );
+    }
+    previous.splice(0, previous.length, ...current);
+  }
+  return previous[second.length];
+}
+
+function matchesLocationKeyword(property: Property, keyword: string) {
+  const query = normalizedLocation(keyword);
+  if (!query) return true;
+  const location = normalizedLocation(
+    [
+      property.location.address,
+      property.location.city,
+      property.location.state,
+      property.location.country,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+  if (location.includes(query)) return true;
+
+  const locationWords = location.split(" ").filter(Boolean);
+  return query.split(" ").every((queryWord) =>
+    locationWords.some((locationWord) => {
+      if (locationWord.includes(queryWord) || queryWord.includes(locationWord))
+        return true;
+      const allowedDistance =
+        queryWord.length >= 7 ? 2 : queryWord.length >= 4 ? 1 : 0;
+      return editDistance(queryWord, locationWord) <= allowedDistance;
+    }),
+  );
+}
+
 function PropertiesContent() {
   const pathname = usePathname();
   const queryClient = useQueryClient();
@@ -86,7 +143,6 @@ function PropertiesContent() {
       propertyTypes: PROPERTY_CATEGORY_MAP[propertyCategory]
         ? [PROPERTY_CATEGORY_MAP[propertyCategory]]
         : [],
-      city: deferredFilters.location.trim() || undefined,
       minPrice:
         deferredFilters.priceRange[0] > DEFAULT_FILTERS.priceRange[0]
           ? deferredFilters.priceRange[0]
@@ -107,11 +163,7 @@ function PropertiesContent() {
       searchQuery,
     ],
   );
-  const availableProperties = usePaginatedAvailableProperties({
-    page,
-    limit: PROPERTIES_PER_PAGE,
-    filters: backendFilters,
-  });
+  const availableProperties = useAllAvailableProperties(backendFilters);
 
   // Sync filters whenever the URL's query params change (e.g. after a search from the Hero)
   /* eslint-disable react-hooks/set-state-in-effect -- URL query parameters are external navigation state. */
@@ -138,13 +190,23 @@ function PropertiesContent() {
   }, [pathname, searchParams]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const filteredProperties = availableProperties.data?.properties ?? [];
+  const locationMatches = useMemo(
+    () =>
+      (availableProperties.data ?? []).filter((property) =>
+        matchesLocationKeyword(property, deferredFilters.location),
+      ),
+    [availableProperties.data, deferredFilters.location],
+  );
   const totalPages = Math.max(
     1,
-    availableProperties.data?.pagination.pages ?? 1,
+    Math.ceil(locationMatches.length / PROPERTIES_PER_PAGE),
   );
   const currentPage = Math.min(page, totalPages);
-  const totalProperties = availableProperties.data?.pagination.total ?? 0;
+  const totalProperties = locationMatches.length;
+  const filteredProperties = locationMatches.slice(
+    (currentPage - 1) * PROPERTIES_PER_PAGE,
+    currentPage * PROPERTIES_PER_PAGE,
+  );
   const firstVisibleProperty = totalProperties
     ? (currentPage - 1) * PROPERTIES_PER_PAGE + 1
     : 0;

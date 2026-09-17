@@ -285,6 +285,13 @@ function statusVariant(status: string) {
     : ("outline" as const);
 }
 
+function statusPriority(status: string) {
+  if (/SUCCESS|COMPLETED|PAID|CREDITED/.test(status)) return 3;
+  if (/FAILED|CANCELLED|CANCELED|ABANDONED/.test(status)) return 2;
+  if (/INITIATED|PENDING/.test(status)) return 1;
+  return 0;
+}
+
 export function AdminTransactionsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -292,7 +299,9 @@ export function AdminTransactionsPage() {
   const settingsQuery = useAdminCreditSettings();
   const pricePerPoint =
     settingsQuery.data?.pricePerPoint ?? DEFAULT_CREDIT_SETTINGS.pricePerPoint;
-  const query = useAdminAllActivities("CREDIT_POINT");
+  // Payment completion can be recorded as PAYMENT or TRANSACTION while the
+  // original purchase initialization is recorded as CREDIT_POINT.
+  const query = useAdminAllActivities();
   const transactions = useMemo(() => {
     const unique = new Map<string, TransactionRecord>();
     (query.data ?? [])
@@ -301,10 +310,16 @@ export function AdminTransactionsPage() {
       .forEach((transaction) => {
         const key = transaction.reference || transaction.id;
         const existing = unique.get(key);
+        const transactionPriority = statusPriority(transaction.status);
+        const existingPriority = existing
+          ? statusPriority(existing.status)
+          : -1;
         if (
           !existing ||
-          new Date(transaction.createdAt).getTime() >=
-            new Date(existing.createdAt).getTime()
+          transactionPriority > existingPriority ||
+          (transactionPriority === existingPriority &&
+            new Date(transaction.createdAt).getTime() >=
+              new Date(existing.createdAt).getTime())
         )
           unique.set(key, transaction);
       });

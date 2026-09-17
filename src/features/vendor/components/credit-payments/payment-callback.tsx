@@ -189,7 +189,7 @@ export function CreditPaymentCallback() {
               initial={{ opacity: 0, scale: 0.35, rotate: -25 }}
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 230, damping: 15 }}
-              className="relative mb-4 grid size-24 place-items-center"
+              className="relative mx-auto mb-4 grid size-24 place-items-center self-center justify-self-center"
             >
               <motion.span
                 initial={{ opacity: 0.55, scale: 0.7 }}

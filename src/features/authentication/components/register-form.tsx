@@ -215,6 +215,7 @@ export function RegisterForm() {
             label="Password"
             placeholder="Input your Password"
             type="password"
+            autoComplete="new-password"
           />
           <TextField
             control={buyerForm.control}
@@ -222,6 +223,7 @@ export function RegisterForm() {
             label="Confirm Password"
             placeholder="Confirm your Password"
             type="password"
+            autoComplete="new-password"
           />
           <TermsCheckbox control={buyerForm.control} />
           <Button
@@ -275,6 +277,7 @@ export function RegisterForm() {
             label="Password"
             placeholder="Input your Password"
             type="password"
+            autoComplete="new-password"
           />
           <TextField
             control={vendorForm.control}
@@ -282,6 +285,7 @@ export function RegisterForm() {
             label="Confirm Password"
             placeholder="Confirm your Password"
             type="password"
+            autoComplete="new-password"
           />
           <TermsCheckbox control={vendorForm.control} />
           <Button

@@ -124,6 +124,7 @@ export function LoginForm() {
           label="Password"
           placeholder="Input your Password"
           type="password"
+          autoComplete="current-password"
         />
 
         <div className="flex items-center justify-between gap-4">

@@ -134,6 +134,8 @@ interface ApiEnvelope<T> {
 
 type UnknownRecord = Record<string, unknown>;
 
+const KYC_DOCUMENT_SESSION_PREFIX = "propertyark-admin-kyc-document:";
+
 function record(value: unknown): UnknownRecord {
   return value && typeof value === "object" ? (value as UnknownRecord) : {};
 }
@@ -219,6 +221,31 @@ function normalizeKycDocumentUrl(url: string) {
   return trustedUploadProxyUrl(url, "kyc");
 }
 
+function cachedKycDocumentUrl(id: string) {
+  if (!id || typeof window === "undefined") return null;
+  try {
+    return window.sessionStorage.getItem(`${KYC_DOCUMENT_SESSION_PREFIX}${id}`);
+  } catch {
+    return null;
+  }
+}
+
+function rememberKycDocumentUrl(ids: string[], url: string | null) {
+  if (!url || typeof window === "undefined") return;
+  try {
+    ids
+      .filter(Boolean)
+      .forEach((id) =>
+        window.sessionStorage.setItem(
+          `${KYC_DOCUMENT_SESSION_PREFIX}${id}`,
+          url,
+        ),
+      );
+  } catch {
+    // The review can continue without the tab-scoped document cache.
+  }
+}
+
 function normalizeKycRequest(value: unknown): AdminKycRequest {
   const source = record(value);
   const user = record(source.user ?? source.vendor ?? source.account);
@@ -228,7 +255,7 @@ function normalizeKycRequest(value: unknown): AdminKycRequest {
     ["userId", "vendorId"],
     text(user, ["id", "_id"], id),
   );
-  const documentUrl = kycDocumentUrl(
+  const endpointDocumentUrl = kycDocumentUrl(
     source,
     user,
     source.document,
@@ -236,6 +263,11 @@ function normalizeKycRequest(value: unknown): AdminKycRequest {
     source.kyc,
     source.verification,
   );
+  const documentUrl =
+    endpointDocumentUrl ??
+    cachedKycDocumentUrl(userId) ??
+    cachedKycDocumentUrl(id);
+  rememberKycDocumentUrl([userId, id], documentUrl);
   return {
     id: id || userId,
     userId,
@@ -307,6 +339,16 @@ function userToKycRequest(user: AdminUser): AdminKycRequest | null {
   const status = user.ninVerificationStatus?.toUpperCase();
   if (!status) return null;
 
+  const endpointDocumentUrl = kycDocumentUrl(
+    user,
+    record(user).document,
+    record(user).nin,
+    record(user).kyc,
+    record(user).verification,
+  );
+  const documentUrl = endpointDocumentUrl ?? cachedKycDocumentUrl(user.id);
+  rememberKycDocumentUrl([user.id], documentUrl);
+
   return {
     id: user.id,
     userId: user.id,
@@ -315,13 +357,7 @@ function userToKycRequest(user: AdminUser): AdminKycRequest | null {
     role: user.role,
     status,
     submittedAt: user.updatedAt ?? user.createdAt,
-    documentUrl: kycDocumentUrl(
-      user,
-      record(user).document,
-      record(user).nin,
-      record(user).kyc,
-      record(user).verification,
-    ),
+    documentUrl,
     documentName: `NIN-${user.fullName.replaceAll(" ", "-")}`,
     rejectionReason: user.ninRejectionReason ?? null,
     phone: user.phone,

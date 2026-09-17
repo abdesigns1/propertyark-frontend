@@ -81,11 +81,22 @@ function KycReview({
         reason,
       ),
     onSuccess: async () => {
+      const nextStatus = action === "approve" ? "VERIFIED" : "REJECTED";
       toast.success(
         action === "approve" ? "Document approved" : "Document rejected",
       );
       setAction(null);
-      await client.invalidateQueries({ queryKey: ["admin", "kyc"] });
+      client.setQueryData(["admin", "kyc", "request", request.id], {
+        ...request,
+        status: nextStatus,
+        rejectionReason: reason || null,
+      });
+      await Promise.all([
+        client.invalidateQueries({
+          queryKey: ["admin", "kyc", "requests"],
+        }),
+        client.invalidateQueries({ queryKey: ["admin", "kyc", "stats"] }),
+      ]);
     },
     onError: () =>
       toast.error("The verification decision could not be submitted."),

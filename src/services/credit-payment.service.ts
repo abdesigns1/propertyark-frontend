@@ -294,24 +294,39 @@ export const creditPaymentService = {
   getCreditInfo: async (): Promise<CreditInfo> => {
     const { data } = await api.get("/credit-points/my-credit");
     const currency = stringFor(data, ["currency"]) ?? "NGN";
+    const transactions = transactionsFor(data, currency);
+    const reportedBalance = numberFor(data, [
+      "creditBalance",
+      "credit_balance",
+      "currentBalance",
+      "current_balance",
+      "availablePoints",
+      "available_points",
+      "balance",
+      "points",
+    ]);
+    const completedLedgerBalance = transactions
+      .filter((transaction) => transaction.status === "success")
+      .reduce((total, transaction) => total + transaction.points, 0);
+
+    // Some API responses contain a completed welcome-bonus ledger entry while
+    // the wallet summary is still returned as zero. In that inconsistent state
+    // the completed ledger is the only response data that reflects the credit.
+    const balance =
+      reportedBalance === null ||
+      (reportedBalance === 0 && completedLedgerBalance !== 0)
+        ? completedLedgerBalance
+        : reportedBalance;
+
     return {
-      balance: numberFor(data, [
-        "creditBalance",
-        "credit_balance",
-        "currentBalance",
-        "current_balance",
-        "availablePoints",
-        "available_points",
-        "balance",
-        "points",
-      ]),
+      balance,
       currency,
       minimumPurchasePoints: numberFor(data, [
         "minimumPurchasePoints",
         "minimum_purchase_points",
       ]),
       pricePerPoint: numberFor(data, ["pricePerPoint", "price_per_point"]),
-      transactions: transactionsFor(data, currency),
+      transactions,
     };
   },
 

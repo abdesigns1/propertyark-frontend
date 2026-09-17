@@ -114,11 +114,13 @@ export const authService = {
   resendVerification: (email: string) => api.post("/auth/resend", { email }),
 
   refresh: () =>
-    api.post(
-      "/auth/refresh",
-      {},
-      { baseURL: "/api/v1", withCredentials: true },
-    ),
+    api
+      .post<LoginResponse>(
+        "/auth/refresh",
+        {},
+        { baseURL: "/api/v1", withCredentials: true },
+      )
+      .then(({ data }) => data),
 
   logout: () => api.post("/auth/logout", {}, { baseURL: "/api/v1" }),
 };

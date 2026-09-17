@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bell,
@@ -23,13 +23,7 @@ import {
   UserPlus,
   WalletCards,
 } from "lucide-react";
-import {
-  Bar,
-  CartesianGrid,
-  ComposedChart,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, CartesianGrid, ComposedChart, XAxis, YAxis } from "recharts";
 import { AdminSidebar } from "@/features/admin/components/admin-sidebar";
 import {
   useAdminDashboard,
@@ -104,6 +98,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useAuthStore } from "@/store/auth.store";
 import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
+import { useAuthSessionReady } from "@/hooks/use-auth-session-ready";
 import { cn } from "@/lib/utils";
 
 const chartConfig = {
@@ -172,7 +167,8 @@ function platformTransactions(activities: AdminActivity[]) {
   const transactions = new Map<string, PlatformTransaction>();
 
   activities.forEach((activity) => {
-    const searchable = `${activity.action} ${activity.entityType} ${activity.title} ${activity.description}`.toUpperCase();
+    const searchable =
+      `${activity.action} ${activity.entityType} ${activity.title} ${activity.description}`.toUpperCase();
     if (
       !/CREDIT|POINT|PAYMENT|PAYSTACK|TRANSACTION|PURCHASE|REFUND|ESCROW/.test(
         searchable,
@@ -365,31 +361,29 @@ function OverviewCards({
   ];
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-      {cards.map(
-        ({ label, value, note, icon: Icon }, index) => (
-          <Card key={label} className="py-0">
-            <CardContent className="p-5">
-              <div className="flex items-start">
-                <span
-                  className={cn(
-                    "flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary",
-                    index === 4 && "bg-destructive/10 text-destructive",
-                  )}
-                >
-                  <Icon className="size-5" />
-                </span>
-              </div>
-              <p className="mt-4 text-sm text-muted-foreground">{label}</p>
-              <p className="text-2xl font-semibold tracking-tight">
-                {typeof value === "number" ? value.toLocaleString() : value}
-              </p>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                {note}
-              </p>
-            </CardContent>
-          </Card>
-        ),
-      )}
+      {cards.map(({ label, value, note, icon: Icon }, index) => (
+        <Card key={label} className="py-0">
+          <CardContent className="p-5">
+            <div className="flex items-start">
+              <span
+                className={cn(
+                  "flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary",
+                  index === 4 && "bg-destructive/10 text-destructive",
+                )}
+              >
+                <Icon className="size-5" />
+              </span>
+            </div>
+            <p className="mt-4 text-sm text-muted-foreground">{label}</p>
+            <p className="text-2xl font-semibold tracking-tight">
+              {typeof value === "number" ? value.toLocaleString() : value}
+            </p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              {note}
+            </p>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }
@@ -411,14 +405,50 @@ function DashboardContentSkeleton() {
       </div>
       <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(280px,0.95fr)]">
         <div className="space-y-5">
-          <Card><CardHeader><Skeleton className="h-7 w-44" /></CardHeader><CardContent><Skeleton className="h-72 w-full" /></CardContent></Card>
-          <Card><CardHeader><Skeleton className="h-7 w-52" /></CardHeader><CardContent className="space-y-3">{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-14 w-full" />)}</CardContent></Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-7 w-44" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-72 w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-7 w-52" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={index} className="h-14 w-full" />
+              ))}
+            </CardContent>
+          </Card>
         </div>
         <div className="space-y-5">
-          {Array.from({ length: 2 }).map((_, index) => <Card key={index}><CardHeader><Skeleton className="h-7 w-40" /></CardHeader><CardContent className="space-y-3">{Array.from({ length: 4 }).map((__, row) => <Skeleton key={row} className="h-12 w-full" />)}</CardContent></Card>)}
+          {Array.from({ length: 2 }).map((_, index) => (
+            <Card key={index}>
+              <CardHeader>
+                <Skeleton className="h-7 w-40" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {Array.from({ length: 4 }).map((__, row) => (
+                  <Skeleton key={row} className="h-12 w-full" />
+                ))}
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
-      <Card><CardHeader><Skeleton className="h-7 w-36" /></CardHeader><CardContent className="space-y-3">{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-14 w-full" />)}</CardContent></Card>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-7 w-36" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-14 w-full" />
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -882,9 +912,7 @@ function TransactionSummaryCard({
         <p className="text-3xl font-semibold">{money.format(total)}</p>
         <div className="mt-6 grid grid-cols-2 gap-6 border-t border-primary-foreground/20 pt-5">
           <div>
-            <p className="text-xs text-primary-foreground/65">
-              Transactions
-            </p>
+            <p className="text-xs text-primary-foreground/65">Transactions</p>
             <p className="text-xl font-semibold">
               {transactions.length.toLocaleString("en-NG")}
             </p>
@@ -1075,11 +1103,7 @@ function UsersTable({
 
 export function AdminDashboardHome() {
   const router = useRouter();
-  const ready = useSyncExternalStore(
-    (onChange) => useAuthStore.persist.onFinishHydration(onChange),
-    () => useAuthStore.persist.hasHydrated(),
-    () => false,
-  );
+  const ready = useAuthSessionReady();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const role = useAuthStore((state) => state.role);
   const user = useAuthStore((state) => state.user);
@@ -1195,44 +1219,44 @@ export function AdminDashboardHome() {
           <DashboardContentSkeleton />
         ) : (
           <>
-        <section className="mt-5">
-          <OverviewCards
-            stats={dashboard.data?.dashboardStats}
-            totalTransactionVolume={totalTransactionVolume}
-          />
-        </section>
-        <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(280px,0.95fr)]">
-          <div className="flex h-full min-w-0 flex-col gap-5">
-            <GrowthChart
-              data={dashboard.data?.growthRevenue}
-              history={growthHistory.data}
-            />
-            <PropertiesTable properties={dashboard.data?.properties} />
-          </div>
-          <aside className="flex h-full flex-col gap-5">
-            <ActivitiesCard
-              activities={activities.data?.activities ?? []}
-              loading={activities.isLoading}
-            />
-            <VerificationCard
-              stats={kycStats.data}
-              requests={kycRequests.data?.requests ?? []}
-              loading={kycStats.isLoading || kycRequests.isLoading}
-            />
-            <TransactionSummaryCard
-              activities={growthHistory.data?.activities ?? []}
-            />
-          </aside>
-        </section>
-        <section className="mt-5">
-          <UsersTable
-            users={adminUsers.data?.users ?? []}
-            page={adminUsers.data?.pagination.page ?? usersPage}
-            pages={adminUsers.data?.pagination.pages ?? 1}
-            total={adminUsers.data?.pagination.total ?? 0}
-            onPageChange={setUsersPage}
-          />
-        </section>
+            <section className="mt-5">
+              <OverviewCards
+                stats={dashboard.data?.dashboardStats}
+                totalTransactionVolume={totalTransactionVolume}
+              />
+            </section>
+            <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(280px,0.95fr)]">
+              <div className="flex h-full min-w-0 flex-col gap-5">
+                <GrowthChart
+                  data={dashboard.data?.growthRevenue}
+                  history={growthHistory.data}
+                />
+                <PropertiesTable properties={dashboard.data?.properties} />
+              </div>
+              <aside className="flex h-full flex-col gap-5">
+                <ActivitiesCard
+                  activities={activities.data?.activities ?? []}
+                  loading={activities.isLoading}
+                />
+                <VerificationCard
+                  stats={kycStats.data}
+                  requests={kycRequests.data?.requests ?? []}
+                  loading={kycStats.isLoading || kycRequests.isLoading}
+                />
+                <TransactionSummaryCard
+                  activities={growthHistory.data?.activities ?? []}
+                />
+              </aside>
+            </section>
+            <section className="mt-5">
+              <UsersTable
+                users={adminUsers.data?.users ?? []}
+                page={adminUsers.data?.pagination.page ?? usersPage}
+                pages={adminUsers.data?.pagination.pages ?? 1}
+                total={adminUsers.data?.pagination.total ?? 0}
+                onPageChange={setUsersPage}
+              />
+            </section>
           </>
         )}
       </main>

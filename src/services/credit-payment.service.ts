@@ -4,6 +4,8 @@ type ApiRecord = Record<string, unknown>;
 
 export const PENDING_CREDIT_REFERENCE_KEY =
   "propertyark-pending-credit-reference";
+export const PENDING_CREDIT_BALANCE_KEY =
+  "propertyark-credit-balance-before-payment";
 
 export interface CreditInfo {
   balance: number | null;
@@ -14,10 +16,7 @@ export interface CreditInfo {
 }
 
 export type CreditTransactionKind =
-  | "purchase"
-  | "usage"
-  | "refund"
-  | "adjustment";
+  "purchase" | "usage" | "refund" | "adjustment";
 export type CreditTransactionStatus = "success" | "pending" | "failed";
 
 export interface CreditTransaction {
@@ -252,7 +251,12 @@ function transactionsFor(value: unknown, fallbackCurrency: string) {
         `credit-transaction-${index}`,
       reference,
       description:
-        stringFor(transaction, ["description", "title", "reason", "activity"]) ??
+        stringFor(transaction, [
+          "description",
+          "title",
+          "reason",
+          "activity",
+        ]) ??
         (kind === "purchase"
           ? "Credit points purchase"
           : kind === "usage"

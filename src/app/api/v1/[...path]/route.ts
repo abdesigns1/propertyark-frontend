@@ -7,6 +7,18 @@ const FORWARDED_REQUEST_HEADERS = [
   "cookie",
 ] as const;
 
+function cookieForFrontendOrigin(cookie: string) {
+  const parts = cookie
+    .split(";")
+    .map((part) => part.trim())
+    .filter((part) => part && !part.toLowerCase().startsWith("domain="))
+    .map((part) => (part.toLowerCase().startsWith("path=") ? "Path=/" : part));
+  if (!parts.some((part) => part.toLowerCase().startsWith("path="))) {
+    parts.push("Path=/");
+  }
+  return parts.join("; ");
+}
+
 async function proxyRequest(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> },
@@ -45,9 +57,18 @@ async function proxyRequest(
 
     const responseHeaders = new Headers();
     const contentType = upstreamResponse.headers.get("content-type");
-    const setCookie = upstreamResponse.headers.get("set-cookie");
     if (contentType) responseHeaders.set("content-type", contentType);
-    if (setCookie) responseHeaders.set("set-cookie", setCookie);
+    const cookieHeaders = upstreamResponse.headers as Headers & {
+      getSetCookie?: () => string[];
+    };
+    const setCookies =
+      cookieHeaders.getSetCookie?.() ??
+      (upstreamResponse.headers.get("set-cookie")
+        ? [upstreamResponse.headers.get("set-cookie")!]
+        : []);
+    setCookies.forEach((cookie) =>
+      responseHeaders.append("set-cookie", cookieForFrontendOrigin(cookie)),
+    );
 
     return new Response(upstreamResponse.body, {
       status: upstreamResponse.status,

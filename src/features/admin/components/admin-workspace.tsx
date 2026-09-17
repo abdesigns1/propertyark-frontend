@@ -1,21 +1,18 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AdminDashboardHeader } from "@/features/admin/components/admin-dashboard-header";
 import { AdminSidebar } from "@/features/admin/components/admin-sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/store/auth.store";
 import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
+import { useAuthSessionReady } from "@/hooks/use-auth-session-ready";
 import { cn } from "@/lib/utils";
 
 export function AdminWorkspace({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const ready = useSyncExternalStore(
-    (onChange) => useAuthStore.persist.onFinishHydration(onChange),
-    () => useAuthStore.persist.hasHydrated(),
-    () => false,
-  );
+  const ready = useAuthSessionReady();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const role = useAuthStore((state) => state.role);
   const hasAdminAccess =

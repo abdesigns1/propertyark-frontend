@@ -32,6 +32,7 @@ import {
   creditPaymentKeys,
 } from "@/features/vendor/hooks/use-credit-payment";
 import {
+  PENDING_CREDIT_BALANCE_KEY,
   PENDING_CREDIT_REFERENCE_KEY,
   type CreditInfo,
   type CreditPurchaseQuote,
@@ -116,6 +117,15 @@ export function CreditPointsPayment() {
     if (!quote) return;
     initializePurchase.mutate(quote.points, {
       onSuccess: (purchase) => {
+        if (
+          creditInfo.data?.balance !== null &&
+          creditInfo.data?.balance !== undefined
+        ) {
+          sessionStorage.setItem(
+            PENDING_CREDIT_BALANCE_KEY,
+            String(creditInfo.data.balance),
+          );
+        }
         if (purchase.reference) {
           sessionStorage.setItem(
             PENDING_CREDIT_REFERENCE_KEY,

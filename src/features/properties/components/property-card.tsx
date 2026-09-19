@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { BedDouble, Bath, Images, MapPin, Play, Ruler } from "lucide-react";
+import { BedDouble, Bath, MapPin, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Price } from "@/components/shared/price";
@@ -36,7 +36,6 @@ export function PropertyCard({
 }: PropertyCardProps) {
   const [imageIndex, setImageIndex] = useState(0);
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
-  const [showingWalkthrough, setShowingWalkthrough] = useState(false);
   const {
     id,
     title,
@@ -49,15 +48,11 @@ export function PropertyCard({
     bathrooms,
     sizeSqm,
     images,
-    videoUrl,
   } = property;
   const carouselImages = useMemo(() => {
     const uniqueImages = [...new Set(images.filter(Boolean))];
     return uniqueImages.length ? uniqueImages : [PROPERTY_IMAGE_FALLBACK];
   }, [images]);
-  const displayedImage =
-    carouselImages[imageIndex] ?? carouselImages[0] ?? PROPERTY_IMAGE_FALLBACK;
-
   useEffect(() => {
     if (!carouselApi) return;
     const updateIndex = () => setImageIndex(carouselApi.selectedScrollSnap());
@@ -75,103 +70,66 @@ export function PropertyCard({
     <div className="group overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
       {/* Image */}
       <div className="relative aspect-[4/3] w-full overflow-hidden">
-        {showingWalkthrough && videoUrl ? (
-          <video
-            src={videoUrl}
-            poster={displayedImage}
-            className="size-full bg-black object-cover"
-            controls
-            autoPlay
-            playsInline
-            preload="metadata"
-          >
-            Your browser does not support video playback.
-          </video>
-        ) : (
-          <Carousel
-            setApi={setCarouselApi}
-            opts={{ loop: carouselImages.length > 1 }}
-            className="size-full"
-            aria-label={`${title} property images`}
-          >
-            <CarouselContent className="ml-0 size-full">
-              {carouselImages.map((image, index) => (
-                <CarouselItem
-                  key={`${image}-${index}`}
-                  className="relative aspect-[4/3] pl-0"
-                  aria-label={`Image ${index + 1} of ${carouselImages.length}`}
-                >
-                  <PropertyCarouselImage
-                    src={image}
-                    alt={`${title}, image ${index + 1}`}
+        <Carousel
+          setApi={setCarouselApi}
+          opts={{ loop: carouselImages.length > 1 }}
+          className="size-full"
+          aria-label={`${title} property images`}
+        >
+          <CarouselContent className="ml-0 size-full">
+            {carouselImages.map((image, index) => (
+              <CarouselItem
+                key={`${image}-${index}`}
+                className="relative aspect-[4/3] pl-0"
+                aria-label={`Image ${index + 1} of ${carouselImages.length}`}
+              >
+                <PropertyCarouselImage
+                  src={image}
+                  alt={`${title}, image ${index + 1}`}
+                />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+
+          {carouselImages.length > 1 && (
+            <>
+              <CarouselPrevious className="left-3 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100" />
+              <CarouselNext className="right-3 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100" />
+              <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+                {carouselImages.map((_, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    aria-label={`Show property image ${index + 1}`}
+                    aria-current={imageIndex === index ? "true" : undefined}
+                    className={cn(
+                      "size-2 rounded-full border border-white/80 shadow-sm transition-all",
+                      imageIndex === index
+                        ? "w-5 bg-white"
+                        : "bg-white/55 hover:bg-white",
+                    )}
+                    onClick={() => carouselApi?.scrollTo(index)}
                   />
-                </CarouselItem>
-              ))}
-            </CarouselContent>
+                ))}
+              </div>
+            </>
+          )}
+        </Carousel>
 
-            {carouselImages.length > 1 && (
-              <>
-                <CarouselPrevious className="left-3 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100" />
-                <CarouselNext className="right-3 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100" />
-                <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
-                  {carouselImages.map((_, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      aria-label={`Show property image ${index + 1}`}
-                      aria-current={imageIndex === index ? "true" : undefined}
-                      className={cn(
-                        "size-2 rounded-full border border-white/80 shadow-sm transition-all",
-                        imageIndex === index
-                          ? "w-5 bg-white"
-                          : "bg-white/55 hover:bg-white",
-                      )}
-                      onClick={() => carouselApi?.scrollTo(index)}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-          </Carousel>
-        )}
-
-        {!showingWalkthrough && (
-          <span
-            className={cn(
-              "absolute left-3 top-3 rounded-md px-2.5 py-1 text-xs font-semibold",
-              PURPOSE_BADGE_STYLES[purpose],
-            )}
-          >
-            {PURPOSE_LABELS[purpose]}
-          </span>
-        )}
+        <span
+          className={cn(
+            "absolute left-3 top-3 rounded-md px-2.5 py-1 text-xs font-semibold",
+            PURPOSE_BADGE_STYLES[purpose],
+          )}
+        >
+          {PURPOSE_LABELS[purpose]}
+        </span>
 
         <PropertyCardActions
           propertyId={id}
           propertyTitle={title}
           className="absolute right-3 top-3"
         />
-
-        {videoUrl && (
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className={cn(
-              "absolute left-3 rounded-full shadow-md",
-              showingWalkthrough ? "top-3" : "bottom-3",
-            )}
-            onClick={() => setShowingWalkthrough((current) => !current)}
-            aria-pressed={showingWalkthrough}
-          >
-            {showingWalkthrough ? (
-              <Images data-icon="inline-start" />
-            ) : (
-              <Play data-icon="inline-start" />
-            )}
-            {showingWalkthrough ? "View photos" : "Walkthrough"}
-          </Button>
-        )}
       </div>
 
       {/* Content */}

@@ -156,8 +156,12 @@ export function normalizePropertyResponse(property: PropertyApiItem): Property {
     shortletDetails:
       property.listingType === "FOR_SHORTLET"
         ? {
-            checkInTime: property.shortletCheckInTime ?? undefined,
-            checkOutTime: property.shortletCheckOutTime ?? undefined,
+            checkInTime:
+              property.checkInTime ?? property.shortletCheckInTime ?? undefined,
+            checkOutTime:
+              property.checkOutTime ??
+              property.shortletCheckOutTime ??
+              undefined,
             houseRules: normalizeHouseRules(property.houseRules),
             cancellationPolicy: property.cancellationPolicy ?? undefined,
             paymentPolicy: property.paymentPolicy ?? undefined,

@@ -53,6 +53,8 @@ export interface PropertyApiItem {
   bookedSlots?: PropertyBookedSlotResponse[];
   shortletCheckInTime?: string | null;
   shortletCheckOutTime?: string | null;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
   houseRules?: string[];
   cancellationPolicy?: string | null;
   paymentPolicy?: string | null;

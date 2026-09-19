@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -65,6 +65,8 @@ import {
 } from "@/features/properties/utils/normalize-property-response";
 import { PropertyImageLightbox } from "@/features/properties/components/property-image-lightbox";
 import { cn } from "@/lib/utils";
+import { trustedUploadProxyUrl } from "@/lib/property-media-security";
+import { useAuthStore } from "@/store/auth.store";
 
 export function AdminPropertyDetailsPage({
   propertyId,
@@ -239,6 +241,9 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
               </p>
             </CardContent>
           </Card>
+          {property.listingType === "FOR_SHORTLET" && (
+            <ShortletStayInformation property={property} />
+          )}
         </div>
 
         <aside className="flex flex-col gap-5 xl:sticky xl:top-20">
@@ -299,6 +304,69 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
       />
     </main>
   );
+}
+
+function ShortletStayInformation({ property }: { property: PropertyApiItem }) {
+  const houseRules = property.houseRules ?? [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Stay information and policies</CardTitle>
+        <CardDescription>
+          Review the guest arrival details and policies supplied by the vendor.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-6 sm:grid-cols-2">
+        <div>
+          <h3 className="font-medium">Check-in and check-out</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Check-in: {formatStayTime(property.shortletCheckInTime)} ·
+            Check-out: {formatStayTime(property.shortletCheckOutTime)}
+          </p>
+        </div>
+        <div>
+          <h3 className="font-medium">House rules</h3>
+          {houseRules.length ? (
+            <ul className="mt-2 list-disc pl-5 text-sm text-muted-foreground">
+              {houseRules.map((rule) => (
+                <li key={rule}>{rule}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">
+              No additional house rules supplied.
+            </p>
+          )}
+        </div>
+        <div>
+          <h3 className="font-medium">Cancellation policy</h3>
+          <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
+            {property.cancellationPolicy || "No cancellation policy supplied."}
+          </p>
+        </div>
+        <div>
+          <h3 className="font-medium">Payment policy</h3>
+          <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
+            {property.paymentPolicy || "No payment policy supplied."}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function formatStayTime(value?: string | null) {
+  if (!value) return "Not supplied";
+  const match = value.match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return value;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isInteger(hours) || hours > 23 || minutes > 59) return value;
+  return new Intl.DateTimeFormat("en-NG", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(2000, 0, 1, hours, minutes));
 }
 
 function PropertyMedia({
@@ -532,8 +600,9 @@ function DocumentsCard({
   >(null);
   const rawPreviewUrl = preview?.url ?? preview?.fileUrl;
   const previewUrl = rawPreviewUrl
-    ? normalizePropertyMediaUrl(rawPreviewUrl)
-    : undefined;
+    ? trustedUploadProxyUrl(rawPreviewUrl, "kyc")
+    : null;
+  const accessToken = useAuthStore((state) => state.accessToken);
 
   return (
     <>
@@ -548,9 +617,9 @@ function DocumentsCard({
           {documents.length ? (
             documents.map((document) => {
               const rawUrl = document.url ?? document.fileUrl;
-              const url = rawUrl
-                ? normalizePropertyMediaUrl(rawUrl)
-                : undefined;
+              const url = rawUrl ? trustedUploadProxyUrl(rawUrl, "kyc") : null;
+              const documentName =
+                document.name ?? document.fileName ?? "Property document";
               return (
                 <div
                   key={document.id}
@@ -559,9 +628,7 @@ function DocumentsCard({
                   <FileText className="size-8 text-primary" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
-                      {document.name ??
-                        document.fileName ??
-                        "Property document"}
+                      {documentName}
                     </p>
                     <p className="text-xs text-success">Uploaded</p>
                   </div>
@@ -575,10 +642,20 @@ function DocumentsCard({
                       >
                         <Eye />
                       </Button>
-                      <Button variant="ghost" size="icon-sm" asChild>
-                        <a href={url} download aria-label="Download document">
-                          <Download />
-                        </a>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Download document"
+                        onClick={() =>
+                          void downloadAdminDocument(
+                            url,
+                            documentName,
+                            accessToken,
+                          )
+                        }
+                      >
+                        <Download />
                       </Button>
                     </>
                   )}
@@ -616,39 +693,138 @@ function DocumentsCard({
               Review the document before making a property decision.
             </DialogDescription>
           </DialogHeader>
-          {previewUrl && isImageDocument(previewUrl, preview?.type) ? (
-            <div className="relative min-h-[65vh] overflow-hidden rounded-lg bg-muted">
-              <Image
-                src={previewUrl}
-                alt={preview?.name ?? preview?.fileName ?? "Property document"}
-                fill
-                crossOrigin="anonymous"
-                unoptimized
-                sizes="90vw"
-                className="object-contain"
-              />
-            </div>
-          ) : previewUrl ? (
-            <iframe
-              src={previewUrl}
-              title={preview?.name ?? preview?.fileName ?? "Property document"}
-              className="h-[70vh] w-full rounded-lg border"
+          {previewUrl && preview ? (
+            <AuthenticatedPropertyDocument
+              url={previewUrl}
+              name={preview.name ?? preview.fileName ?? "Property document"}
+              declaredType={preview.type}
             />
           ) : null}
-          {previewUrl && (
-            <DialogFooter>
-              <Button variant="outline" asChild>
-                <a href={previewUrl} download>
-                  <Download data-icon="inline-start" />
-                  Download Document
-                </a>
-              </Button>
-            </DialogFooter>
-          )}
         </DialogContent>
       </Dialog>
     </>
   );
+}
+
+function AuthenticatedPropertyDocument({
+  url,
+  name,
+  declaredType,
+}: {
+  url: string;
+  name: string;
+  declaredType?: string;
+}) {
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const [file, setFile] = useState<{
+    objectUrl: string;
+    contentType: string;
+  } | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    const controller = new AbortController();
+    let objectUrl: string | null = null;
+
+    void fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: "same-origin",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Document request failed");
+        const blob = await response.blob();
+        objectUrl = URL.createObjectURL(blob);
+        setFile({ objectUrl, contentType: blob.type });
+        setFailed(false);
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setFailed(true);
+        }
+      });
+
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [accessToken, url]);
+
+  if (!accessToken || failed) {
+    return (
+      <div className="flex min-h-[55vh] flex-col items-center justify-center rounded-lg border text-center text-muted-foreground">
+        <FileText className="size-10" />
+        <p className="mt-3">This document could not be securely loaded.</p>
+      </div>
+    );
+  }
+
+  if (!file) return <Skeleton className="min-h-[65vh] w-full" />;
+
+  const image =
+    file.contentType.startsWith("image/") ||
+    isImageDocument(name, declaredType);
+
+  return (
+    <>
+      {image ? (
+        <div className="relative min-h-[65vh] overflow-hidden rounded-lg bg-muted">
+          <Image
+            src={file.objectUrl}
+            alt={name}
+            fill
+            unoptimized
+            sizes="90vw"
+            className="object-contain"
+          />
+        </div>
+      ) : (
+        <iframe
+          src={file.objectUrl}
+          title={name}
+          className="h-[70vh] w-full rounded-lg border"
+        />
+      )}
+      <DialogFooter>
+        <Button variant="outline" asChild>
+          <a href={file.objectUrl} download={name}>
+            <Download data-icon="inline-start" />
+            Download Document
+          </a>
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+async function downloadAdminDocument(
+  url: string,
+  name: string,
+  accessToken: string | null,
+) {
+  if (!accessToken) {
+    toast.error("Your admin session is not ready. Please try again.");
+    return;
+  }
+
+  try {
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!response.ok) throw new Error("Document download failed");
+    const objectUrl = URL.createObjectURL(await response.blob());
+    const anchor = window.document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = name;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
+  } catch {
+    toast.error("The document could not be downloaded.");
+  }
 }
 
 function isImageDocument(url: string, type?: string) {

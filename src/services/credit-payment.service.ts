@@ -12,7 +12,23 @@ export interface CreditInfo {
   currency: string;
   minimumPurchasePoints: number | null;
   pricePerPoint: number | null;
+  newVendorBonusPoints?: number | null;
+  newVendorBonusExpiryDays?: number | null;
+  propertyCreationCost?: number | null;
+  featurePropertyCost?: number | null;
+  featurePropertyDurationDays?: number | null;
   transactions: CreditTransaction[];
+}
+
+export interface CreditPointRules {
+  newVendorBonusPoints: number | null;
+  newVendorBonusExpiryDays: number | null;
+  propertyCreationCost: number | null;
+  featurePropertyCost: number | null;
+  featurePropertyDurationDays: number | null;
+  minimumPurchasePoints: number | null;
+  pricePerPoint: number | null;
+  currency: string;
 }
 
 export type CreditTransactionKind =
@@ -291,6 +307,38 @@ function transactionsFor(value: unknown, fallbackCurrency: string) {
 }
 
 export const creditPaymentService = {
+  getCreditRules: async (): Promise<CreditPointRules> => {
+    const { data } = await api.get("/credit-points/settings");
+    return {
+      newVendorBonusPoints: numberFor(data, [
+        "newVendorBonusPoints",
+        "new_vendor_bonus_points",
+      ]),
+      newVendorBonusExpiryDays: numberFor(data, [
+        "newVendorBonusExpiryDays",
+        "new_vendor_bonus_expiry_days",
+      ]),
+      propertyCreationCost: numberFor(data, [
+        "propertyCreationCost",
+        "property_creation_cost",
+      ]),
+      featurePropertyCost: numberFor(data, [
+        "featurePropertyCost",
+        "feature_property_cost",
+      ]),
+      featurePropertyDurationDays: numberFor(data, [
+        "featurePropertyDurationDays",
+        "feature_property_duration_days",
+      ]),
+      minimumPurchasePoints: numberFor(data, [
+        "minimumPurchasePoints",
+        "minimum_purchase_points",
+      ]),
+      pricePerPoint: numberFor(data, ["pricePerPoint", "price_per_point"]),
+      currency: stringFor(data, ["currency"]) ?? "NGN",
+    };
+  },
+
   getCreditInfo: async (): Promise<CreditInfo> => {
     const { data } = await api.get("/credit-points/my-credit");
     const currency = stringFor(data, ["currency"]) ?? "NGN";
@@ -326,6 +374,26 @@ export const creditPaymentService = {
         "minimum_purchase_points",
       ]),
       pricePerPoint: numberFor(data, ["pricePerPoint", "price_per_point"]),
+      newVendorBonusPoints: numberFor(data, [
+        "newVendorBonusPoints",
+        "new_vendor_bonus_points",
+      ]),
+      newVendorBonusExpiryDays: numberFor(data, [
+        "newVendorBonusExpiryDays",
+        "new_vendor_bonus_expiry_days",
+      ]),
+      propertyCreationCost: numberFor(data, [
+        "propertyCreationCost",
+        "property_creation_cost",
+      ]),
+      featurePropertyCost: numberFor(data, [
+        "featurePropertyCost",
+        "feature_property_cost",
+      ]),
+      featurePropertyDurationDays: numberFor(data, [
+        "featurePropertyDurationDays",
+        "feature_property_duration_days",
+      ]),
       transactions,
     };
   },

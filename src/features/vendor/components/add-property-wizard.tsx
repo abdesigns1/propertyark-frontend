@@ -460,8 +460,8 @@ export function AddPropertyWizard({
       amenities: JSON.stringify(values.amenities),
       ...(values.listingType === "FOR_SHORTLET"
         ? {
-            shortletCheckInTime: values.shortletCheckInTime,
-            shortletCheckOutTime: values.shortletCheckOutTime,
+            checkInTime: values.shortletCheckInTime,
+            checkOutTime: values.shortletCheckOutTime,
             houseRules: JSON.stringify(
               values.houseRules
                 .split(/\r?\n/)

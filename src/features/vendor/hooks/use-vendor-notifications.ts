@@ -20,7 +20,8 @@ export function useVendorNotifications() {
     enabled: Boolean(accountKey),
     placeholderData: (previous) => previous,
     staleTime: 30_000,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });

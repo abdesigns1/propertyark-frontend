@@ -11,7 +11,8 @@ export function useAdminActivities(page = 1, limit = 20, entityType = "ALL") {
         entityType: entityType === "ALL" ? undefined : entityType,
       }),
     placeholderData: (previous) => previous,
-    refetchInterval: 15_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     staleTime: 10_000,
   });
@@ -35,9 +36,8 @@ export function useAdminAllActivities(entityType = "ALL") {
       );
       return [firstPage, ...remainingPages].flatMap((page) => page.activities);
     },
-    refetchInterval: 15_000,
-    refetchOnWindowFocus: true,
-    staleTime: 10_000,
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
   });
 }
 

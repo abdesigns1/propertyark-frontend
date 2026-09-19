@@ -17,8 +17,8 @@ export function useVendorInspections() {
     queryFn: inspectionService.getVendorInspections,
     enabled: Boolean(accountKey),
     staleTime: 30_000,
-    refetchInterval: 30_000,
-    refetchIntervalInBackground: true,
+    refetchInterval: 2 * 60_000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });

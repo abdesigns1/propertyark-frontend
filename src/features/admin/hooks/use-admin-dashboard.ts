@@ -79,8 +79,7 @@ export function useAdminGrowthHistory() {
       };
     },
     staleTime: 30_000,
-    refetchInterval: 60_000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     retry: 1,
   });
 }

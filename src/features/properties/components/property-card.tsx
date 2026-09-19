@@ -1,12 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { BedDouble, Bath, Images, MapPin, Play, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Price } from "@/components/shared/price";
+import {
+  Carousel,
+  type CarouselApi,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 import {
   PURPOSE_LABELS,
@@ -27,6 +35,7 @@ export function PropertyCard({
   compactPrice = false,
 }: PropertyCardProps) {
   const [imageIndex, setImageIndex] = useState(0);
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const [showingWalkthrough, setShowingWalkthrough] = useState(false);
   const {
     id,
@@ -42,7 +51,25 @@ export function PropertyCard({
     images,
     videoUrl,
   } = property;
-  const displayedImage = images[imageIndex] ?? PROPERTY_IMAGE_FALLBACK;
+  const carouselImages = useMemo(() => {
+    const uniqueImages = [...new Set(images.filter(Boolean))];
+    return uniqueImages.length ? uniqueImages : [PROPERTY_IMAGE_FALLBACK];
+  }, [images]);
+  const displayedImage =
+    carouselImages[imageIndex] ?? carouselImages[0] ?? PROPERTY_IMAGE_FALLBACK;
+
+  useEffect(() => {
+    if (!carouselApi) return;
+    const updateIndex = () => setImageIndex(carouselApi.selectedScrollSnap());
+    const frame = window.requestAnimationFrame(updateIndex);
+    carouselApi.on("select", updateIndex);
+    carouselApi.on("reInit", updateIndex);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      carouselApi.off("select", updateIndex);
+      carouselApi.off("reInit", updateIndex);
+    };
+  }, [carouselApi]);
 
   return (
     <div className="group overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
@@ -61,21 +88,51 @@ export function PropertyCard({
             Your browser does not support video playback.
           </video>
         ) : (
-          <Image
-            key={displayedImage}
-            src={displayedImage}
-            alt={title}
-            fill
-            crossOrigin="anonymous"
-            unoptimized
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-            onError={() => {
-              if (imageIndex < images.length) {
-                setImageIndex((current) => current + 1);
-              }
-            }}
-          />
+          <Carousel
+            setApi={setCarouselApi}
+            opts={{ loop: carouselImages.length > 1 }}
+            className="size-full"
+            aria-label={`${title} property images`}
+          >
+            <CarouselContent className="ml-0 size-full">
+              {carouselImages.map((image, index) => (
+                <CarouselItem
+                  key={`${image}-${index}`}
+                  className="relative aspect-[4/3] pl-0"
+                  aria-label={`Image ${index + 1} of ${carouselImages.length}`}
+                >
+                  <PropertyCarouselImage
+                    src={image}
+                    alt={`${title}, image ${index + 1}`}
+                  />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+
+            {carouselImages.length > 1 && (
+              <>
+                <CarouselPrevious className="left-3 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100" />
+                <CarouselNext className="right-3 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100" />
+                <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+                  {carouselImages.map((_, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      aria-label={`Show property image ${index + 1}`}
+                      aria-current={imageIndex === index ? "true" : undefined}
+                      className={cn(
+                        "size-2 rounded-full border border-white/80 shadow-sm transition-all",
+                        imageIndex === index
+                          ? "w-5 bg-white"
+                          : "bg-white/55 hover:bg-white",
+                      )}
+                      onClick={() => carouselApi?.scrollTo(index)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </Carousel>
         )}
 
         {!showingWalkthrough && (
@@ -182,5 +239,21 @@ export function PropertyCard({
         </div>
       </div>
     </div>
+  );
+}
+
+function PropertyCarouselImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <Image
+      src={failed ? PROPERTY_IMAGE_FALLBACK : src}
+      alt={alt}
+      fill
+      crossOrigin="anonymous"
+      unoptimized
+      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+      className="object-cover transition-transform duration-300 group-hover:scale-105"
+      onError={() => setFailed(true)}
+    />
   );
 }

@@ -18,7 +18,8 @@ export function useShortletBookings() {
     queryFn: shortletBookingService.getDashboard,
     enabled: Boolean(accountKey),
     staleTime: 30_000,
-    refetchInterval: 30_000,
+    refetchInterval: 2 * 60_000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });

@@ -8,10 +8,7 @@ export function useAvailableProperties(page = 1, limit = 12) {
   return useQuery({
     queryKey: ["properties", "available", page, limit],
     queryFn: () => propertyService.getAvailable({ page, limit }),
-    staleTime: 15_000,
-    refetchOnMount: "always",
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: true,
+    staleTime: 2 * 60_000,
     refetchOnReconnect: true,
   });
 }
@@ -29,10 +26,7 @@ export function usePaginatedAvailableProperties({
     queryKey: ["properties", "available", "page", page, limit, filters],
     queryFn: () => propertyService.getAvailablePage({ page, limit, filters }),
     placeholderData: (previousData) => previousData,
-    staleTime: 15_000,
-    refetchOnMount: "always",
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: true,
+    staleTime: 2 * 60_000,
     refetchOnReconnect: true,
   });
 }
@@ -43,10 +37,7 @@ export function useAllAvailableProperties(
   return useQuery({
     queryKey: ["properties", "available", "all", filters],
     queryFn: () => propertyService.getAllAvailable(filters),
-    staleTime: 15_000,
-    refetchOnMount: "always",
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60_000,
     refetchOnReconnect: true,
   });
 }

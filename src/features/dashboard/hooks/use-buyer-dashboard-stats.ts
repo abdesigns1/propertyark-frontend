@@ -39,7 +39,8 @@ export function useBuyerRecentActivities() {
     queryFn: buyerDashboardService.getRecentActivities,
     enabled: Boolean(ownerKey),
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval: 2 * 60_000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });

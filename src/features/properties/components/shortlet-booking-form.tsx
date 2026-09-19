@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   LoaderCircle,
   MapPin,
-  Star,
   WalletCards,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -333,13 +332,6 @@ export function ShortletBookingForm({
               <h2 className="font-semibold leading-snug">{property.title}</h2>
               <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
                 <MapPin /> {property.location.city}, {property.location.state}
-              </p>
-              <p className="mt-2 flex items-center gap-1 text-xs">
-                <Star className="fill-warning text-warning" />
-                {property.rating ?? "New"}
-                <span className="text-muted-foreground">
-                  ({property.reviewCount ?? 0} reviews)
-                </span>
               </p>
             </div>
           </div>

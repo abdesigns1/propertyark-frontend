@@ -23,8 +23,8 @@ export function useDashboardNotificationIndicators() {
       Boolean(accountKey) &&
       (role === "vendor" || role === "buyer" || role === "user"),
     staleTime: 30_000,
-    refetchInterval: 30_000,
-    refetchIntervalInBackground: true,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });

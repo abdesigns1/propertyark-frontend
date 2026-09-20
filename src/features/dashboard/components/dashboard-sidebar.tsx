@@ -19,6 +19,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  ShieldCheck,
   WalletCards,
 } from "lucide-react";
 import { DashboardBrand } from "./dashboard-brand";
@@ -64,6 +65,11 @@ const vendorNavigation = [
     label: "Credit Points & Payments",
     icon: BadgePercent,
     href: "/vendor/subscription-rewards",
+  },
+  {
+    label: "Identity Verification",
+    icon: ShieldCheck,
+    href: "/vendor/kyc-onboarding",
   },
   {
     label: "Messages",

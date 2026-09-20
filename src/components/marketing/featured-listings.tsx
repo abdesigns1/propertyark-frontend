@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { PropertyCard } from "@/features/properties/components/property-card";
-import { useAvailableProperties } from "@/features/properties/hooks/use-available-properties";
+import {
+  useAvailableProperties,
+  useFeaturedProperties,
+} from "@/features/properties/hooks/use-available-properties";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CONTAINER, cn } from "@/lib/utils";
 import {
@@ -13,14 +16,18 @@ import {
 } from "@/components/motion";
 
 export function FeaturedListings() {
+  const featuredProperties = useFeaturedProperties();
   const availableProperties = useAvailableProperties(1, 8);
-  const properties = availableProperties.data?.properties ?? [];
-  const rentProperties = properties.filter(
-    (property) => property.purpose === "rent",
-  );
-  const rentals = (
-    rentProperties.length ? rentProperties : properties.slice(4)
-  ).slice(0, 4);
+  const properties = featuredProperties.data?.length
+    ? featuredProperties.data
+    : (availableProperties.data?.properties ?? []);
+  const featured = properties.slice(0, 4);
+  const isLoading =
+    featuredProperties.isLoading && availableProperties.isLoading;
+  const isError =
+    featuredProperties.isError &&
+    availableProperties.isError &&
+    properties.length === 0;
 
   return (
     <section className={cn(CONTAINER, "py-20")}>
@@ -34,7 +41,7 @@ export function FeaturedListings() {
           </p>
         </div>
         <Link
-          href="/properties?type=rent"
+          href="/properties"
           className="hidden items-center gap-1 text-sm font-medium text-primary hover:text-primary-hover sm:flex"
         >
           View All
@@ -42,19 +49,19 @@ export function FeaturedListings() {
         </Link>
       </SlideInTop>
 
-      {availableProperties.isLoading ? (
+      {isLoading ? (
         <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }, (_, index) => (
             <Skeleton key={index} className="h-[420px] rounded-xl" />
           ))}
         </div>
-      ) : availableProperties.isError ? (
+      ) : isError ? (
         <p className="mt-8 rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
           Featured listings are temporarily unavailable.
         </p>
-      ) : rentals.length ? (
+      ) : featured.length ? (
         <AnimatedContainer className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-          {rentals.map((property) => (
+          {featured.map((property) => (
             <AnimatedItem key={property.id}>
               <PropertyCard property={property} />
             </AnimatedItem>
@@ -67,7 +74,7 @@ export function FeaturedListings() {
       )}
 
       <Link
-        href="/properties?type=rent"
+        href="/properties"
         className="mt-6 flex items-center justify-center gap-1 text-sm font-medium text-primary hover:text-primary-hover sm:hidden"
       >
         View All

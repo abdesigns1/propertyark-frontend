@@ -14,6 +14,7 @@ import {
   Percent,
   Plus,
   Search,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -59,6 +60,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
   TableBody,
@@ -85,6 +87,11 @@ import {
   type PropertyDraftValues,
 } from "@/features/vendor/lib/vendor-property-display";
 import { VendorPropertyThumbnail } from "@/features/vendor/components/vendor-property-thumbnail";
+import {
+  creditPaymentKeys,
+  useCreditRules,
+} from "@/features/vendor/hooks/use-credit-payment";
+import { DEFAULT_CREDIT_SETTINGS } from "@/services/admin-credit.service";
 
 const PAGE_SIZE = 6;
 const EMPTY_PROPERTIES: PropertyApiItem[] = [];
@@ -124,6 +131,7 @@ function StatCard({
 
 export function VendorProperties() {
   const query = useVendorProperties();
+  const creditRules = useCreditRules();
   const queryClient = useQueryClient();
   const accountKey = useAccountKey();
   const [search, setSearch] = useState("");
@@ -135,6 +143,9 @@ export function VendorProperties() {
     "occupancy",
   );
   const [deleteTarget, setDeleteTarget] = useState<PropertyApiItem | null>(
+    null,
+  );
+  const [featureTarget, setFeatureTarget] = useState<PropertyApiItem | null>(
     null,
   );
   const [draftProperties, setDraftProperties] = useState<PropertyApiItem[]>([]);
@@ -226,6 +237,43 @@ export function VendorProperties() {
     onError: (error) =>
       toast.error(
         getApiErrorMessage(error, "The property could not be deleted."),
+      ),
+  });
+  const featureCost =
+    creditRules.data?.featurePropertyCost ??
+    DEFAULT_CREDIT_SETTINGS.featurePropertyCost;
+  const featureDuration =
+    creditRules.data?.featurePropertyDurationDays ??
+    DEFAULT_CREDIT_SETTINGS.featurePropertyDurationDays;
+  const feature = useMutation({
+    mutationFn: (propertyId: string) =>
+      propertyService.feature(propertyId, featureCost),
+    onSuccess: async () => {
+      setFeatureTarget(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: creditPaymentKeys.info }),
+        queryClient.invalidateQueries({ queryKey: ["properties", "featured"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["properties", "available"],
+        }),
+        ...(accountKey
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: vendorPropertiesQueryKey(accountKey),
+              }),
+              queryClient.invalidateQueries({
+                queryKey: vendorDashboardQueryKey(accountKey),
+              }),
+            ]
+          : []),
+      ]);
+      toast.success(
+        `Property featured for ${featureDuration.toLocaleString("en-NG")} days.`,
+      );
+    },
+    onError: (error) =>
+      toast.error(
+        getApiErrorMessage(error, "The property could not be featured."),
       ),
   });
 
@@ -487,6 +535,9 @@ export function VendorProperties() {
                               <p className="max-w-52 truncate font-medium">
                                 {property.name}
                               </p>
+                              {property.isFeatured && (
+                                <Badge variant="secondary">Featured</Badge>
+                              )}
                               <p className="text-xs text-muted-foreground">
                                 Ref: {property.id.slice(0, 10).toUpperCase()}
                               </p>
@@ -556,6 +607,18 @@ export function VendorProperties() {
                                     Edit property
                                   </Link>
                                 </DropdownMenuItem>
+                                {!property.id.startsWith("draft:") &&
+                                  propertyStatus.key === "published" &&
+                                  !property.isFeatured && (
+                                    <DropdownMenuItem
+                                      onSelect={() =>
+                                        setFeatureTarget(property)
+                                      }
+                                    >
+                                      <Sparkles />
+                                      Feature property
+                                    </DropdownMenuItem>
+                                  )}
                                 <DropdownMenuItem
                                   variant="destructive"
                                   disabled={remove.isPending}
@@ -618,6 +681,56 @@ export function VendorProperties() {
           </div>
         )}
       </Card>
+      <Dialog
+        open={Boolean(featureTarget)}
+        onOpenChange={(open) => {
+          if (!open && !feature.isPending) setFeatureTarget(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Feature this property?</DialogTitle>
+            <DialogDescription>
+              “{featureTarget?.name}” will receive premium placement for{" "}
+              {featureDuration.toLocaleString("en-NG")} days. This will deduct{" "}
+              {featureCost.toLocaleString("en-NG")} points from your available
+              balance.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-xl bg-muted p-4">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Feature cost</span>
+              <span className="font-semibold">
+                {featureCost.toLocaleString("en-NG")} points
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Duration</span>
+              <span className="font-semibold">
+                {featureDuration.toLocaleString("en-NG")} days
+              </span>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={feature.isPending}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              disabled={feature.isPending || !featureTarget}
+              onClick={() => featureTarget && feature.mutate(featureTarget.id)}
+            >
+              {feature.isPending ? (
+                <Spinner data-icon="inline-start" />
+              ) : (
+                <Sparkles data-icon="inline-start" />
+              )}
+              {feature.isPending ? "Featuring..." : "Feature property"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={Boolean(deleteTarget)}
         onOpenChange={(open) => {

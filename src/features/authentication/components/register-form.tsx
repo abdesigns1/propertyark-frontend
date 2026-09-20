@@ -324,7 +324,10 @@ export function RegisterForm() {
         variant="outline"
         onClick={() => {
           try {
-            startGoogleAuth({ role: role === "vendor" ? "VENDOR" : "USER" });
+            startGoogleAuth({
+              role: role === "vendor" ? "VENDOR" : "USER",
+              requireVendorKyc: role === "vendor",
+            });
           } catch (error) {
             toast.error(
               error instanceof Error

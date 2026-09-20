@@ -21,6 +21,7 @@ import {
   LockKeyhole,
   MapPin,
   ShieldCheck,
+  StarOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminActionDialog } from "@/features/admin/components/admin-action-dialog";
@@ -52,6 +53,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { adminService } from "@/services/admin.service";
 import { getApiErrorMessage } from "@/services/api-error";
@@ -67,6 +69,9 @@ import { PropertyImageLightbox } from "@/features/properties/components/property
 import { cn } from "@/lib/utils";
 import { trustedUploadProxyUrl } from "@/lib/property-media-security";
 import { useAuthStore } from "@/store/auth.store";
+import { useAdminCreditSettings } from "@/features/admin/hooks/use-admin-credit";
+import { DEFAULT_CREDIT_SETTINGS } from "@/services/admin-credit.service";
+import { propertyService } from "@/services/property.service";
 
 export function AdminPropertyDetailsPage({
   propertyId,
@@ -113,6 +118,7 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [decision, setDecision] = useState<"reject" | "changes" | null>(null);
   const [approveOpen, setApproveOpen] = useState(false);
+  const [unfeatureOpen, setUnfeatureOpen] = useState(false);
   const [reason, setReason] = useState("");
   const images = useMemo(
     () => property.media?.filter((item) => item.type === "IMAGE") ?? [],
@@ -127,6 +133,10 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
   ).toUpperCase();
   const propertyStatus = String(property.status ?? "AVAILABLE").toUpperCase();
   const reviewComplete = isPropertyReviewComplete(property, approvalStatus);
+  const creditSettings = useAdminCreditSettings();
+  const featureCost =
+    creditSettings.data?.featurePropertyCost ??
+    DEFAULT_CREDIT_SETTINGS.featurePropertyCost;
 
   const review = useMutation({
     mutationFn: async (action: "approve" | "reject") => {
@@ -156,6 +166,27 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
           error,
           "The property review could not be submitted.",
         ),
+      ),
+  });
+  const unfeature = useMutation({
+    mutationFn: () => propertyService.unfeature(property.id, featureCost),
+    onSuccess: async () => {
+      setUnfeatureOpen(false);
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["admin", "property", property.id],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "properties"] }),
+        queryClient.invalidateQueries({ queryKey: ["properties", "featured"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["properties", "available"],
+        }),
+      ]);
+      toast.success("Featured placement removed.");
+    },
+    onError: (error) =>
+      toast.error(
+        getApiErrorMessage(error, "Featured placement could not be removed."),
       ),
   });
 
@@ -261,6 +292,16 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
             This property has already been verified and approved.
           </p>
         )}
+        {property.isFeatured && (
+          <Button
+            variant="outline"
+            disabled={unfeature.isPending}
+            onClick={() => setUnfeatureOpen(true)}
+          >
+            <StarOff data-icon="inline-start" />
+            Remove featured status
+          </Button>
+        )}
         <Button
           variant="outline"
           disabled={review.isPending || reviewComplete}
@@ -302,6 +343,39 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
         onClose={() => setApproveOpen(false)}
         onConfirm={() => review.mutate("approve")}
       />
+      <Dialog
+        open={unfeatureOpen}
+        onOpenChange={(open) => {
+          if (!unfeature.isPending) setUnfeatureOpen(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove featured status?</DialogTitle>
+            <DialogDescription>
+              “{property.name}” will be removed from premium featured
+              placements.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={unfeature.isPending}
+              onClick={() => setUnfeatureOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={unfeature.isPending}
+              onClick={() => unfeature.mutate()}
+            >
+              {unfeature.isPending && <Spinner data-icon="inline-start" />}
+              {unfeature.isPending ? "Removing..." : "Remove featured status"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

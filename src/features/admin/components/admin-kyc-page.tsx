@@ -11,6 +11,7 @@ import {
   SearchCheck,
 } from "lucide-react";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
+import { AdminKycDocumentPreview } from "@/features/admin/components/admin-kyc-document-preview";
 import {
   useAdminKycRequests,
   useAdminKycStats,
@@ -20,13 +21,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -42,9 +42,8 @@ import { cn } from "@/lib/utils";
 
 export function AdminKycPage() {
   const [page, setPage] = useState(1);
-  const [role, setRole] = useState("ALL");
   const [status, setStatus] = useState("ALL");
-  const query = useAdminKycRequests(page, status, role);
+  const query = useAdminKycRequests(page, status, "VENDOR");
   const stats = useAdminKycStats();
   const requests = query.data?.requests ?? [];
 
@@ -82,7 +81,7 @@ export function AdminKycPage() {
               KYC Verification
             </h1>
             <p className="mt-1 text-muted-foreground">
-              Manage and review identification documents for vendors and buyers.
+              Manage and review identification documents submitted by vendors.
             </p>
           </div>
           <div className="flex gap-2">
@@ -113,29 +112,7 @@ export function AdminKycPage() {
                 <TabsTrigger value="VERIFIED">Verified</TabsTrigger>
               </TabsList>
             </Tabs>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-muted-foreground">
-                USER TYPE
-              </span>
-              <Select
-                value={role}
-                onValueChange={(value) => {
-                  setRole(value);
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger className="w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="ALL">All Types</SelectItem>
-                    <SelectItem value="USER">Users</SelectItem>
-                    <SelectItem value="VENDOR">Vendors</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
+            <Badge variant="secondary">Vendor submissions only</Badge>
           </CardHeader>
           <CardContent className="p-0">
             {query.isLoading ? (
@@ -257,81 +234,132 @@ function KycStats({
 }
 
 function KycTable({ requests }: { requests: AdminKycRequest[] }) {
+  const [preview, setPreview] = useState<AdminKycRequest | null>(null);
+
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader className="bg-primary/5">
-          <TableRow>
-            <TableHead className="pl-6">User</TableHead>
-            <TableHead>User Type</TableHead>
-            <TableHead>Documents</TableHead>
-            <TableHead>Submitted</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="pr-6 text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {requests.map((item) => (
-            <TableRow key={item.id} className="h-20">
-              <TableCell className="pl-6">
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarImage src={undefined} />
-                    <AvatarFallback>
-                      {item.fullName
-                        .split(" ")
-                        .map((part) => part[0])
-                        .slice(0, 2)
-                        .join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold">{item.fullName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {item.email}
-                    </p>
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge variant="secondary" className="capitalize">
-                  {item.role.toLowerCase()}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <Badge variant="outline">
-                  <FileBadge />
-                  NIN
-                </Badge>
-              </TableCell>
-              <TableCell>
-                {new Intl.DateTimeFormat("en", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                }).format(new Date(item.submittedAt))}
-              </TableCell>
-              <TableCell>
-                <KycStatus status={item.status} />
-              </TableCell>
-              <TableCell className="pr-6 text-right">
-                <Button size="sm" asChild>
-                  <Link href={`/admin/kyc/${item.id}`}>Review Documents</Link>
-                </Button>
-              </TableCell>
+    <>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader className="bg-primary/5">
+            <TableRow>
+              <TableHead className="pl-6">User</TableHead>
+              <TableHead>User Type</TableHead>
+              <TableHead>Documents</TableHead>
+              <TableHead>Submitted</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="pr-6 text-right">Actions</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      {!requests.length && (
-        <div className="flex min-h-64 items-center justify-center text-muted-foreground">
-          No KYC requests match the selected filters.
-        </div>
-      )}
-    </div>
+          </TableHeader>
+          <TableBody>
+            {requests.map((item) => (
+              <TableRow key={item.id} className="h-20">
+                <TableCell className="pl-6">
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarImage src={undefined} />
+                      <AvatarFallback>
+                        {item.fullName
+                          .split(" ")
+                          .map((part) => part[0])
+                          .slice(0, 2)
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-semibold">{item.fullName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.email}
+                      </p>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="secondary" className="capitalize">
+                    {item.role.toLowerCase()}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    disabled={!item.documentUrl}
+                    title={
+                      item.documentUrl
+                        ? "Preview identity document"
+                        : "No document preview is available"
+                    }
+                    onClick={() => setPreview(item)}
+                  >
+                    <FileBadge />
+                    {documentTypeLabel(item)}
+                  </Button>
+                </TableCell>
+                <TableCell>
+                  {new Intl.DateTimeFormat("en", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  }).format(new Date(item.submittedAt))}
+                </TableCell>
+                <TableCell>
+                  <KycStatus status={item.status} />
+                </TableCell>
+                <TableCell className="pr-6 text-right">
+                  <Button size="sm" asChild>
+                    <Link href={`/admin/kyc/${item.id}`}>Review Documents</Link>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        {!requests.length && (
+          <div className="flex min-h-64 items-center justify-center text-muted-foreground">
+            No KYC requests match the selected filters.
+          </div>
+        )}
+      </div>
+
+      <Dialog
+        open={Boolean(preview)}
+        onOpenChange={(open) => !open && setPreview(null)}
+      >
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>
+              {preview ? documentTypeLabel(preview) : "Identity document"}
+            </DialogTitle>
+            <DialogDescription>
+              Quick preview for {preview?.fullName}. Open Review Documents for
+              the verification checklist and approval actions.
+            </DialogDescription>
+          </DialogHeader>
+          {preview?.documentUrl && (
+            <AdminKycDocumentPreview
+              key={preview.documentUrl}
+              url={preview.documentUrl}
+              name={preview.documentName}
+              ownerName={preview.fullName}
+              className="min-h-[65vh]"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
+}
+
+function documentTypeLabel(request: AdminKycRequest) {
+  const value = `${request.documentName} ${request.documentUrl ?? ""}`;
+  if (/\.pdf(?:\s|$)/i.test(value)) return "PDF document";
+  if (/\.png(?:\s|$)/i.test(value)) return "PNG image";
+  if (/\.jpe?g(?:\s|$)/i.test(value)) return "JPEG image";
+  if (/\.webp(?:\s|$)/i.test(value)) return "WebP image";
+  return "Identity document";
 }
 
 function KycStatus({ status }: { status: string }) {

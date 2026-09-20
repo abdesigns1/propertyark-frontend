@@ -3,10 +3,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Download, Eye, Plus, Search } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { BadgeCheck, Download, Eye, Plus, Search, StarOff } from "lucide-react";
+import { toast } from "sonner";
 import { AdminPropertyStats } from "@/features/admin/components/admin-property-stats";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
-import { useAdminProperties } from "@/features/admin/hooks/use-admin-dashboard";
+import {
+  useAdminFeaturedProperties,
+  useAdminProperties,
+} from "@/features/admin/hooks/use-admin-dashboard";
+import { useAdminCreditSettings } from "@/features/admin/hooks/use-admin-credit";
 import { showPropertyImageFallback } from "@/features/properties/utils/normalize-property-response";
 import {
   adminPropertyCategory,
@@ -19,6 +25,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -27,6 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
   TableBody,
@@ -36,31 +51,100 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { AdminManagedProperty } from "@/services/admin.service";
+import { DEFAULT_CREDIT_SETTINGS } from "@/services/admin-credit.service";
+import { getApiErrorMessage } from "@/services/api-error";
+import { propertyService } from "@/services/property.service";
+import type { PropertyApiItem } from "@/features/properties/types/api";
 import { cn } from "@/lib/utils";
 
 export function AdminPropertiesPage() {
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState("ALL");
   const [category, setCategory] = useState("ALL");
   const [priceRange, setPriceRange] = useState("ALL");
+  const [featured, setFeatured] = useState("ALL");
   const [search, setSearch] = useState("");
+  const [removeTarget, setRemoveTarget] = useState<AdminManagedProperty | null>(
+    null,
+  );
   const isSearching = Boolean(search.trim());
+  const isWideQuery = isSearching || featured !== "ALL";
   const query = useAdminProperties(
-    isSearching ? 1 : page,
+    isWideQuery ? 1 : page,
     status,
-    isSearching ? 1000 : 10,
+    isWideQuery ? 1000 : 10,
   );
   const statsQuery = useAdminProperties(1, "ALL");
+  const featuredQuery = useAdminFeaturedProperties();
+  const creditSettings = useAdminCreditSettings();
+  const featureCost =
+    creditSettings.data?.featurePropertyCost ??
+    DEFAULT_CREDIT_SETTINGS.featurePropertyCost;
   const data = query.data;
-  const properties = useMemo(
-    () =>
-      filterProperties(data?.properties ?? [], {
-        search,
-        category,
-        priceRange,
-      }),
-    [category, data?.properties, priceRange, search],
+  const featuredItems = useMemo(
+    () => featuredQuery.data ?? [],
+    [featuredQuery.data],
   );
+  const featuredById = useMemo(
+    () => new Map(featuredItems.map((property) => [property.id, property])),
+    [featuredItems],
+  );
+  const properties = useMemo(() => {
+    const regular = (data?.properties ?? []).map((property) => {
+      const feature = featuredById.get(property.id);
+      return feature
+        ? {
+            ...property,
+            isFeatured: true,
+            featuredAt: feature.featuredAt,
+            featuredUntil: feature.featuredUntil,
+            featureExpiresAt: feature.featureExpiresAt,
+          }
+        : property;
+    });
+    const source =
+      featured === "FEATURED"
+        ? featuredItems.map(toAdminManagedProperty)
+        : regular;
+    return filterProperties(source, {
+      search,
+      category,
+      priceRange,
+      featured,
+    });
+  }, [
+    category,
+    data?.properties,
+    featured,
+    featuredById,
+    featuredItems,
+    priceRange,
+    search,
+  ]);
+  const expiringSoon = featuredItems.filter(
+    (property) => featuredPlacementState(property) === "EXPIRING_SOON",
+  ).length;
+
+  const removeFeatured = useMutation({
+    mutationFn: (property: AdminManagedProperty) =>
+      propertyService.unfeature(property.id, featureCost),
+    onSuccess: async () => {
+      setRemoveTarget(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin", "properties"] }),
+        queryClient.invalidateQueries({ queryKey: ["properties", "featured"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["properties", "available"],
+        }),
+      ]);
+      toast.success("Featured placement removed.");
+    },
+    onError: (error) =>
+      toast.error(
+        getApiErrorMessage(error, "Featured placement could not be removed."),
+      ),
+  });
 
   function exportCsv() {
     const rows = properties.map((property) => [
@@ -128,9 +212,24 @@ export function AdminPropertiesPage() {
         <section className="mt-8">
           <AdminPropertyStats
             stats={statsQuery.data?.stats}
-            loading={statsQuery.isLoading}
+            loading={statsQuery.isLoading || featuredQuery.isLoading}
+            featuredCount={featuredItems.length}
           />
         </section>
+
+        <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border bg-primary/5 px-5 py-4 text-sm">
+          <BadgeCheck className="size-5 text-primary" />
+          <span className="font-medium">Featured placement monitor</span>
+          <Badge variant="outline" className="bg-background">
+            {featuredItems.length} active
+          </Badge>
+          <Badge
+            variant="outline"
+            className="border-warning/25 bg-warning/10 text-warning"
+          >
+            {expiringSoon} expiring within 7 days
+          </Badge>
+        </div>
 
         <Card className="mt-9 overflow-hidden py-0">
           <CardContent className="p-0">
@@ -149,24 +248,67 @@ export function AdminPropertiesPage() {
               setCategory={setCategory}
               priceRange={priceRange}
               setPriceRange={setPriceRange}
+              featured={featured}
+              setFeatured={(value) => {
+                setFeatured(value);
+                setPage(1);
+              }}
             />
-            {query.isLoading ? (
+            {query.isLoading || featuredQuery.isLoading ? (
               <Skeleton className="h-[620px] w-full rounded-none" />
             ) : (
-              <PropertiesTable properties={properties} />
+              <PropertiesTable
+                properties={properties}
+                featureCost={featureCost}
+                onRemoveFeatured={setRemoveTarget}
+              />
             )}
             <PropertyPagination
-              page={isSearching ? 1 : (data?.pagination.page ?? page)}
-              pages={isSearching ? 1 : (data?.pagination.pages ?? 1)}
+              page={isWideQuery ? 1 : (data?.pagination.page ?? page)}
+              pages={isWideQuery ? 1 : (data?.pagination.pages ?? 1)}
               total={
-                isSearching ? properties.length : (data?.pagination.total ?? 0)
+                isWideQuery ? properties.length : (data?.pagination.total ?? 0)
               }
               count={properties.length}
-              pageSize={isSearching ? Math.max(1, properties.length) : 10}
+              pageSize={isWideQuery ? Math.max(1, properties.length) : 10}
               onPageChange={setPage}
             />
           </CardContent>
         </Card>
+
+        <Dialog
+          open={Boolean(removeTarget)}
+          onOpenChange={(open) => !open && setRemoveTarget(null)}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Remove featured placement?</DialogTitle>
+              <DialogDescription>
+                {removeTarget?.name} will immediately lose its featured badge
+                and priority placement.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setRemoveTarget(null)}
+                disabled={removeFeatured.isPending}
+              >
+                Keep featured
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() =>
+                  removeTarget && removeFeatured.mutate(removeTarget)
+                }
+                disabled={removeFeatured.isPending}
+              >
+                {removeFeatured.isPending ? <Spinner /> : <StarOff />}
+                Remove featured
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </AdminWorkspace>
   );
@@ -181,6 +323,8 @@ function PropertyFilters({
   setCategory,
   priceRange,
   setPriceRange,
+  featured,
+  setFeatured,
 }: {
   search: string;
   setSearch: (value: string) => void;
@@ -190,6 +334,8 @@ function PropertyFilters({
   setCategory: (value: string) => void;
   priceRange: string;
   setPriceRange: (value: string) => void;
+  featured: string;
+  setFeatured: (value: string) => void;
 }) {
   return (
     <div className="flex flex-col gap-3 border-b p-5 xl:flex-row">
@@ -220,6 +366,12 @@ function PropertyFilters({
           onValueChange={setPriceRange}
           placeholder="Price Range"
           items={["ALL", "UNDER_50M", "50M_200M", "OVER_200M"]}
+        />
+        <FilterSelect
+          value={featured}
+          onValueChange={setFeatured}
+          placeholder="All Placements"
+          items={["ALL", "FEATURED", "NOT_FEATURED"]}
         />
       </div>
     </div>
@@ -259,8 +411,12 @@ function FilterSelect({
 
 function PropertiesTable({
   properties,
+  featureCost,
+  onRemoveFeatured,
 }: {
   properties: AdminManagedProperty[];
+  featureCost: number;
+  onRemoveFeatured: (property: AdminManagedProperty) => void;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -274,12 +430,18 @@ function PropertiesTable({
             <TableHead>Date Listed</TableHead>
             <TableHead>Approval</TableHead>
             <TableHead>Property Status</TableHead>
+            <TableHead>Featured placement</TableHead>
             <TableHead className="pr-6 text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {properties.map((property) => (
-            <PropertyRow key={property.id} property={property} />
+            <PropertyRow
+              key={property.id}
+              property={property}
+              featureCost={featureCost}
+              onRemoveFeatured={onRemoveFeatured}
+            />
           ))}
         </TableBody>
       </Table>
@@ -292,7 +454,15 @@ function PropertiesTable({
   );
 }
 
-function PropertyRow({ property }: { property: AdminManagedProperty }) {
+function PropertyRow({
+  property,
+  featureCost,
+  onRemoveFeatured,
+}: {
+  property: AdminManagedProperty;
+  featureCost: number;
+  onRemoveFeatured: (property: AdminManagedProperty) => void;
+}) {
   const approvalStatus = (property.listingStatus || "PENDING").toUpperCase();
   const propertyStatus = (property.status || "AVAILABLE").toUpperCase();
   return (
@@ -314,7 +484,14 @@ function PropertyRow({ property }: { property: AdminManagedProperty }) {
             />
           </div>
           <div>
-            <p className="font-semibold">{property.name}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-semibold">{property.name}</p>
+              {property.isFeatured && (
+                <Badge className="gap-1 bg-primary text-primary-foreground">
+                  <BadgeCheck className="size-3" /> Featured
+                </Badge>
+              )}
+            </div>
             <p className="max-w-44 truncate text-xs text-muted-foreground">
               {adminPropertyLocation(property)}
             </p>
@@ -348,13 +525,27 @@ function PropertyRow({ property }: { property: AdminManagedProperty }) {
       <TableCell>
         <PropertyStatusBadge status={propertyStatus} />
       </TableCell>
+      <TableCell>
+        <FeaturedPlacement property={property} featureCost={featureCost} />
+      </TableCell>
       <TableCell className="pr-6 text-right">
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/admin/properties/${property.id}`}>
-            <Eye data-icon="inline-start" />
-            View Details
-          </Link>
-        </Button>
+        <div className="flex justify-end gap-2">
+          {property.isFeatured && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onRemoveFeatured(property)}
+            >
+              <StarOff /> Remove
+            </Button>
+          )}
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/admin/properties/${property.id}`}>
+              <Eye data-icon="inline-start" />
+              View Details
+            </Link>
+          </Button>
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -395,6 +586,52 @@ function StatusBadge({ status }: { status: string }) {
     >
       ● {status.toLowerCase()}
     </Badge>
+  );
+}
+
+function FeaturedPlacement({
+  property,
+  featureCost,
+}: {
+  property: AdminManagedProperty;
+  featureCost: number;
+}) {
+  if (!property.isFeatured) {
+    return <span className="text-sm text-muted-foreground">Not featured</span>;
+  }
+
+  const state = featuredPlacementState(property);
+  const started = property.featuredAt;
+  const expiry = property.featuredUntil ?? property.featureExpiresAt;
+  const points =
+    property.pointsCharged ?? property.featurePoints ?? featureCost;
+
+  return (
+    <div className="min-w-40 space-y-1.5">
+      <Badge
+        variant="outline"
+        className={cn(
+          "gap-1",
+          state === "ACTIVE" && "border-success/20 bg-success/10 text-success",
+          state === "EXPIRING_SOON" &&
+            "border-warning/20 bg-warning/10 text-warning",
+          state === "EXPIRED" &&
+            "border-destructive/20 bg-destructive/10 text-destructive",
+        )}
+      >
+        <BadgeCheck className="size-3" />
+        {state === "EXPIRING_SOON" ? "Expiring soon" : state.toLowerCase()}
+      </Badge>
+      {started && (
+        <p className="text-xs text-muted-foreground">
+          Started {formatAdminDate(started)}
+        </p>
+      )}
+      <p className="text-xs text-muted-foreground">
+        {expiry ? `Ends ${formatAdminDate(expiry)}` : "No expiry returned"}
+      </p>
+      <p className="text-xs text-muted-foreground">{points} points</p>
+    </div>
   );
 }
 
@@ -458,7 +695,12 @@ function PropertyPagination({
 
 function filterProperties(
   properties: AdminManagedProperty[],
-  filters: { search: string; category: string; priceRange: string },
+  filters: {
+    search: string;
+    category: string;
+    priceRange: string;
+    featured: string;
+  },
 ) {
   const search = filters.search.trim().toLowerCase();
   return properties.filter((property) => {
@@ -483,8 +725,47 @@ function filterProperties(
         amount >= 50_000_000 &&
         amount <= 200_000_000) ||
       (filters.priceRange === "OVER_200M" && amount > 200_000_000);
-    return matchesSearch && matchesCategory && matchesPrice;
+    const matchesFeatured =
+      filters.featured === "ALL" ||
+      (filters.featured === "FEATURED" && property.isFeatured) ||
+      (filters.featured === "NOT_FEATURED" && !property.isFeatured);
+    return matchesSearch && matchesCategory && matchesPrice && matchesFeatured;
   });
+}
+
+function toAdminManagedProperty(
+  property: PropertyApiItem,
+): AdminManagedProperty {
+  return {
+    ...property,
+    listingStatus: property.listingStatus ?? "ACTIVE",
+    media: property.media,
+    isFeatured: true,
+  };
+}
+
+function featuredPlacementState(
+  property: Pick<
+    AdminManagedProperty | PropertyApiItem,
+    "featuredUntil" | "featureExpiresAt"
+  >,
+) {
+  const expiry = property.featuredUntil ?? property.featureExpiresAt;
+  if (!expiry) return "ACTIVE" as const;
+  const remaining = new Date(expiry).getTime() - Date.now();
+  if (remaining <= 0) return "EXPIRED" as const;
+  if (remaining <= 7 * 24 * 60 * 60 * 1000) return "EXPIRING_SOON" as const;
+  return "ACTIVE" as const;
+}
+
+function formatAdminDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown";
+  return new Intl.DateTimeFormat("en-NG", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
 }
 
 function filterLabel(value: string, fallback: string) {
@@ -500,6 +781,8 @@ function filterLabel(value: string, fallback: string) {
     UNDER_50M: "Under ₦50M",
     "50M_200M": "₦50M – ₦200M",
     OVER_200M: "Over ₦200M",
+    FEATURED: "Featured",
+    NOT_FEATURED: "Not Featured",
   };
   return labels[value] ?? value;
 }

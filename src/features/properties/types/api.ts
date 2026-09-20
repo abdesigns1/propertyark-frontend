@@ -70,6 +70,10 @@ export interface PropertyApiItem {
   views?: number;
   inquiryCount?: number;
   leads?: number;
+  isFeatured?: boolean;
+  featuredAt?: string | null;
+  featuredUntil?: string | null;
+  featureExpiresAt?: string | null;
   vendor?: {
     id: string;
     fullName: string;

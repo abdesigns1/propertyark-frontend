@@ -108,6 +108,12 @@ export interface AdminManagedProperty {
   salePrice: number | null;
   landFee: number | null;
   shortletAmount: number | null;
+  isFeatured?: boolean;
+  featuredAt?: string | null;
+  featuredUntil?: string | null;
+  featureExpiresAt?: string | null;
+  featurePoints?: number | null;
+  pointsCharged?: number | null;
   media?: Array<{ id: string; type: string; url: string; isPrimary: boolean }>;
   vendor?: {
     id: string;
@@ -221,6 +227,16 @@ function normalizeKycDocumentUrl(url: string) {
   return trustedUploadProxyUrl(url, "kyc");
 }
 
+function kycDocumentName(url: string | null, fallback: string) {
+  if (!url) return fallback;
+  try {
+    const pathname = url.split("?", 1)[0];
+    return decodeURIComponent(pathname.split("/").pop() || fallback);
+  } catch {
+    return fallback;
+  }
+}
+
 function cachedKycDocumentUrl(id: string) {
   if (!id || typeof window === "undefined") return null;
   try {
@@ -292,7 +308,7 @@ function normalizeKycRequest(value: unknown): AdminKycRequest {
     documentName: text(
       source,
       ["documentName", "fileName"],
-      `NIN-${userId || id}`,
+      kycDocumentName(documentUrl, `Identity-${userId || id}`),
     ),
     rejectionReason: text(source, ["rejectionReason"]) || null,
     phone: text(source, ["phone"], text(user, ["phone"])) || null,
@@ -336,6 +352,8 @@ function unwrapKycRequests(value: unknown) {
 }
 
 function userToKycRequest(user: AdminUser): AdminKycRequest | null {
+  if (user.role?.toUpperCase() !== "VENDOR") return null;
+
   const status = user.ninVerificationStatus?.toUpperCase();
   if (!status) return null;
 
@@ -347,6 +365,9 @@ function userToKycRequest(user: AdminUser): AdminKycRequest | null {
     record(user).verification,
   );
   const documentUrl = endpointDocumentUrl ?? cachedKycDocumentUrl(user.id);
+  // A default PENDING status is not proof that a vendor submitted KYC.
+  // Keep historical verified/rejected records, but exclude untouched accounts.
+  if (status === "PENDING" && !documentUrl) return null;
   rememberKycDocumentUrl([user.id], documentUrl);
 
   return {
@@ -358,7 +379,10 @@ function userToKycRequest(user: AdminUser): AdminKycRequest | null {
     status,
     submittedAt: user.updatedAt ?? user.createdAt,
     documentUrl,
-    documentName: `NIN-${user.fullName.replaceAll(" ", "-")}`,
+    documentName: kycDocumentName(
+      documentUrl,
+      `Identity-${user.fullName.replaceAll(" ", "-")}`,
+    ),
     rejectionReason: user.ninRejectionReason ?? null,
     phone: user.phone,
     location: user.location,
@@ -448,7 +472,9 @@ export const adminService = {
         params: { page: 1, limit: 1000 },
       }),
     ]);
-    const pending = unwrapKycRequests(pendingData).requests;
+    const pending = unwrapKycRequests(pendingData).requests.filter(
+      (request) => request.role.toUpperCase() === "VENDOR",
+    );
     const historical = usersData.data.users
       .map(userToKycRequest)
       .filter((item): item is AdminKycRequest => Boolean(item));
@@ -515,40 +541,11 @@ export const adminService = {
       (request) =>
         request.status === "VERIFIED" && isToday(request.submittedAt),
     ).length;
-    const endpointPending = nestedNumber(response, [
-      "pending",
-      "pendingVerification",
-      "pendingVerifications",
-      "pendingCount",
-      "totalPending",
-    ]);
-    const endpointRejected = nestedNumber(response, [
-      "rejected",
-      "flagged",
-      "rejectedCount",
-      "flaggedRejected",
-      "totalRejected",
-    ]);
-    const endpointVerifiedToday = nestedNumber(response, [
-      "verifiedToday",
-      "approvedToday",
-      "todayVerified",
-      "verifiedTodayCount",
-    ]);
-    const endpointVerified = nestedNumber(response, [
-      "verified",
-      "verifiedCount",
-      "totalVerified",
-      "approved",
-      "approvedCount",
-      "totalApproved",
-    ]);
-
     return {
-      pending: Math.max(endpointPending ?? 0, derivedPending),
-      rejected: Math.max(endpointRejected ?? 0, derivedRejected),
-      verified: Math.max(endpointVerified ?? 0, derivedVerified),
-      verifiedToday: Math.max(endpointVerifiedToday ?? 0, derivedVerifiedToday),
+      pending: derivedPending,
+      rejected: derivedRejected,
+      verified: derivedVerified,
+      verifiedToday: derivedVerifiedToday,
       averageProcessingHours:
         nestedNumber(response, [
           "averageProcessingHours",

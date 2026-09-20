@@ -13,6 +13,15 @@ export function useAvailableProperties(page = 1, limit = 12) {
   });
 }
 
+export function useFeaturedProperties() {
+  return useQuery({
+    queryKey: ["properties", "featured"],
+    queryFn: propertyService.getFeatured,
+    staleTime: 2 * 60_000,
+    refetchOnReconnect: true,
+  });
+}
+
 export function usePaginatedAvailableProperties({
   page,
   limit,

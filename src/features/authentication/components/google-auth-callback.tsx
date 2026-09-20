@@ -7,7 +7,11 @@ import { LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { getDashboardPath } from "@/features/authentication/utils/dashboard-route";
-import { GOOGLE_AUTH_REDIRECT_KEY } from "@/features/authentication/utils/google-auth";
+import {
+  GOOGLE_AUTH_REDIRECT_KEY,
+  GOOGLE_AUTH_ROLE_KEY,
+  GOOGLE_AUTH_VENDOR_KYC_KEY,
+} from "@/features/authentication/utils/google-auth";
 import { normalizeLoginResponse } from "@/features/authentication/utils/normalize-login-response";
 import type { LoginResponse } from "@/services/auth.service";
 import { useAuthStore } from "@/store/auth.store";
@@ -56,20 +60,38 @@ export function GoogleAuthCallback() {
       queryClient.clear();
       setAuth(auth);
 
+      const requestedRole = window.sessionStorage.getItem(GOOGLE_AUTH_ROLE_KEY);
+      const requiresVendorKyc =
+        window.sessionStorage.getItem(GOOGLE_AUTH_VENDOR_KYC_KEY) === "1";
       const requestedRedirect = window.sessionStorage.getItem(
         GOOGLE_AUTH_REDIRECT_KEY,
       );
       window.sessionStorage.removeItem(GOOGLE_AUTH_REDIRECT_KEY);
-      const destination =
-        requestedRedirect?.startsWith("/") &&
-        !requestedRedirect.startsWith("//")
-          ? requestedRedirect
-          : getDashboardPath(auth.role);
+      window.sessionStorage.removeItem(GOOGLE_AUTH_ROLE_KEY);
+      window.sessionStorage.removeItem(GOOGLE_AUTH_VENDOR_KYC_KEY);
 
-      toast.success("Signed in with Google successfully.");
+      const roleMismatch = requestedRole === "VENDOR" && auth.role !== "vendor";
+      if (roleMismatch) {
+        toast.error(
+          "Google returned a regular user account instead of a vendor account. Please contact support before continuing.",
+        );
+      }
+      const destination =
+        requiresVendorKyc && auth.role === "vendor"
+          ? "/vendor/kyc-onboarding"
+          : requestedRedirect?.startsWith("/") &&
+              !requestedRedirect.startsWith("//")
+            ? requestedRedirect
+            : getDashboardPath(auth.role);
+
+      if (!roleMismatch) {
+        toast.success("Signed in with Google successfully.");
+      }
       router.replace(destination);
     } catch {
       window.sessionStorage.removeItem(GOOGLE_AUTH_REDIRECT_KEY);
+      window.sessionStorage.removeItem(GOOGLE_AUTH_ROLE_KEY);
+      window.sessionStorage.removeItem(GOOGLE_AUTH_VENDOR_KYC_KEY);
       toast.error("The Google authentication response could not be verified.");
       router.replace("/login");
     }

@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { BedDouble, Bath, MapPin, Ruler } from "lucide-react";
+import { BadgeCheck, BedDouble, Bath, MapPin, Ruler } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Price } from "@/components/shared/price";
@@ -48,6 +49,7 @@ export function PropertyCard({
     bathrooms,
     sizeSqm,
     images,
+    isFeatured,
   } = property;
   const carouselImages = useMemo(() => {
     const uniqueImages = [...new Set(images.filter(Boolean))];
@@ -116,14 +118,22 @@ export function PropertyCard({
           )}
         </Carousel>
 
-        <span
-          className={cn(
-            "absolute left-3 top-3 rounded-md px-2.5 py-1 text-xs font-semibold",
-            PURPOSE_BADGE_STYLES[purpose],
+        <div className="absolute left-3 top-3 flex flex-wrap items-center gap-2">
+          <span
+            className={cn(
+              "rounded-md px-2.5 py-1 text-xs font-semibold",
+              PURPOSE_BADGE_STYLES[purpose],
+            )}
+          >
+            {PURPOSE_LABELS[purpose]}
+          </span>
+          {isFeatured && (
+            <Badge>
+              <BadgeCheck data-icon="inline-start" />
+              Featured
+            </Badge>
           )}
-        >
-          {PURPOSE_LABELS[purpose]}
-        </span>
+        </div>
 
         <PropertyCardActions
           propertyId={id}

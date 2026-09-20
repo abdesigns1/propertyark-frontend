@@ -515,6 +515,30 @@ export const propertyService = {
       pagination: data.data.pagination,
     };
   },
+  getFeatured: async () => {
+    const { data } = await api.get<unknown>("/credit-points/featured");
+    return normalizeVendorPropertiesResponse(data, 1, 100).properties.map(
+      normalizePropertyResponse,
+    );
+  },
+  getFeaturedApiItems: async () => {
+    const { data } = await api.get<unknown>("/credit-points/featured");
+    return normalizeVendorPropertiesResponse(data, 1, 100).properties;
+  },
+  feature: async (propertyId: string, points: number) => {
+    const { data } = await api.patch<unknown>(
+      `/credit-points/feature/${encodeURIComponent(propertyId)}`,
+      { points },
+    );
+    return data;
+  },
+  unfeature: async (propertyId: string, points: number) => {
+    const { data } = await api.patch<unknown>(
+      `/credit-points/unfeature/${encodeURIComponent(propertyId)}`,
+      { points },
+    );
+    return data;
+  },
   getAvailablePage: async ({
     page = 1,
     limit = 12,

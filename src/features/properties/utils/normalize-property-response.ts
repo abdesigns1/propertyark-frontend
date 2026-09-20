@@ -142,6 +142,7 @@ export function normalizePropertyResponse(property: PropertyApiItem): Property {
     vendorAvatarUrl: property.vendor?.avatar,
     vendorPhone: property.vendor?.phone,
     isVerified: true,
+    isFeatured: property.isFeatured === true,
     createdAt: property.createdAt,
     updatedAt: property.updatedAt,
     unavailableDateRanges: (property.bookedSlots ?? [])

@@ -192,9 +192,21 @@ function PropertiesContent() {
 
   const locationMatches = useMemo(
     () =>
-      (availableProperties.data ?? []).filter((property) =>
-        matchesLocationKeyword(property, deferredFilters.location),
-      ),
+      (availableProperties.data ?? [])
+        .filter((property) =>
+          matchesLocationKeyword(property, deferredFilters.location),
+        )
+        .sort((first, second) => {
+          const featuredDifference =
+            Number(second.isFeatured === true) -
+            Number(first.isFeatured === true);
+          if (featuredDifference !== 0) return featuredDifference;
+
+          return (
+            new Date(second.createdAt).getTime() -
+            new Date(first.createdAt).getTime()
+          );
+        }),
     [availableProperties.data, deferredFilters.location],
   );
   const totalPages = Math.max(

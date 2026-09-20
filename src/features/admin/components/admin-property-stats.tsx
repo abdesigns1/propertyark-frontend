@@ -1,4 +1,10 @@
-import { Archive, Building2, CircleCheck, ClipboardClock } from "lucide-react";
+import {
+  Archive,
+  BadgeCheck,
+  Building2,
+  CircleCheck,
+  ClipboardClock,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -7,14 +13,16 @@ import type { AdminPropertyManagementData } from "@/services/admin.service";
 export function AdminPropertyStats({
   stats,
   loading,
+  featuredCount = 0,
 }: {
   stats?: AdminPropertyManagementData["stats"];
   loading: boolean;
+  featuredCount?: number;
 }) {
   if (loading) {
     return (
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }, (_, index) => (
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
+        {Array.from({ length: 5 }, (_, index) => (
           <Skeleton key={index} className="h-[218px]" />
         ))}
       </div>
@@ -44,6 +52,13 @@ export function AdminPropertyStats({
       tone: "primary",
     },
     {
+      label: "Featured Properties",
+      value: featuredCount,
+      icon: BadgeCheck,
+      note: "Active premium placements",
+      tone: "primary",
+    },
+    {
       label: "Rejected/Archived",
       value: stats?.rejectedListings ?? 0,
       icon: Archive,
@@ -53,7 +68,7 @@ export function AdminPropertyStats({
   ] as const;
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
       {cards.map(({ label, value, icon: Icon, note, tone }) => (
         <Card key={label} className="min-h-[218px] shadow-sm">
           <CardContent className="flex h-full flex-col p-6">

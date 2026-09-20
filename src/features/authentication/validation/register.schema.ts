@@ -3,6 +3,17 @@ import { z } from "zod";
 const MAX_FILE_SIZE_MB = 10;
 const ACCEPTED_KYC_TYPES = ["image/jpeg", "image/png", "application/pdf"];
 
+export const kycDocumentSchema = z
+  .instanceof(File, {
+    message: "A valid government-issued ID is required for vendors",
+  })
+  .refine((file) => file.size <= MAX_FILE_SIZE_MB * 1024 * 1024, {
+    message: `File must be under ${MAX_FILE_SIZE_MB}MB`,
+  })
+  .refine((file) => ACCEPTED_KYC_TYPES.includes(file.type), {
+    message: "File must be JPEG, PNG, or PDF",
+  });
+
 const baseFields = {
   firstName: z
     .string()
@@ -33,16 +44,7 @@ export const buyerRegisterSchema = z
 export const vendorRegisterSchema = z
   .object({
     ...baseFields,
-    kycDocument: z
-      .instanceof(File, {
-        message: "A valid government-issued ID is required for vendors",
-      })
-      .refine((f) => f.size <= MAX_FILE_SIZE_MB * 1024 * 1024, {
-        message: `File must be under ${MAX_FILE_SIZE_MB}MB`,
-      })
-      .refine((f) => ACCEPTED_KYC_TYPES.includes(f.type), {
-        message: "File must be JPEG, PNG, or PDF",
-      }),
+    kycDocument: kycDocumentSchema,
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",

@@ -252,6 +252,17 @@ export function useAdminProperties(page: number, status: string, limit = 10) {
   });
 }
 
+export function useAdminFeaturedProperties() {
+  return useQuery({
+    queryKey: ["admin", "properties", "featured"],
+    queryFn: propertyService.getFeaturedApiItems,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
+}
+
 export function useAdminProperty(propertyId: string) {
   return useQuery({
     queryKey: ["admin", "property", propertyId],

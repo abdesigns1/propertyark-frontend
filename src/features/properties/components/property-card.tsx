@@ -31,6 +31,9 @@ interface PropertyCardProps {
   compactPrice?: boolean;
 }
 
+const GLASS_CAROUSEL_BUTTON =
+  "border border-white/55 bg-white/30 text-white shadow-lg shadow-black/15 backdrop-blur-md hover:bg-white/45 hover:text-white focus-visible:ring-white/80 disabled:bg-white/20 disabled:text-white/70";
+
 export function PropertyCard({
   property,
   compactPrice = false,
@@ -95,8 +98,18 @@ export function PropertyCard({
 
           {carouselImages.length > 1 && (
             <>
-              <CarouselPrevious className="left-3 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100" />
-              <CarouselNext className="right-3 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100" />
+              <CarouselPrevious
+                className={cn(
+                  GLASS_CAROUSEL_BUTTON,
+                  "left-3 top-1/2 -translate-y-1/2 opacity-0 transition-[opacity,background-color] group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100",
+                )}
+              />
+              <CarouselNext
+                className={cn(
+                  GLASS_CAROUSEL_BUTTON,
+                  "right-3 top-1/2 -translate-y-1/2 opacity-0 transition-[opacity,background-color] group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100",
+                )}
+              />
               <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
                 {carouselImages.map((_, index) => (
                   <button

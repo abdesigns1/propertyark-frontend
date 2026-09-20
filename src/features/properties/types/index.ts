@@ -58,6 +58,9 @@ export interface Property {
   vendorId: string;
   isVerified: boolean;
   isFeatured?: boolean;
+  featuredAt?: string | null;
+  featuredUntil?: string | null;
+  featureExpiresAt?: string | null;
   createdAt: string;
   updatedAt?: string;
   unavailableDateRanges?: Array<{

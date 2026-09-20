@@ -70,6 +70,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { PropertyApiItem } from "@/features/properties/types/api";
+import { useFeaturedProperties } from "@/features/properties/hooks/use-available-properties";
 import {
   useVendorProperties,
   vendorPropertiesQueryKey,
@@ -87,6 +88,7 @@ import {
   type PropertyDraftValues,
 } from "@/features/vendor/lib/vendor-property-display";
 import { VendorPropertyThumbnail } from "@/features/vendor/components/vendor-property-thumbnail";
+import { FeaturedPlacementCountdown } from "@/features/vendor/components/featured-placement-countdown";
 import {
   creditPaymentKeys,
   useCreditRules,
@@ -131,6 +133,7 @@ function StatCard({
 
 export function VendorProperties() {
   const query = useVendorProperties();
+  const featuredQuery = useFeaturedProperties();
   const creditRules = useCreditRules();
   const queryClient = useQueryClient();
   const accountKey = useAccountKey();
@@ -163,9 +166,30 @@ export function VendorProperties() {
     };
   }, []);
   const backendProperties = query.data?.properties ?? EMPTY_PROPERTIES;
+  const featuredById = useMemo(
+    () =>
+      new Map(
+        (featuredQuery.data ?? []).map((property) => [property.id, property]),
+      ),
+    [featuredQuery.data],
+  );
   const properties = useMemo(
-    () => [...draftProperties, ...backendProperties],
-    [draftProperties, backendProperties],
+    () => [
+      ...draftProperties,
+      ...backendProperties.map((property) => {
+        const featuredProperty = featuredById.get(property.id);
+        return featuredProperty
+          ? {
+              ...property,
+              isFeatured: true,
+              featuredAt: featuredProperty.featuredAt,
+              featuredUntil: featuredProperty.featuredUntil,
+              featureExpiresAt: featuredProperty.featureExpiresAt,
+            }
+          : property;
+      }),
+    ],
+    [draftProperties, backendProperties, featuredById],
   );
   const cities = useMemo(
     () =>
@@ -505,6 +529,7 @@ export function VendorProperties() {
                     <TableHead>Price</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Featured placement</TableHead>
                     <TableHead>Views</TableHead>
                     <TableHead>Leads</TableHead>
                     <TableHead>
@@ -535,9 +560,6 @@ export function VendorProperties() {
                               <p className="max-w-52 truncate font-medium">
                                 {property.name}
                               </p>
-                              {property.isFeatured && (
-                                <Badge variant="secondary">Featured</Badge>
-                              )}
                               <p className="text-xs text-muted-foreground">
                                 Ref: {property.id.slice(0, 10).toUpperCase()}
                               </p>
@@ -563,6 +585,9 @@ export function VendorProperties() {
                           >
                             {propertyStatus.label}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <FeaturedPlacementCountdown property={property} />
                         </TableCell>
                         <TableCell>
                           {(

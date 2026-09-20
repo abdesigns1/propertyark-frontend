@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   BriefcaseBusiness,
-  CreditCard,
   KeyRound,
   LoaderCircle,
   LockKeyhole,
@@ -55,8 +54,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { useAccountKey } from "@/lib/account-identity";
 import { cn } from "@/lib/utils";
 
-type Section =
-  "profile" | "business" | "password" | "notifications" | "payment";
+type Section = "profile" | "business" | "password" | "notifications";
 const sections: Array<{
   id: Section;
   label: string;
@@ -86,12 +84,6 @@ const sections: Array<{
     label: "Notifications",
     group: "Preferences",
     icon: Bell,
-  },
-  {
-    id: "payment",
-    label: "Payment Settings",
-    group: "Financial",
-    icon: CreditCard,
   },
 ];
 
@@ -726,29 +718,6 @@ function NotificationSettingsSkeleton() {
   );
 }
 
-function UnavailableSettings({ section }: { section: Section }) {
-  const label =
-    sections.find((item) => item.id === section)?.label ?? "Settings";
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{label}</CardTitle>
-        <CardDescription>
-          This screen is prepared for integration, but the updated API
-          collection does not provide an endpoint for it.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex min-h-60 flex-col items-center justify-center gap-4 text-center">
-        <ShieldCheck className="size-12 text-muted-foreground" />
-        <p className="max-w-md text-muted-foreground">
-          No changes are stored locally. This feature will become available
-          after the backend contract is added.
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
 export function VendorSettings() {
   const [active, setActive] = useState<Section>("profile");
   useEffect(() => {
@@ -774,7 +743,6 @@ export function VendorSettings() {
         {active === "business" && <ProfileSettings businessOnly />}
         {active === "password" && <PasswordSettings />}
         {active === "notifications" && <NotificationSettings />}
-        {active === "payment" && <UnavailableSettings section={active} />}
       </main>
     </div>
   );

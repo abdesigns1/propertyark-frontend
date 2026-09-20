@@ -143,6 +143,9 @@ export function normalizePropertyResponse(property: PropertyApiItem): Property {
     vendorPhone: property.vendor?.phone,
     isVerified: true,
     isFeatured: property.isFeatured === true,
+    featuredAt: property.featuredAt ?? null,
+    featuredUntil: property.featuredUntil ?? null,
+    featureExpiresAt: property.featureExpiresAt ?? null,
     createdAt: property.createdAt,
     updatedAt: property.updatedAt,
     unavailableDateRanges: (property.bookedSlots ?? [])

@@ -38,7 +38,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useDashboardUser } from "@/features/dashboard/hooks/use-dashboard-user";
-import { useAvailableProperties } from "@/features/properties/hooks/use-available-properties";
+import {
+  useAvailableProperties,
+  useFeaturedProperties,
+} from "@/features/properties/hooks/use-available-properties";
 import type { Property } from "@/features/properties/types";
 import { useVendorDashboard } from "@/features/vendor/hooks/use-vendor-dashboard";
 import { useVendorProperties } from "@/features/vendor/hooks/use-vendor-properties";
@@ -51,6 +54,7 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth.store";
 import { formatCurrencyParts } from "@/utils/formatters";
 import { VendorAnalyticsCharts } from "./vendor-analytics-charts";
+import { FeaturedPlacementCountdown } from "./featured-placement-countdown";
 
 const ZERO_STATS: VendorDashboardStats = {
   totalListings: 0,
@@ -182,6 +186,7 @@ function RecentProperties({ properties }: { properties: Property[] }) {
                 <TableHead>Price</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Listing</TableHead>
+                <TableHead>Featured placement</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -221,6 +226,9 @@ function RecentProperties({ properties }: { properties: Property[] }) {
                   </TableCell>
                   <TableCell className="capitalize text-muted-foreground">
                     {property.purpose}
+                  </TableCell>
+                  <TableCell>
+                    <FeaturedPlacementCountdown property={property} />
                   </TableCell>
                 </TableRow>
               ))}
@@ -315,6 +323,7 @@ export function VendorDashboard() {
   const dashboard = useVendorDashboard();
   const vendorPropertiesQuery = useVendorProperties();
   const availableProperties = useAvailableProperties(1, 100);
+  const featuredProperties = useFeaturedProperties();
   const profile = dashboard.data?.profile;
 
   useEffect(() => {
@@ -365,12 +374,35 @@ export function VendorDashboard() {
     ? { ...backendStats, ...listingStats }
     : backendStats;
   const vendorId = profile?.id ?? storedUser?.id ?? userId;
+  const featuredById = useMemo(
+    () =>
+      new Map(
+        (featuredProperties.data ?? []).map((property) => [
+          property.id,
+          property,
+        ]),
+      ),
+    [featuredProperties.data],
+  );
   const vendorProperties = useMemo(
     () =>
-      (availableProperties.data?.properties ?? []).filter((property) =>
-        Boolean(vendorId && property.vendorId === vendorId),
-      ),
-    [availableProperties.data?.properties, vendorId],
+      (availableProperties.data?.properties ?? [])
+        .filter((property) =>
+          Boolean(vendorId && property.vendorId === vendorId),
+        )
+        .map((property) => {
+          const featuredProperty = featuredById.get(property.id);
+          return featuredProperty
+            ? {
+                ...property,
+                isFeatured: true,
+                featuredAt: featuredProperty.featuredAt,
+                featuredUntil: featuredProperty.featuredUntil,
+                featureExpiresAt: featuredProperty.featureExpiresAt,
+              }
+            : property;
+        }),
+    [availableProperties.data?.properties, featuredById, vendorId],
   );
   const properties = vendorProperties.slice(0, 5);
   const firstName =
@@ -457,7 +489,7 @@ export function VendorDashboard() {
         totalViews={totalPropertyViews}
       />
 
-      {availableProperties.isLoading ? (
+      {availableProperties.isLoading || featuredProperties.isLoading ? (
         <Skeleton className="h-80 rounded-xl" />
       ) : (
         <RecentProperties properties={properties} />

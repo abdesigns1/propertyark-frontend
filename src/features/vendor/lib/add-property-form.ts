@@ -82,7 +82,7 @@ export const PRICE_FIELDS: Record<ListingType, string> = {
 
 export const PRICE_LABELS: Record<ListingType, string> = {
   FOR_SALE: "Asking Price",
-  FOR_RENT: "Monthly Rent",
+  FOR_RENT: "Yearly Rent",
   FOR_LAND: "Land Fee",
   FOR_SHORTLET: "Shortlet Amount",
 };

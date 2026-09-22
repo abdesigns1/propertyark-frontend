@@ -1,5 +1,6 @@
-import { MapPin } from "lucide-react";
+import { BadgeCheck, MapPin } from "lucide-react";
 import { Price } from "@/components/shared/price";
+import { Badge } from "@/components/ui/badge";
 import {
   PURPOSE_LABELS,
   PURPOSE_BADGE_STYLES,
@@ -23,6 +24,12 @@ export function PropertyHeader({ property }: { property: Property }) {
           >
             {PURPOSE_LABELS[property.purpose]}
           </span>
+          {property.isFeatured && (
+            <Badge variant="secondary">
+              <BadgeCheck data-icon="inline-start" />
+              Featured
+            </Badge>
+          )}
           {/* Property ratings and review counts will be restored with reviews. */}
         </div>
         <p className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">

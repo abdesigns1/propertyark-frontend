@@ -13,7 +13,10 @@ import { SimilarPropertiesCarousel } from "@/features/properties/components/simi
 import { PropertyViewTracker } from "@/features/properties/components/property-view-tracker";
 import { ShortletBookingCard } from "@/features/properties/components/shortlet-booking-card";
 import { Footer } from "@/components/shared/footer";
-import { getAvailablePropertiesServer } from "@/features/properties/server/get-available-properties";
+import {
+  getAvailablePropertiesServer,
+  getFeaturedPropertiesServer,
+} from "@/features/properties/server/get-available-properties";
 import { CONTAINER, cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -26,11 +29,25 @@ export default async function PropertyDetailPage({
   if (id.startsWith("draft:"))
     redirect(`/vendor/properties/new?draft=${id.slice("draft:".length)}`);
 
-  const { properties } = await getAvailablePropertiesServer();
+  const [{ properties }, featuredProperties] = await Promise.all([
+    getAvailablePropertiesServer(),
+    getFeaturedPropertiesServer(),
+  ]);
   const base = properties.find((property) => property.id === id);
   if (!base) return notFound();
 
-  const property = base;
+  const featuredProperty = featuredProperties.find(
+    (candidate) => candidate.id === id,
+  );
+  const property = featuredProperty
+    ? {
+        ...base,
+        isFeatured: true,
+        featuredAt: featuredProperty.featuredAt,
+        featuredUntil: featuredProperty.featuredUntil,
+        featureExpiresAt: featuredProperty.featureExpiresAt,
+      }
+    : base;
   const similar = properties
     .filter((candidate) => candidate.id !== property.id)
     .slice(0, 12);

@@ -1,6 +1,9 @@
 import "server-only";
 
-import type { AvailablePropertiesResponse } from "@/features/properties/types/api";
+import type {
+  AvailablePropertiesResponse,
+  PropertyApiItem,
+} from "@/features/properties/types/api";
 import { normalizePropertyResponse } from "@/features/properties/utils/normalize-property-response";
 
 const RETRY_DELAYS_MS = [0, 1_000, 2_000] as const;
@@ -52,4 +55,44 @@ export async function getAvailablePropertiesServer({
     properties: payload.data.properties.map(normalizePropertyResponse),
     pagination: payload.data.pagination,
   };
+}
+
+function featuredRows(payload: unknown): PropertyApiItem[] {
+  if (Array.isArray(payload)) return payload as PropertyApiItem[];
+  if (!payload || typeof payload !== "object") return [];
+
+  const root = payload as Record<string, unknown>;
+  const data =
+    root.data && typeof root.data === "object"
+      ? (root.data as Record<string, unknown>)
+      : null;
+
+  return (
+    ([
+      root.data,
+      data?.properties,
+      data?.items,
+      data?.results,
+      root.properties,
+    ].find(Array.isArray) as PropertyApiItem[] | undefined) ?? []
+  );
+}
+
+export async function getFeaturedPropertiesServer() {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (!baseUrl) throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured");
+
+  const url = new URL(`${baseUrl.replace(/\/$/, "")}/credit-points/featured`);
+  let response: Response;
+  try {
+    response = await fetchWithRetry(url);
+  } catch {
+    // Featured metadata is supplementary and must not make an otherwise
+    // available property detail page fail.
+    return [];
+  }
+  if (!response.ok) return [];
+
+  const payload = (await response.json()) as unknown;
+  return featuredRows(payload).map(normalizePropertyResponse);
 }

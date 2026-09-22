@@ -141,7 +141,10 @@ export function PropertyCard({
             {PURPOSE_LABELS[purpose]}
           </span>
           {isFeatured && (
-            <Badge>
+            <Badge
+              variant="outline"
+              className="border-white/60 bg-background/70 text-foreground shadow-sm backdrop-blur-md"
+            >
               <BadgeCheck data-icon="inline-start" />
               Featured
             </Badge>

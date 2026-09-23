@@ -15,7 +15,7 @@ export default function HomePage() {
   return (
     <>
       <Hero />
-      <div className={cn(CONTAINER, "relative z-20 -mt-16 lg:px-8")}>
+      <div className={cn(CONTAINER, "relative z-20 -mt-8 sm:-mt-16 lg:px-8")}>
         <PropertySearchForm />
       </div>
       <FeaturedProperties />

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/shared/navbar";
 import { getDashboardPath } from "@/features/authentication/utils/dashboard-route";
@@ -8,21 +9,55 @@ import { useAuthStore } from "@/store/auth.store";
 // import { HeroMarketActivity } from "@/components/marketing/hero-market-activity";
 
 const HERO_VIDEO_URL =
-  "https://res.cloudinary.com/wkwqmkrl/video/upload/v1790183603/VID_20260923_150401_355.mp4";
+  "https://res.cloudinary.com/wkwqmkrl/video/upload/f_mp4,vc_h264,ac_none,q_auto/v1790183603/VID_20260923_150401_355.mp4";
 
 export function Hero() {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const role = useAuthStore((state) => state.role);
   const investmentHref = isAuthenticated ? getDashboardPath(role) : "/login";
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Set both properties explicitly because iOS can evaluate autoplay before
+    // React finishes applying the muted attribute during hydration.
+    video.defaultMuted = true;
+    video.muted = true;
+
+    const attemptPlayback = () => {
+      if (!document.hidden && video.paused) {
+        void video.play().catch(() => {
+          // Some mobile settings (notably iOS Low Power Mode) intentionally
+          // block autoplay. The poster remains as the visual fallback.
+        });
+      }
+    };
+
+    const handleVisibilityChange = () => attemptPlayback();
+
+    attemptPlayback();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pageshow", attemptPlayback);
+    document.addEventListener("pointerdown", attemptPlayback, { once: true });
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pageshow", attemptPlayback);
+      document.removeEventListener("pointerdown", attemptPlayback);
+    };
+  }, []);
 
   return (
     <>
       <Navbar />
 
-      <section className="relative isolate overflow-hidden pb-16 pt-24 sm:pb-20 sm:pt-28 lg:pb-34">
+      <section className="relative isolate overflow-hidden pb-20 pt-28 lg:pb-34">
         {/* Background video + overlay */}
         <div className="absolute inset-0 -z-10">
           <video
+            ref={videoRef}
             autoPlay
             muted
             loop
@@ -31,6 +66,9 @@ export function Hero() {
             poster="/assets/images/hero-property.jpg"
             aria-hidden="true"
             disablePictureInPicture
+            onCanPlay={(event) => {
+              void event.currentTarget.play().catch(() => undefined);
+            }}
             className="size-full object-cover"
           >
             <source src={HERO_VIDEO_URL} type="video/mp4" />

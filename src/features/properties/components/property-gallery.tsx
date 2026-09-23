@@ -3,13 +3,18 @@
 import { useState } from "react";
 import Image from "next/image";
 import { PropertyImageLightbox } from "./property-image-lightbox";
+import { PropertyStreetView } from "./property-street-view";
 import { showPropertyImageFallback } from "@/features/properties/utils/normalize-property-response";
 
 interface PropertyGalleryProps {
   images: string[];
+  streetViewAddress?: string;
 }
 
-export function PropertyGallery({ images }: PropertyGalleryProps) {
+export function PropertyGallery({
+  images,
+  streetViewAddress,
+}: PropertyGalleryProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [startIndex, setStartIndex] = useState(0);
 
@@ -33,22 +38,29 @@ export function PropertyGallery({ images }: PropertyGalleryProps) {
   return (
     <>
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
-        <button
-          type="button"
-          onClick={() => openAt(0)}
-          className="relative aspect-[4/3] overflow-hidden rounded-2xl lg:aspect-auto lg:h-full"
-        >
-          <Image
-            src={main}
-            alt="Property main view"
-            fill
-            crossOrigin="anonymous"
-            unoptimized
-            onError={(event) => showPropertyImageFallback(event.currentTarget)}
-            className="object-cover transition-transform hover:scale-[1.02]"
-            priority
-          />
-        </button>
+        <div className="relative aspect-[4/3] overflow-hidden rounded-2xl lg:aspect-auto lg:h-full">
+          <button
+            type="button"
+            onClick={() => openAt(0)}
+            className="absolute inset-0"
+          >
+            <Image
+              src={main}
+              alt="Property main view"
+              fill
+              crossOrigin="anonymous"
+              unoptimized
+              onError={(event) =>
+                showPropertyImageFallback(event.currentTarget)
+              }
+              className="object-cover transition-transform hover:scale-[1.02]"
+              priority
+            />
+          </button>
+          {streetViewAddress && (
+            <PropertyStreetView address={streetViewAddress} />
+          )}
+        </div>
 
         {thumbs.length > 0 && (
           <div className="grid grid-cols-2 gap-3">

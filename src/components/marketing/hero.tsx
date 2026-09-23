@@ -1,12 +1,14 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/shared/navbar";
 import { getDashboardPath } from "@/features/authentication/utils/dashboard-route";
 import { useAuthStore } from "@/store/auth.store";
 // import { HeroMarketActivity } from "@/components/marketing/hero-market-activity";
+
+const HERO_VIDEO_URL =
+  "https://res.cloudinary.com/wkwqmkrl/video/upload/v1790183603/VID_20260923_150401_355.mp4";
 
 export function Hero() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -17,18 +19,22 @@ export function Hero() {
     <>
       <Navbar />
 
-      <section className="relative isolate overflow-hidden pb-24 pt-24 sm:pb-28 sm:pt-28 lg:pb-28">
-        {/* Background image + overlay */}
+      <section className="relative isolate overflow-hidden pb-16 pt-24 sm:pb-20 sm:pt-28 lg:pb-34">
+        {/* Background video + overlay */}
         <div className="absolute inset-0 -z-10">
-          <Image
-            src="/assets/images/hero-property.jpg"
-            alt="Modern residential property at dusk"
-            fill
-            priority
-            loading="eager"
-            sizes="100vw"
-            className="object-cover"
-          />
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster="/assets/images/hero-property.jpg"
+            aria-hidden="true"
+            disablePictureInPicture
+            className="size-full object-cover"
+          >
+            <source src={HERO_VIDEO_URL} type="video/mp4" />
+          </video>
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/48 via-slate-950/25 to-slate-950/52" />
         </div>
 

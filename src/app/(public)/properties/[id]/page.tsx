@@ -68,7 +68,17 @@ export default async function PropertyDetailPage({
         <PropertyHeader property={property} />
 
         <div className="mt-6">
-          <PropertyGallery images={property.images} />
+          <PropertyGallery
+            images={property.images}
+            streetViewAddress={[
+              property.location.address,
+              property.location.city,
+              property.location.state,
+              property.location.country,
+            ]
+              .filter(Boolean)
+              .join(", ")}
+          />
         </div>
 
         <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_320px]">

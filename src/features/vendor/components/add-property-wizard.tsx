@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -34,6 +34,15 @@ import {
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Field,
   FieldDescription,
   FieldError,
@@ -50,13 +59,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { getApiErrorMessage } from "@/services/api-error";
 import { propertyService } from "@/services/property.service";
 import { cn } from "@/lib/utils";
 import { useAccountKey } from "@/lib/account-identity";
 import { vendorDashboardQueryKey } from "@/features/vendor/hooks/use-vendor-dashboard";
-import { creditPaymentKeys } from "@/features/vendor/hooks/use-credit-payment";
+import {
+  creditPaymentKeys,
+  useCreditInfo,
+  useCreditRules,
+} from "@/features/vendor/hooks/use-credit-payment";
 import {
   useVendorProperties,
   vendorPropertiesQueryKey,
@@ -69,6 +83,10 @@ import {
   PropertyTipCard,
   PropertyUploadBox,
 } from "@/features/vendor/components/add-property-wizard-ui";
+import {
+  GoogleAddressAutocomplete,
+  type SelectedGoogleAddress,
+} from "@/features/vendor/components/google-address-autocomplete";
 import {
   formatPropertyMoney,
   INITIAL_PROPERTY_VALUES,
@@ -99,6 +117,8 @@ export function AddPropertyWizard({
   const accountKey = useAccountKey();
   const vendorProperties = useVendorProperties();
   const isEditing = Boolean(initialPropertyId);
+  const creditRules = useCreditRules(!isEditing);
+  const creditInfo = useCreditInfo(!isEditing);
   const [step, setStep] = useState(0);
   const [values, setValues] = useState<AddPropertyFormValues>(
     INITIAL_PROPERTY_VALUES,
@@ -116,6 +136,7 @@ export function AddPropertyWizard({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [terms, setTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitConfirmationOpen, setSubmitConfirmationOpen] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [existingMedia, setExistingMedia] = useState<PropertyMediaResponse[]>(
     [],
@@ -124,6 +145,30 @@ export function AddPropertyWizard({
     () => new Set(),
   );
   const editInitialized = useRef(false);
+  const propertyCreationCost =
+    creditRules.data?.propertyCreationCost ??
+    creditInfo.data?.propertyCreationCost ??
+    null;
+  const availablePoints = creditInfo.data?.balance ?? null;
+  const creditDetailsLoading =
+    !isEditing && (creditRules.isLoading || creditInfo.isLoading);
+  const hasEnoughPoints =
+    propertyCreationCost !== null &&
+    availablePoints !== null &&
+    availablePoints >= propertyCreationCost;
+  const creditDetailsUnavailable =
+    !creditDetailsLoading &&
+    (propertyCreationCost === null || availablePoints === null);
+  const pointsNeeded =
+    propertyCreationCost !== null &&
+    availablePoints !== null &&
+    availablePoints < propertyCreationCost
+      ? propertyCreationCost - availablePoints
+      : null;
+  const insufficientPoints = pointsNeeded !== null;
+  const balanceAfterSubmission = hasEnoughPoints
+    ? availablePoints - propertyCreationCost
+    : null;
   const photoUrls = useMemo(
     () => photos.map((file) => ({ file, url: URL.createObjectURL(file) })),
     [photos],
@@ -265,6 +310,23 @@ export function AddPropertyWizard({
     setValues((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: "" }));
   };
+  const applyGoogleAddress = useCallback((address: SelectedGoogleAddress) => {
+    setValues((current) => ({
+      ...current,
+      address: address.address || current.address,
+      city: address.city || current.city,
+      state: address.state || current.state,
+      country: address.country || current.country,
+      zipCode: address.zipCode || current.zipCode,
+    }));
+    setErrors((current) => ({
+      ...current,
+      address: "",
+      city: "",
+      state: "",
+      country: "",
+    }));
+  }, []);
   const addAmenities = (entries: string[]) => {
     const cleaned = entries.map((entry) => entry.trim()).filter(Boolean);
     if (!cleaned.length) return;
@@ -525,6 +587,7 @@ export function AddPropertyWizard({
         );
       }
       await Promise.all(invalidations);
+      setSubmitConfirmationOpen(false);
       setCreatedId(property.id);
       toast.success("Property saved successfully.");
     } catch (error) {
@@ -537,6 +600,23 @@ export function AddPropertyWizard({
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const requestSubmission = () => {
+    if (!validateStep(3)) {
+      setStep(3);
+      return;
+    }
+    if (!terms) {
+      setErrors((current) => ({ ...current, terms: "Required" }));
+      toast.error("Accept the listing declaration before submitting.");
+      return;
+    }
+    if (isEditing) {
+      void submit();
+      return;
+    }
+    setSubmitConfirmationOpen(true);
   };
 
   if (createdId)
@@ -711,15 +791,16 @@ export function AddPropertyWizard({
                   />
                   <FieldError>{errors.price}</FieldError>
                 </Field>
+                <GoogleAddressAutocomplete onSelect={applyGoogleAddress} />
                 <Field data-invalid={Boolean(errors.address)}>
                   <FieldLabel htmlFor="property-address">
-                    Full Address
+                    Full Address or Manual Address
                   </FieldLabel>
                   <Textarea
                     id="property-address"
                     value={values.address}
                     onChange={(e) => update("address", e.target.value)}
-                    placeholder="Enter the complete property address"
+                    placeholder="Enter or adjust the complete property address"
                     aria-invalid={Boolean(errors.address)}
                   />
                   <FieldError>{errors.address}</FieldError>
@@ -888,20 +969,47 @@ export function AddPropertyWizard({
           </Card>
           <aside className="flex flex-col gap-6">
             <PropertyTipCard>
-              Detailed descriptions and accurate addresses receive more
-              qualified inquiries. Highlight what makes this listing unique.
+              Select the closest Google address, then correct the address fields
+              if necessary. PropertyArk uses the saved address to find the
+              nearest Google Street View. Imagery depends on Google&apos;s
+              coverage, so some streets may only show the regular map.
             </PropertyTipCard>
             <Card>
               <CardHeader>
                 <CardTitle>Location Preview</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex min-h-48 items-center justify-center rounded-xl bg-muted text-primary">
-                  <MapPin className="size-10" />
-                </div>
+                {values.address.trim() ? (
+                  <div className="min-h-48 overflow-hidden rounded-xl border bg-muted">
+                    <iframe
+                      title="Property address preview"
+                      src={`https://www.google.com/maps?q=${encodeURIComponent(
+                        [
+                          values.address,
+                          values.city,
+                          values.state,
+                          values.country,
+                        ]
+                          .filter(Boolean)
+                          .join(", "),
+                      )}&output=embed`}
+                      className="h-48 w-full"
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex min-h-48 items-center justify-center rounded-xl bg-muted text-primary">
+                    <MapPin className="size-10" />
+                  </div>
+                )}
                 <p className="mt-3 text-sm text-muted-foreground">
                   {values.address ||
                     "The property location will appear here as the address is entered."}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Confirm that the preview shows the correct neighbourhood
+                  before submitting the listing.
                 </p>
               </CardContent>
             </Card>
@@ -1565,7 +1673,11 @@ export function AddPropertyWizard({
               <ArrowRight data-icon="inline-end" />
             </Button>
           ) : (
-            <Button type="button" disabled={submitting} onClick={submit}>
+            <Button
+              type="button"
+              disabled={submitting}
+              onClick={requestSubmission}
+            >
               {submitting ? (
                 <>
                   <LoaderCircle
@@ -1584,6 +1696,98 @@ export function AddPropertyWizard({
           )}
         </div>
       </footer>
+      <Dialog
+        open={submitConfirmationOpen}
+        onOpenChange={(open) => {
+          if (!submitting) setSubmitConfirmationOpen(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Submit this property?</DialogTitle>
+            <DialogDescription>
+              {propertyCreationCost === null
+                ? "Confirm the Credit Points charge before this property is sent for review."
+                : `By submitting this property, you will be charged ${propertyCreationCost.toLocaleString("en-NG")} Credit Points. It will then be sent to the administrator for review.`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-3 rounded-xl bg-muted p-4">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Listing fee</span>
+              <span className="font-semibold">
+                {creditDetailsLoading
+                  ? "Loading..."
+                  : propertyCreationCost === null
+                    ? "Unavailable"
+                    : `${propertyCreationCost.toLocaleString("en-NG")} points`}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-muted-foreground">Available balance</span>
+              <span className="font-semibold">
+                {creditInfo.isLoading
+                  ? "Loading..."
+                  : availablePoints === null
+                    ? "Unavailable"
+                    : `${availablePoints.toLocaleString("en-NG")} points`}
+              </span>
+            </div>
+            {balanceAfterSubmission !== null && (
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-muted-foreground">
+                  Balance after submission
+                </span>
+                <span className="font-semibold">
+                  {balanceAfterSubmission.toLocaleString("en-NG")} points
+                </span>
+              </div>
+            )}
+          </div>
+
+          {(creditDetailsUnavailable || insufficientPoints) && (
+            <p className="text-sm text-destructive">
+              {creditDetailsUnavailable
+                ? "The current listing fee or your balance could not be loaded. Please try again."
+                : `You need ${pointsNeeded?.toLocaleString("en-NG")} more points to submit this property.`}
+            </p>
+          )}
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={submitting}>
+                Cancel
+              </Button>
+            </DialogClose>
+            {insufficientPoints ? (
+              <Button asChild>
+                <Link href="/vendor/subscription-rewards">
+                  Get Credit Points
+                </Link>
+              </Button>
+            ) : creditDetailsUnavailable ? (
+              <Button
+                type="button"
+                onClick={() => {
+                  void creditRules.refetch();
+                  void creditInfo.refetch();
+                }}
+              >
+                Try again
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                disabled={submitting || creditDetailsLoading}
+                onClick={() => void submit()}
+              >
+                {submitting && <Spinner data-icon="inline-start" />}
+                {submitting ? "Submitting property..." : "Confirm and submit"}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }

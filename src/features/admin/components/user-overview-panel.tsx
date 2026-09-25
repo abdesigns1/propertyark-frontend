@@ -3,12 +3,10 @@
 import { useState } from "react";
 import {
   CalendarDays,
-  CalendarRange,
   Clock3,
   FileText,
   History,
   Landmark,
-  SearchCheck,
   ShieldCheck,
   UserRound,
   WalletCards,
@@ -23,19 +21,9 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { AdminInspectionsTable } from "@/features/admin/components/admin-inspections-table";
 import { useAdminUserInspections } from "@/features/admin/hooks/use-admin-dashboard";
 import { formatAdminDate } from "@/features/admin/lib/user-display";
-import type { VendorInspection } from "@/services/inspection.service";
 import type { AdminUser } from "@/services/admin.service";
 import { cn } from "@/lib/utils";
 
@@ -65,14 +53,14 @@ export function UserOverviewPanel({ user }: { user: AdminUser }) {
           <CardHeader className="border-b p-0">
             <TabsList
               variant="line"
-              className="h-auto w-full justify-between overflow-x-auto rounded-none px-2"
+              className="h-auto w-full max-w-full justify-start overflow-x-auto overscroll-x-contain rounded-none px-2 sm:justify-between"
             >
               {userTabs.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
                   className={cn(
-                    "relative rounded-none px-5 py-5 after:hidden",
+                    "relative shrink-0 rounded-none px-4 py-4 after:hidden sm:px-5 sm:py-5",
                     activeTab === tab.value && "font-semibold text-primary",
                   )}
                 >
@@ -87,7 +75,7 @@ export function UserOverviewPanel({ user }: { user: AdminUser }) {
               ))}
             </TabsList>
           </CardHeader>
-          <CardContent className="w-full p-6">
+          <CardContent className="w-full p-4 sm:p-6">
             <TabsContent
               value="overview"
               className="w-full flex-col gap-8 data-[state=active]:flex"
@@ -97,10 +85,11 @@ export function UserOverviewPanel({ user }: { user: AdminUser }) {
               <PortfolioCard />
             </TabsContent>
             <TabsContent value="inspections">
-              <UserInspectionsTab
+              <AdminInspectionsTable
                 inspections={inspectionsQuery.data ?? []}
                 loading={inspectionsQuery.isLoading}
                 failed={inspectionsQuery.isError}
+                subject="user"
               />
             </TabsContent>
             <TabsContent value="transactions">
@@ -122,175 +111,6 @@ export function UserOverviewPanel({ user }: { user: AdminUser }) {
       <ReliabilityScore user={user} />
     </div>
   );
-}
-
-function UserInspectionsTab({
-  inspections,
-  loading,
-  failed,
-}: {
-  inspections: VendorInspection[];
-  loading: boolean;
-  failed: boolean;
-}) {
-  const [statusFilter, setStatusFilter] = useState("all");
-  const visibleInspections = inspections.filter((inspection) =>
-    matchesInspectionFilter(inspection.status, statusFilter),
-  );
-
-  if (loading) return <Skeleton className="h-96 w-full" />;
-
-  if (failed) {
-    return (
-      <UnavailableTab
-        icon={SearchCheck}
-        title="Inspection records could not be loaded"
-        description="The inquiries service did not allow the current administrator session to retrieve vendor inquiry records."
-      />
-    );
-  }
-
-  return (
-    <div className="flex min-h-[460px] flex-col gap-5">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <ToggleGroup
-          type="single"
-          value={statusFilter}
-          onValueChange={(value) => value && setStatusFilter(value)}
-          size="sm"
-          className="h-auto flex-nowrap gap-2 bg-transparent p-0"
-        >
-          {[
-            { value: "all", label: "Status: All" },
-            { value: "scheduled", label: "Scheduled" },
-            { value: "completed", label: "Completed" },
-            { value: "failed", label: "Failed" },
-          ].map((filter) => (
-            <ToggleGroupItem
-              key={filter.value}
-              value={filter.value}
-              className={cn(
-                "h-8 flex-none rounded-md border bg-background px-3 text-xs shadow-none",
-                statusFilter === filter.value &&
-                  "border-primary/20 bg-primary/5 font-semibold text-primary",
-              )}
-            >
-              {filter.label}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-        <p className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-          <CalendarRange className="size-4" />
-          {formatInspectionRange(inspections)}
-        </p>
-      </div>
-      <div className="overflow-hidden rounded-lg border">
-        <Table>
-          <TableHeader className="bg-primary/5">
-            <TableRow>
-              <TableHead>Property Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Scheduled Date</TableHead>
-              <TableHead>Vendor</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visibleInspections.map((inspection) => (
-              <InspectionRow key={inspection.id} inspection={inspection} />
-            ))}
-          </TableBody>
-        </Table>
-        {!visibleInspections.length && (
-          <div className="flex min-h-72 flex-col items-center justify-center px-6 text-center">
-            <span className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <SearchCheck className="size-5" />
-            </span>
-            <p className="mt-4 font-semibold">No inspection records found</p>
-            <p className="mt-2 max-w-md text-sm text-muted-foreground">
-              {inspections.length
-                ? "No inspection record matches the selected status."
-                : "The inquiry endpoint returned no inspection requests associated with this user's ID or email address."}
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function InspectionRow({ inspection }: { inspection: VendorInspection }) {
-  const status = inspection.status.toUpperCase();
-  const schedule = inspection.inspectionDate
-    ? formatAdminDate(inspection.inspectionDate)
-    : "Not scheduled";
-
-  return (
-    <TableRow>
-      <TableCell>
-        <p className="font-medium">{inspection.propertyName}</p>
-      </TableCell>
-      <TableCell className="capitalize text-muted-foreground">
-        {(inspection.meetingType ?? "Property inspection")
-          .toLowerCase()
-          .replaceAll("_", " ")}
-      </TableCell>
-      <TableCell className="text-muted-foreground">
-        <p>{schedule}</p>
-        {inspection.time && (
-          <p className="text-xs text-muted-foreground">{inspection.time}</p>
-        )}
-      </TableCell>
-      <TableCell className="text-muted-foreground">
-        {inspection.vendorName || "Not provided"}
-      </TableCell>
-      <TableCell>
-        <Badge
-          variant="outline"
-          className={cn(
-            "capitalize",
-            status === "PENDING" &&
-              "border-warning/20 bg-warning/10 text-warning",
-            ["ACCEPTED", "CONFIRMED", "SCHEDULED"].includes(status) &&
-              "border-primary/20 bg-primary/10 text-primary",
-            status === "COMPLETED" &&
-              "border-success/20 bg-success/10 text-success",
-            ["DECLINED", "REJECTED", "CANCELLED"].includes(status) &&
-              "border-destructive/20 bg-destructive/10 text-destructive",
-          )}
-        >
-          {status.toLowerCase()}
-        </Badge>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-function matchesInspectionFilter(status: string, filter: string) {
-  const normalized = status.toUpperCase();
-  if (filter === "all") return true;
-  if (filter === "scheduled") {
-    return ["PENDING", "ACCEPTED", "CONFIRMED", "SCHEDULED"].includes(
-      normalized,
-    );
-  }
-  if (filter === "completed") return normalized === "COMPLETED";
-  return ["DECLINED", "REJECTED", "CANCELLED", "FAILED"].includes(normalized);
-}
-
-function formatInspectionRange(inspections: VendorInspection[]) {
-  const dates = inspections
-    .map((inspection) => new Date(inspection.inspectionDate))
-    .filter((date) => !Number.isNaN(date.getTime()))
-    .sort((a, b) => a.getTime() - b.getTime());
-
-  if (!dates.length) return "No scheduled date range";
-  const formatter = new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  return `${formatter.format(dates[0])} - ${formatter.format(dates.at(-1)!)}`;
 }
 
 function PersonalInformation({ user }: { user: AdminUser }) {

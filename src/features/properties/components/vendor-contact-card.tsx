@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarCheck2,
   LoaderCircle,
@@ -44,6 +44,7 @@ import {
 import type { Property } from "@/features/properties/types";
 import { cn } from "@/lib/utils";
 import { getApiErrorMessage } from "@/services/api-error";
+import { chatService } from "@/services/chat.service";
 import { inspectionService } from "@/services/inspection.service";
 import { useAuthStore } from "@/store/auth.store";
 
@@ -54,6 +55,7 @@ export function VendorContactCard({ property }: { property: Property }) {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const userId = useAuthStore((state) => state.userId);
+  const role = useAuthStore((state) => state.role);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [mode, setMode] = useState<ContactMode>(null);
   const [message, setMessage] = useState("");
@@ -62,6 +64,20 @@ export function VendorContactCard({ property }: { property: Property }) {
   const [meetingType, setMeetingType] = useState("IN_PERSON");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const directChat = useMutation({
+    mutationFn: chatService.createDirect,
+    onSuccess: (session) => {
+      void queryClient.invalidateQueries({ queryKey: ["chat", "sessions"] });
+      const dashboard = role === "vendor" ? "vendor" : "buyer";
+      router.push(
+        `/${dashboard}/messages?session=${encodeURIComponent(session.id)}&property=${encodeURIComponent(property.id)}&propertyTitle=${encodeURIComponent(property.title)}`,
+      );
+    },
+    onError: (error) =>
+      toast.error(
+        getApiErrorMessage(error, "The conversation could not be started."),
+      ),
+  });
 
   const requireAuthentication = (action: string) => {
     if (!isAuthenticated) {
@@ -80,8 +96,14 @@ export function VendorContactCard({ property }: { property: Property }) {
 
   const openVendorChat = () => {
     if (!requireAuthentication("message the vendor")) return;
-    toast.info("Direct messaging is coming soon", {
-      description: `Your conversation with ${property.vendorName ?? "this vendor"} will open here once chat is available.`,
+    if (!property.vendorId) {
+      toast.error("This property does not have a vendor account attached.");
+      return;
+    }
+    directChat.mutate({
+      participantId: property.vendorId,
+      subject: `Inquiry about ${property.title}`,
+      propertyId: property.id,
     });
   };
 
@@ -204,9 +226,14 @@ export function VendorContactCard({ property }: { property: Property }) {
             size="sm"
             className="flex-1 rounded-lg py-5"
             onClick={openVendorChat}
+            disabled={directChat.isPending}
           >
-            <MessageSquare data-icon="inline-start" />
-            Send A Message
+            {directChat.isPending ? (
+              <LoaderCircle className="animate-spin" data-icon="inline-start" />
+            ) : (
+              <MessageSquare data-icon="inline-start" />
+            )}
+            {directChat.isPending ? "Opening..." : "Send A Message"}
           </Button>
         </div>
         <Button

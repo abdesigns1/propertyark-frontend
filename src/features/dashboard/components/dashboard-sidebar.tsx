@@ -26,6 +26,10 @@ import { DashboardBrand } from "./dashboard-brand";
 import { DashboardUserAvatar } from "./dashboard-user-avatar";
 import { useDashboardUser } from "@/features/dashboard/hooks/use-dashboard-user";
 import { useDashboardNotificationIndicators } from "@/features/dashboard/hooks/use-vendor-notification-indicators";
+import {
+  useChatRealtime,
+  useChatSessions,
+} from "@/features/messages/hooks/use-chat";
 import { Badge } from "@/components/ui/badge";
 import { SheetClose } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -94,6 +98,12 @@ export function DashboardNavigation({
   const compactDesktopNavigation = !closeOnSelect;
   const { hasUnread, hasUnreadBookings, hasUnreadInspections } =
     useDashboardNotificationIndicators();
+  const sessionsQuery = useChatSessions();
+  useChatRealtime(null);
+  const unreadMessageCount = (sessionsQuery.data ?? []).reduce(
+    (total, session) => total + session.unreadCount,
+    0,
+  );
 
   useEffect(() => {
     const updateHash = () => setHash(window.location.hash);
@@ -116,7 +126,10 @@ export function DashboardNavigation({
         const active =
           pathname === itemPathname &&
           (itemHash ? hash === `#${itemHash}` : !hash);
+        const isMessages =
+          href === "/buyer/messages" || href === "/vendor/messages";
         const hasNewActivity =
+          (isMessages && unreadMessageCount > 0) ||
           (role === "vendor" &&
             ((href === "/vendor/shortlet-bookings" && hasUnreadBookings) ||
               (href === "/vendor/inspections" && hasUnreadInspections) ||
@@ -130,7 +143,7 @@ export function DashboardNavigation({
             href={href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex min-h-12 items-center gap-4 rounded-xl px-4 py-2.5 text-[15px] font-medium leading-6 text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary",
+              "relative flex min-h-12 items-center gap-4 rounded-xl px-4 py-2.5 text-[15px] font-medium leading-6 text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary",
               compactDesktopNavigation &&
                 "min-h-10 flex-none gap-3 px-3 py-1.5 text-sm leading-5",
               collapsed && "justify-center px-2",
@@ -145,12 +158,28 @@ export function DashboardNavigation({
               aria-hidden="true"
             />
             <span className={cn(collapsed && "sr-only")}>{label}</span>
-            {hasNewActivity && (
+            {isMessages && unreadMessageCount > 0 ? (
+              <>
+                <Badge
+                  className={cn(
+                    "ml-auto min-w-5 justify-center rounded-full px-1.5",
+                    collapsed && "absolute top-1 right-1 size-2 min-w-0 p-0",
+                  )}
+                >
+                  <span className={cn(collapsed && "sr-only")}>
+                    {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                  </span>
+                </Badge>
+                <span className="sr-only">
+                  {unreadMessageCount} unread messages
+                </span>
+              </>
+            ) : hasNewActivity ? (
               <>
                 <Badge className="ml-auto size-2 p-0" aria-hidden="true" />
                 <span className="sr-only">New activity</span>
               </>
-            )}
+            ) : null}
           </Link>
         );
         return closeOnSelect ? (

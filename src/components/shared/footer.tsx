@@ -1,8 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SocialLinks } from "@/components/shared/social-links";
 
 const FOOTER_COLUMNS = [
   {
@@ -31,38 +31,6 @@ const FOOTER_COLUMNS = [
     ],
   },
 ];
-
-function FacebookIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-      <path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12Z" />
-    </svg>
-  );
-}
-
-function TwitterIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-      <path d="M18.9 2H22l-7.6 8.7L23 22h-6.9l-5.4-6.9L4.4 22H1.3l8.2-9.3L1 2h7l4.9 6.3L18.9 2Zm-1.2 18h1.9L7.4 4H5.4l12.3 16Z" />
-    </svg>
-  );
-}
-
-function InstagramIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      {...props}
-    >
-      <rect x="3" y="3" width="18" height="18" rx="5" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
 
 export function Footer() {
   return (
@@ -121,11 +89,8 @@ export function Footer() {
                 Redefining real estate through technology, transparency, and
                 trust. Your premier portal for global property investment.
               </p>
-              <div className="mt-4 flex items-center gap-3 text-muted-foreground">
-                <FacebookIcon className="h-4 w-4" />
-                <TwitterIcon className="h-4 w-4" />
-                <InstagramIcon className="h-4 w-4" />
-                <Mail className="h-4 w-4" />
+              <div className="mt-4">
+                <SocialLinks />
               </div>
             </div>
 

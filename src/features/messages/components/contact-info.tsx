@@ -1,4 +1,4 @@
-import { Globe, Mail, MessageCircle, Send } from "lucide-react";
+import { SocialLinks } from "@/components/shared/social-links";
 
 export function ContactInfo() {
   return (
@@ -15,9 +15,12 @@ export function ContactInfo() {
         <div>
           <p className="text-sm font-semibold text-foreground">Email Address</p>
           <div className="mt-2 h-0.5 w-8 bg-secondary" />
-          <p className="mt-3 text-sm font-medium text-foreground">
-            help@propertyark.com
-          </p>
+          <a
+            href="mailto:propertyark26@gmail.com"
+            className="mt-3 inline-block text-sm font-medium text-foreground hover:text-primary"
+          >
+            propertyark26@gmail.com
+          </a>
           <p className="mt-3 text-sm text-muted-foreground">
             Response hours:
             <br />
@@ -38,15 +41,8 @@ export function ContactInfo() {
         </div>
       </div>
 
-      <div className="mt-8 flex items-center gap-3">
-        {[Globe, Mail, MessageCircle, Send].map((Icon, i) => (
-          <span
-            key={i}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-          >
-            <Icon className="h-4 w-4" />
-          </span>
-        ))}
+      <div className="mt-8">
+        <SocialLinks variant="circle" />
       </div>
     </div>
   );

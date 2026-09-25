@@ -69,14 +69,14 @@ export function VendorOverviewPanel({
           <CardHeader className="border-b p-0">
             <TabsList
               variant="line"
-              className="h-auto w-full justify-between overflow-x-auto rounded-none px-2"
+              className="h-auto w-full max-w-full justify-start overflow-x-auto overscroll-x-contain rounded-none px-2 sm:justify-between"
             >
               {vendorTabs.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
                   className={cn(
-                    "relative rounded-none px-5 py-5 after:hidden",
+                    "relative shrink-0 rounded-none px-4 py-4 after:hidden sm:px-5 sm:py-5",
                     activeTab === tab.value && "font-semibold text-primary",
                   )}
                 >
@@ -91,7 +91,7 @@ export function VendorOverviewPanel({
               ))}
             </TabsList>
           </CardHeader>
-          <CardContent className="w-full p-6">
+          <CardContent className="w-full p-4 sm:p-6">
             <TabsContent
               value="overview"
               className="w-full flex-col gap-8 data-[state=active]:flex"

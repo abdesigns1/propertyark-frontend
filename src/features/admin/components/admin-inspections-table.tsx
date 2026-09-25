@@ -3,6 +3,14 @@
 import { useState } from "react";
 import { CalendarRange, SearchCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -52,7 +60,7 @@ export function AdminInspectionsTable({
           value={statusFilter}
           onValueChange={(value) => value && setStatusFilter(value)}
           size="sm"
-          className="h-auto flex-nowrap gap-2 bg-transparent p-0"
+          className="h-auto w-full flex-wrap justify-start gap-2 bg-transparent p-0 sm:w-auto sm:flex-nowrap"
         >
           {FILTERS.map((filter) => (
             <ToggleGroupItem
@@ -74,7 +82,17 @@ export function AdminInspectionsTable({
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-lg border">
+      <div className="flex flex-col gap-3 sm:hidden">
+        {visibleInspections.map((inspection) => (
+          <InspectionCard
+            key={inspection.id}
+            inspection={inspection}
+            subject={subject}
+          />
+        ))}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-lg border sm:block">
         <Table>
           <TableHeader className="bg-primary/5">
             <TableRow>
@@ -106,6 +124,18 @@ export function AdminInspectionsTable({
           />
         )}
       </div>
+      {!visibleInspections.length && (
+        <div className="rounded-lg border sm:hidden">
+          <InspectionEmpty
+            title="No inspection records found"
+            description={
+              inspections.length
+                ? "No inspection record matches the selected status."
+                : `The inquiry endpoint returned no inspection requests associated with this ${subject}.`
+            }
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -147,6 +177,67 @@ function InspectionRow({
         <InspectionStatus status={status} />
       </TableCell>
     </TableRow>
+  );
+}
+
+function InspectionCard({
+  inspection,
+  subject,
+}: {
+  inspection: VendorInspection;
+  subject: "user" | "vendor";
+}) {
+  const status = inspection.status.toUpperCase();
+  const personLabel = subject === "vendor" ? "User" : "Vendor";
+  const personName =
+    subject === "vendor"
+      ? inspection.userName || "Not provided"
+      : inspection.vendorName || "Not provided";
+  const inspectionType = (inspection.meetingType ?? "Property inspection")
+    .toLowerCase()
+    .replaceAll("_", " ");
+  const scheduledDate = inspection.inspectionDate
+    ? formatAdminDate(inspection.inspectionDate)
+    : "Not scheduled";
+
+  return (
+    <Card size="sm">
+      <CardHeader>
+        <CardTitle>{inspection.propertyName}</CardTitle>
+        <CardDescription className="capitalize">
+          {inspectionType}
+        </CardDescription>
+        <CardAction>
+          <InspectionStatus status={status} />
+        </CardAction>
+      </CardHeader>
+      <CardContent className="grid grid-cols-2 gap-4">
+        <InspectionDetail
+          label="Scheduled"
+          value={scheduledDate}
+          detail={inspection.time}
+        />
+        <InspectionDetail label={personLabel} value={personName} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function InspectionDetail({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail?: string | null;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-1 break-words text-sm font-medium">{value}</p>
+      {detail && <p className="text-xs text-muted-foreground">{detail}</p>}
+    </div>
   );
 }
 

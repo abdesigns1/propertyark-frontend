@@ -22,6 +22,7 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
+  LoaderCircle,
   MapPin,
   MessageSquare,
   Minus,
@@ -29,6 +30,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -45,12 +47,16 @@ import { Input } from "@/components/ui/input";
 import { Price } from "@/components/shared/price";
 import type { Property } from "@/features/properties/types";
 import { cn } from "@/lib/utils";
+import { getApiErrorMessage } from "@/services/api-error";
+import { chatService } from "@/services/chat.service";
 import { useAuthStore } from "@/store/auth.store";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export function ShortletBookingCard({ property }: { property: Property }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const role = useAuthStore((state) => state.role);
   const initialMonth = startOfMonth(addMonths(new Date(), 1));
   const [visibleMonth, setVisibleMonth] = useState(initialMonth);
   const [checkIn, setCheckIn] = useState(setDate(initialMonth, 15));
@@ -60,6 +66,20 @@ export function ShortletBookingCard({ property }: { property: Property }) {
   const [children, setChildren] = useState(0);
   const [guestPickerOpen, setGuestPickerOpen] = useState(false);
   const guests = adults + children;
+  const directChat = useMutation({
+    mutationFn: chatService.createDirect,
+    onSuccess: (session) => {
+      void queryClient.invalidateQueries({ queryKey: ["chat", "sessions"] });
+      const dashboard = role === "vendor" ? "vendor" : "buyer";
+      router.push(
+        `/${dashboard}/messages?session=${encodeURIComponent(session.id)}&property=${encodeURIComponent(property.id)}&propertyTitle=${encodeURIComponent(property.title)}`,
+      );
+    },
+    onError: (error) =>
+      toast.error(
+        getApiErrorMessage(error, "The conversation could not be started."),
+      ),
+  });
 
   const unavailableDates = useMemo(
     () =>
@@ -177,8 +197,14 @@ export function ShortletBookingCard({ property }: { property: Property }) {
 
   function openVendorChat() {
     if (!requireAuthentication("message")) return;
-    toast.info("Direct messaging is coming soon", {
-      description: `Your conversation with ${property.vendorName ?? "this vendor"} will open here once chat is available.`,
+    if (!property.vendorId) {
+      toast.error("This shortlet does not have a vendor account attached.");
+      return;
+    }
+    directChat.mutate({
+      participantId: property.vendorId,
+      subject: `Shortlet inquiry about ${property.title}`,
+      propertyId: property.id,
     });
   }
 
@@ -424,8 +450,17 @@ export function ShortletBookingCard({ property }: { property: Property }) {
               size="sm"
               className="shadow-md shadow-primary/20"
               onClick={openVendorChat}
+              disabled={directChat.isPending}
             >
-              <MessageSquare data-icon="inline-start" /> Send Message
+              {directChat.isPending ? (
+                <LoaderCircle
+                  className="animate-spin"
+                  data-icon="inline-start"
+                />
+              ) : (
+                <MessageSquare data-icon="inline-start" />
+              )}
+              {directChat.isPending ? "Opening..." : "Send Message"}
             </Button>
           </div>
           {!isAuthenticated && (

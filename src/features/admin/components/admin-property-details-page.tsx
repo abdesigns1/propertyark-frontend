@@ -191,18 +191,18 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
   });
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:py-8">
-      <Button variant="ghost" className="-ml-3 mb-4" asChild>
+    <main className="mx-auto w-full max-w-7xl min-w-0 overflow-x-hidden px-3 py-4 sm:px-6 sm:py-6 lg:py-8">
+      <Button variant="ghost" size="sm" className="-ml-2 mb-3 sm:mb-4" asChild>
         <Link href="/admin/properties">
           <ArrowLeft data-icon="inline-start" />
           Back to Properties
         </Link>
       </Button>
 
-      <header className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-        <div>
+      <header className="mb-5 flex flex-col justify-between gap-3 sm:mb-7 sm:flex-row sm:items-start sm:gap-4">
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold tracking-tight">
+            <h1 className="w-full break-words text-xl font-semibold tracking-tight sm:w-auto sm:text-3xl">
               {property.name}
             </h1>
             <Badge
@@ -234,16 +234,18 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
               Property: {propertyStatusLabel(propertyStatus)}
             </Badge>
           </div>
-          <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+          <div className="mt-2 flex min-w-0 flex-col gap-1.5 text-xs text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-x-6 sm:gap-y-2 sm:text-sm">
             <span className="inline-flex items-center gap-1.5">
               <MapPin className="size-4" />
               {adminPropertyLocation(property)}
             </span>
-            <span>#{property.id}</span>
+            <span className="block max-w-full truncate" title={property.id}>
+              Reference: {property.id}
+            </span>
           </div>
         </div>
-        <div className="sm:text-right">
-          <p className="text-2xl font-bold text-primary">
+        <div className="flex items-end justify-between gap-3 sm:block sm:text-right">
+          <p className="text-xl font-bold text-primary sm:text-2xl">
             {adminPropertyPrice(property)}
           </p>
           <p className="text-sm text-muted-foreground">
@@ -286,9 +288,9 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
         </aside>
       </div>
 
-      <div className="sticky bottom-0 mt-8 flex flex-wrap items-center justify-end gap-3 border-t bg-background/95 py-4 backdrop-blur">
+      <div className="sticky bottom-0 -mx-4 mt-8 grid grid-cols-2 items-center gap-2 border-t bg-background/95 px-4 py-3 shadow-[0_-8px_24px_-20px_var(--foreground)] backdrop-blur sm:mx-0 sm:flex sm:flex-wrap sm:justify-end sm:gap-3 sm:px-0 sm:py-4 sm:shadow-none">
         {reviewComplete && (
-          <p className="mr-auto text-sm font-medium text-muted-foreground">
+          <p className="col-span-2 text-sm font-medium text-muted-foreground sm:mr-auto">
             This property has already been verified and approved.
           </p>
         )}
@@ -297,35 +299,40 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
             variant="outline"
             disabled={unfeature.isPending}
             onClick={() => setUnfeatureOpen(true)}
+            className="col-span-2 w-full sm:w-auto"
           >
             <StarOff data-icon="inline-start" />
             Remove featured status
           </Button>
         )}
-        <Button
-          variant="outline"
-          disabled={review.isPending || reviewComplete}
-          onClick={() => setDecision("reject")}
-          className="disabled:border-muted disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
-        >
-          Reject Property
-        </Button>
-        <Button
-          variant="secondary"
-          disabled={review.isPending || reviewComplete}
-          onClick={() => setDecision("changes")}
-          className="disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
-        >
-          Request Changes
-        </Button>
-        <Button
-          disabled={review.isPending || reviewComplete}
-          onClick={() => setApproveOpen(true)}
-          className="disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
-        >
-          <CheckCircle2 data-icon="inline-start" />
-          Approve &amp; Publish
-        </Button>
+        {!reviewComplete && (
+          <>
+            <Button
+              variant="outline"
+              disabled={review.isPending}
+              onClick={() => setDecision("reject")}
+              className="w-full sm:w-auto"
+            >
+              Reject Property
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={review.isPending}
+              onClick={() => setDecision("changes")}
+              className="w-full sm:w-auto"
+            >
+              Request Changes
+            </Button>
+            <Button
+              disabled={review.isPending}
+              onClick={() => setApproveOpen(true)}
+              className="col-span-2 w-full sm:w-auto"
+            >
+              <CheckCircle2 data-icon="inline-start" />
+              Approve &amp; Publish
+            </Button>
+          </>
+        )}
       </div>
 
       <DecisionDialog
@@ -461,15 +468,15 @@ function PropertyMedia({
 
   return (
     <>
-      <Card className="overflow-hidden">
-        <CardHeader className="flex-row items-center justify-between border-b">
+      <Card className="-mx-3 gap-0 overflow-hidden rounded-none border-x-0 py-0 sm:mx-0 sm:gap-(--card-spacing) sm:rounded-xl sm:border-x sm:py-(--card-spacing)">
+        <CardHeader className="flex-row items-center justify-between border-b px-3 py-3 sm:px-(--card-spacing) sm:py-0 sm:pb-(--card-spacing)">
           <CardTitle>Property Media</CardTitle>
           <Badge variant="outline">
             <CheckCircle2 /> Media review
           </Badge>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4 p-5">
-          <div className="group relative aspect-[16/8] overflow-hidden rounded-xl bg-muted">
+        <CardContent className="flex flex-col gap-4 px-0 sm:p-5">
+          <div className="group relative aspect-video overflow-hidden bg-muted sm:aspect-[16/8] sm:rounded-xl">
             {images.length ? (
               <>
                 <button
@@ -509,7 +516,7 @@ function PropertyMedia({
             )}
           </div>
           {images.length > 1 && (
-            <div className="grid grid-cols-4 gap-3">
+            <div className="hidden grid-cols-4 gap-3 sm:grid">
               {images.slice(0, 4).map((image, index) => (
                 <button
                   key={image.id}
@@ -573,7 +580,7 @@ function ImageNavigation({
         size="icon"
         aria-label="Previous property image"
         onClick={onPrevious}
-        className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full shadow-lg"
+        className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full shadow-lg sm:left-3"
       >
         <ChevronLeft />
       </Button>
@@ -583,7 +590,7 @@ function ImageNavigation({
         size="icon"
         aria-label="Next property image"
         onClick={onNext}
-        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full shadow-lg"
+        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full shadow-lg sm:right-3"
       >
         <ChevronRight />
       </Button>

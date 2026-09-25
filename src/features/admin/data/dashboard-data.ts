@@ -26,6 +26,7 @@ export const adminNavigation = [
   // { label: "Subscriptions", href: "#subscriptions", icon: CreditCard },
   { label: "Points Management", href: "/admin/points", icon: Coins },
   { label: "Transactions", href: "/admin/transactions", icon: ReceiptText },
+  { label: "Support Chat", href: "/admin/support", icon: MessageSquareText },
   {
     label: "Reports & Analytics",
     href: "/admin/reports",

@@ -10,7 +10,13 @@ import { useSidebarCollapse } from "@/hooks/use-sidebar-collapse";
 import { useAuthSessionReady } from "@/hooks/use-auth-session-ready";
 import { cn } from "@/lib/utils";
 
-export function AdminWorkspace({ children }: { children: React.ReactNode }) {
+export function AdminWorkspace({
+  children,
+  contained = false,
+}: {
+  children: React.ReactNode;
+  contained?: boolean;
+}) {
   const router = useRouter();
   const ready = useAuthSessionReady();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -38,6 +44,8 @@ export function AdminWorkspace({ children }: { children: React.ReactNode }) {
     <div
       className={cn(
         "min-h-screen bg-background transition-[padding] duration-200",
+        contained &&
+          "xl:flex xl:h-dvh xl:min-h-0 xl:flex-col xl:overflow-hidden",
         collapsed ? "lg:pl-20" : "lg:pl-64",
       )}
     >

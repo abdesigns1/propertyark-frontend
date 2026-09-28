@@ -11,7 +11,7 @@ export function Hero() {
         {/* Background image + overlay */}
         <div className="absolute inset-0 -z-10">
           <Image
-            src="/chuttersnap-hTDbbrT836A-unsplash.jpg"
+            src="/hero image 2.png"
             alt="Aerial view of a modern city and residential neighbourhood"
             fill
             priority
@@ -27,7 +27,7 @@ export function Hero() {
             <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
               Buy, Sell &amp; Rent
               <br />
-              <span className="text-secondary">Verified</span> Properties
+              <span className="text-white">Verified</span> Properties
             </h1>
             {/* <p className="mx-auto mt-6 max-w-md text-base leading-relaxed text-white/85 lg:mx-0">
               Discover a curated selection of premium real estate, backed by

@@ -23,6 +23,7 @@ export default function AboutPage() {
         videoSrc="https://res.cloudinary.com/wkwqmkrl/video/upload/f_mp4,vc_h264,ac_none,q_auto/v1790183603/VID_20260923_150401_355.mp4"
         scrollTargetId="about-content"
         showOverlay={false}
+        showTitle={false}
       />
       <WhoWeAre />
       <VisionMission />

@@ -13,6 +13,7 @@ interface PageBannerProps {
   videoSrc?: string;
   scrollTargetId?: string;
   showOverlay?: boolean;
+  showTitle?: boolean;
   belowContent?: React.ReactNode;
 }
 
@@ -24,6 +25,7 @@ export function PageBanner({
   videoSrc,
   scrollTargetId,
   showOverlay = true,
+  showTitle = true,
   belowContent,
 }: PageBannerProps) {
   return (
@@ -64,10 +66,15 @@ export function PageBanner({
             videoSrc ? "mt-auto w-full" : "mt-6",
           )}
         >
-          <h1 className="text-3xl font-semibold text-white sm:text-4xl">
+          <h1
+            className={cn(
+              "text-3xl font-semibold text-white sm:text-4xl",
+              !showTitle && "sr-only",
+            )}
+          >
             {title}
           </h1>
-          {description && (
+          {showTitle && description && (
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/80">
               {description}
             </p>
@@ -79,7 +86,7 @@ export function PageBanner({
             asChild
             variant="outline"
             size="icon-lg"
-            className="absolute right-6 bottom-8 rounded-full border-white/35 bg-white/15 text-white shadow-xl shadow-black/15 backdrop-blur-md transition-all duration-300 hover:border-white/60 hover:bg-white/25 hover:text-white focus-visible:ring-white/60 motion-safe:animate-bounce sm:right-10 sm:bottom-10 lg:right-[max(2.5rem,calc((100vw-80rem)/2+1.5rem))]"
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 rounded-full border-white/35 bg-white/15 text-white shadow-xl shadow-black/15 backdrop-blur-md transition-all duration-300 hover:border-white/60 hover:bg-white/25 hover:text-white focus-visible:ring-white/60 motion-safe:animate-bounce sm:bottom-10"
           >
             <a
               href={`#${scrollTargetId}`}

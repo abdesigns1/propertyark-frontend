@@ -102,7 +102,9 @@ export function PropertySearchForm() {
       params.set("guests", guests);
       if (beds !== "all") params.set("bedrooms", beds);
     } else {
-      if (location !== "all") params.set("location", location);
+      if (purpose === "rent" && location !== "all") {
+        params.set("location", location);
+      }
       if (category !== "all") params.set("category", category);
       if ((purpose === "sale" || purpose === "rent") && beds !== "all") {
         params.set("bedrooms", beds);
@@ -151,7 +153,14 @@ export function PropertySearchForm() {
       </TabsList>
 
       <form onSubmit={handleSearch} className="w-full bg-card">
-        <FieldGroup className="grid gap-0 lg:grid-cols-[1.35fr_0.78fr_0.78fr_0.72fr_0.72fr_auto] lg:items-stretch">
+        <FieldGroup
+          className={cn(
+            "grid gap-0 lg:items-stretch",
+            purpose === "sale"
+              ? "lg:grid-cols-[1.45fr_0.82fr_0.82fr_0.78fr_auto]"
+              : "lg:grid-cols-[1.35fr_0.78fr_0.78fr_0.72fr_0.72fr_auto]",
+          )}
+        >
           {purpose === "shortlet" ? (
             <>
               <Field className="min-h-20 justify-center px-5 py-3 lg:border-r">
@@ -287,33 +296,35 @@ export function PropertySearchForm() {
                 />
               </Field>
 
-              <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
-                <FieldLabel
-                  htmlFor="home-property-location"
-                  className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-                >
-                  <MapPin aria-hidden="true" className="size-4" />
-                  Location
-                </FieldLabel>
-                <Select value={location} onValueChange={setLocation}>
-                  <SelectTrigger
-                    id="home-property-location"
-                    className="h-7 w-full border-0 px-0 shadow-none focus-visible:ring-0"
+              {purpose === "rent" && (
+                <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
+                  <FieldLabel
+                    htmlFor="home-property-location"
+                    className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
                   >
-                    <SelectValue placeholder="Select your city" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="all">Any location</SelectItem>
-                      {LOCATIONS.map((city) => (
-                        <SelectItem key={city} value={city}>
-                          {city}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
+                    <MapPin aria-hidden="true" className="size-4" />
+                    Location
+                  </FieldLabel>
+                  <Select value={location} onValueChange={setLocation}>
+                    <SelectTrigger
+                      id="home-property-location"
+                      className="h-7 w-full border-0 px-0 shadow-none focus-visible:ring-0"
+                    >
+                      <SelectValue placeholder="Select your city" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="all">Any location</SelectItem>
+                        {LOCATIONS.map((city) => (
+                          <SelectItem key={city} value={city}>
+                            {city}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
 
               <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
                 <FieldLabel

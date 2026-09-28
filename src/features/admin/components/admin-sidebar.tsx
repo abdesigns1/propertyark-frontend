@@ -7,6 +7,7 @@ import { PropertyArkMark } from "@/components/admin/propertyark-mark";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { adminNavigation } from "@/features/admin/data/dashboard-data";
+import { adminDisplayIdentity } from "@/features/admin/lib/admin-identity";
 import { useAuthStore } from "@/store/auth.store";
 import { cn } from "@/lib/utils";
 
@@ -24,12 +25,7 @@ export function AdminSidebar({
   const user = useAuthStore((state) => state.user);
   const role = useAuthStore((state) => state.role);
   const clearAuth = useAuthStore((state) => state.clearAuth);
-  const initials =
-    user?.fullName
-      ?.split(" ")
-      .map((part) => part[0])
-      .slice(0, 2)
-      .join("") || "AV";
+  const identity = adminDisplayIdentity(user, role);
 
   return (
     <aside className="flex h-dvh min-h-0 flex-col overflow-hidden bg-primary px-4 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-primary-foreground">
@@ -84,15 +80,13 @@ export function AdminSidebar({
       >
         <Avatar>
           <AvatarFallback className="bg-white text-primary">
-            {initials}
+            {identity.initials}
           </AvatarFallback>
         </Avatar>
         <div className={cn("min-w-0 flex-1", collapsed && "sr-only")}>
-          <p className="truncate text-sm font-semibold">
-            {user?.fullName || "Ayeni Victor"}
-          </p>
+          <p className="truncate text-sm font-semibold">{identity.name}</p>
           <p className="text-xs capitalize text-primary-foreground/75">
-            {role === "staff" ? "Staff" : "Super Admin"}
+            {identity.roleLabel}
           </p>
         </div>
         <Button

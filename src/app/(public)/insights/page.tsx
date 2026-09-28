@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import { PageBanner } from "@/components/shared/page-banner";
 import { Footer } from "@/components/shared/footer";
 import { MarketInsightsDashboard } from "@/features/insights/components/market-insights-dashboard";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPageMetadata({
   title: "Property Market Insights",
   description:
     "Explore live PropertyArk listing inventory, asking-price trends, and city-level property market insights.",
-};
+  path: "/insights",
+});
 
 export default function MarketInsightsPage() {
   return (

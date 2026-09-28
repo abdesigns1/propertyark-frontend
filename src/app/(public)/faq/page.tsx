@@ -21,12 +21,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CONTAINER, cn } from "@/lib/utils";
+import { createPageMetadata, serializeJsonLd } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPageMetadata({
   title: "Help Center & FAQs",
   description:
     "Find answers about PropertyArk listings, inspections, shortlet bookings, payments, and account security.",
-};
+  path: "/faq",
+});
 
 const TOPICS = [
   {
@@ -100,8 +102,22 @@ const FAQS: FaqItem[] = [
 ];
 
 export default function FaqPage() {
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQS.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: { "@type": "Answer", text: item.answer },
+    })),
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqJsonLd) }}
+      />
       <PageBanner
         title="How can we help?"
         description="Clear answers for every step of your PropertyArk journey—from finding a home to managing inspections and shortlet stays."

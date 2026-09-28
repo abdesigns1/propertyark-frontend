@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Avatar as AvatarPrimitive } from "radix-ui";
 
+import { normalizeAvatarMediaUrl } from "@/lib/property-media-security";
 import { cn } from "@/lib/utils";
 
 function Avatar({
@@ -27,11 +28,13 @@ function Avatar({
 
 function AvatarImage({
   className,
+  src,
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Image>) {
   return (
     <AvatarPrimitive.Image
       data-slot="avatar-image"
+      src={typeof src === "string" ? normalizeAvatarMediaUrl(src) : src}
       className={cn(
         "aspect-square size-full rounded-full object-cover",
         className,

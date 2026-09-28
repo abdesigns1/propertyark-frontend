@@ -1,3 +1,4 @@
+import { normalizeAvatarMediaUrl } from "@/lib/property-media-security";
 import { api } from "@/services/axios";
 
 export interface VendorSettingsProfile {
@@ -31,6 +32,11 @@ function record(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function normalizeAvatarUrl(value: string | undefined): string | null {
+  if (!value) return null;
+  return normalizeAvatarMediaUrl(value);
+}
+
 function normalizeProfile(value: unknown): VendorSettingsProfile {
   const root = record(value);
   const data = record(root.data);
@@ -55,7 +61,9 @@ function normalizeProfile(value: unknown): VendorSettingsProfile {
     email: text("email") ?? "",
     phone: text("phone") ?? "",
     location: text("location", "address") ?? "",
-    avatarUrl: text("avatarUrl", "avatar", "profilePicture") ?? null,
+    avatarUrl: normalizeAvatarUrl(
+      text("avatarUrl", "avatar", "profilePicture"),
+    ),
     businessName: text("businessName", "companyName", "agencyName") ?? "",
     businessDescription:
       text("businessDescription", "companyDescription", "bio", "about") ?? "",
@@ -95,12 +103,19 @@ export const settingsService = {
     emailAlerts?: boolean;
     smsNotifications?: boolean;
     pushNotifications?: boolean;
-  }) =>
-    normalizeProfile((await api.patch("/users/update", payload)).data),
+  }) => normalizeProfile((await api.patch("/users/update", payload)).data),
   updateAvatar: async (avatar: File) => {
     const form = new FormData();
     form.append("avatar", avatar);
-    return normalizeProfile((await api.patch("/users/avatar", form)).data);
+    const updated = normalizeProfile(
+      (await api.patch("/users/avatar", form)).data,
+    );
+
+    // Some successful avatar responses only contain a status message. Fetch
+    // the canonical profile in that case so a temporary blob URL is never
+    // persisted as the user's avatar.
+    if (updated.avatarUrl) return updated;
+    return normalizeProfile((await api.get("/users/profile")).data);
   },
   changePassword: async (payload: {
     currentPassword: string;

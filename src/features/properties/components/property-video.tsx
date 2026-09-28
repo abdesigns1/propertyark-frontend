@@ -41,6 +41,7 @@ export function PropertyVideo({ thumbnailSrc, videoUrl }: PropertyVideoProps) {
               src={thumbnailSrc}
               alt="Video preview"
               fill
+              sizes="(max-width: 1023px) 100vw, 66vw"
               crossOrigin="anonymous"
               unoptimized
               onError={(event) =>

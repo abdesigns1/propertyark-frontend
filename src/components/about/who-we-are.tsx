@@ -2,7 +2,10 @@ import Image from "next/image";
 
 export function WhoWeAre() {
   return (
-    <section className="mx-auto max-w-7xl px-6 py-20">
+    <section
+      id="about-content"
+      className="mx-auto max-w-7xl scroll-mt-6 px-6 py-20"
+    >
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-primary">
@@ -59,6 +62,7 @@ export function WhoWeAre() {
               src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800"
               alt="Modern property with pool"
               fill
+              sizes="(max-width: 1023px) 50vw, 25vw"
               className="object-cover"
             />
           </div>
@@ -67,6 +71,7 @@ export function WhoWeAre() {
               src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=600"
               alt="Cozy bedroom interior"
               fill
+              sizes="(max-width: 1023px) 50vw, 25vw"
               className="object-cover"
             />
           </div>
@@ -75,6 +80,7 @@ export function WhoWeAre() {
               src="https://images.unsplash.com/photo-1493809842364-78817add7ffb?q=80&w=600"
               alt="Living room interior"
               fill
+              sizes="(max-width: 1023px) 50vw, 25vw"
               className="object-cover"
             />
           </div>

@@ -1,79 +1,24 @@
-"use client";
-
-import Link from "next/link";
-import { useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
+import Image from "next/image";
 import { Navbar } from "@/components/shared/navbar";
-import { getDashboardPath } from "@/features/authentication/utils/dashboard-route";
-import { useAuthStore } from "@/store/auth.store";
 // import { HeroMarketActivity } from "@/components/marketing/hero-market-activity";
 
-const HERO_VIDEO_URL =
-  "https://res.cloudinary.com/wkwqmkrl/video/upload/f_mp4,vc_h264,ac_none,q_auto/v1790183603/VID_20260923_150401_355.mp4";
-
 export function Hero() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const role = useAuthStore((state) => state.role);
-  const investmentHref = isAuthenticated ? getDashboardPath(role) : "/login";
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    // Set both properties explicitly because iOS can evaluate autoplay before
-    // React finishes applying the muted attribute during hydration.
-    video.defaultMuted = true;
-    video.muted = true;
-
-    const attemptPlayback = () => {
-      if (!document.hidden && video.paused) {
-        void video.play().catch(() => {
-          // Some mobile settings (notably iOS Low Power Mode) intentionally
-          // block autoplay. The poster remains as the visual fallback.
-        });
-      }
-    };
-
-    const handleVisibilityChange = () => attemptPlayback();
-
-    attemptPlayback();
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("pageshow", attemptPlayback);
-    document.addEventListener("pointerdown", attemptPlayback, { once: true });
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("pageshow", attemptPlayback);
-      document.removeEventListener("pointerdown", attemptPlayback);
-    };
-  }, []);
-
   return (
     <>
       <Navbar />
 
-      <section className="relative isolate overflow-hidden pb-20 pt-28 lg:pb-34">
-        {/* Background video + overlay */}
+      <section className="relative isolate min-h-[430px] overflow-hidden pb-28 pt-36 sm:min-h-[450px] sm:pt-40 lg:min-h-[470px] lg:pb-36">
+        {/* Background image + overlay */}
         <div className="absolute inset-0 -z-10">
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            poster="/assets/images/hero-property.jpg"
-            aria-hidden="true"
-            disablePictureInPicture
-            onCanPlay={(event) => {
-              void event.currentTarget.play().catch(() => undefined);
-            }}
-            className="size-full object-cover"
-          >
-            <source src={HERO_VIDEO_URL} type="video/mp4" />
-          </video>
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/48 via-slate-950/25 to-slate-950/52" />
+          <Image
+            src="/chuttersnap-hTDbbrT836A-unsplash.jpg"
+            alt="Aerial view of a modern city and residential neighbourhood"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-[center_62%] sm:object-[center_58%]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/38 via-slate-950/18 to-slate-950/30" />
         </div>
 
         <div className="mx-auto grid max-w-7xl grid-cols-1 items-center px-6 lg:px-8">
@@ -82,14 +27,14 @@ export function Hero() {
             <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
               Buy, Sell &amp; Rent
               <br />
-              <span className="text-secondary">Verified</span> Properties
+              <span className="text-white">Verified</span> Properties
             </h1>
-            <p className="mx-auto mt-6 max-w-md text-base leading-relaxed text-white/85 lg:mx-0">
+            {/* <p className="mx-auto mt-6 max-w-md text-base leading-relaxed text-white/85 lg:mx-0">
               Discover a curated selection of premium real estate, backed by
               data and verified for your security. Join thousands of investors
               in the next generation of property management.
-            </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-4 lg:justify-start">
+            </p> */}
+            {/* <div className="mt-8 flex flex-wrap justify-center gap-4 lg:justify-start">
               <Button
                 asChild
                 size="lg"
@@ -105,7 +50,7 @@ export function Hero() {
               >
                 <Link href={investmentHref}>View Investments</Link>
               </Button>
-            </div>
+            </div> */}
           </div>
 
           {/* Right-side property showcase is temporarily hidden so the search

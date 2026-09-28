@@ -5,6 +5,7 @@ import Image from "next/image";
 import { PropertyImageLightbox } from "./property-image-lightbox";
 import { PropertyStreetView } from "./property-street-view";
 import { showPropertyImageFallback } from "@/features/properties/utils/normalize-property-response";
+import { cn } from "@/lib/utils";
 
 interface PropertyGalleryProps {
   images: string[];
@@ -37,7 +38,7 @@ export function PropertyGallery({
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
+      <div className="grid grid-cols-1 gap-3 lg:h-[clamp(22rem,30vw,28rem)] lg:grid-cols-[1.4fr_1fr]">
         <div className="relative aspect-[4/3] overflow-hidden rounded-2xl lg:aspect-auto lg:h-full">
           <button
             type="button"
@@ -48,6 +49,7 @@ export function PropertyGallery({
               src={main}
               alt="Property main view"
               fill
+              sizes="(max-width: 1023px) 100vw, 58vw"
               crossOrigin="anonymous"
               unoptimized
               onError={(event) =>
@@ -63,7 +65,12 @@ export function PropertyGallery({
         </div>
 
         {thumbs.length > 0 && (
-          <div className="grid grid-cols-2 gap-3">
+          <div
+            className={cn(
+              "grid grid-cols-2 gap-3 lg:h-full",
+              thumbs.length <= 2 ? "lg:grid-rows-1" : "lg:grid-rows-2",
+            )}
+          >
             {thumbs.map((src, i) => {
               const isLast = i === thumbs.length - 1;
               const showOverlay = isLast && extraCount > 0;
@@ -72,12 +79,13 @@ export function PropertyGallery({
                   key={src + i}
                   type="button"
                   onClick={() => openAt(i + 1)}
-                  className="relative aspect-[4/3] overflow-hidden rounded-2xl"
+                  className="relative aspect-[4/3] overflow-hidden rounded-2xl lg:aspect-auto lg:h-full lg:min-h-0"
                 >
                   <Image
                     src={src}
                     alt={`Property view ${i + 2}`}
                     fill
+                    sizes="(max-width: 1023px) 50vw, 21vw"
                     crossOrigin="anonymous"
                     unoptimized
                     onError={(event) =>

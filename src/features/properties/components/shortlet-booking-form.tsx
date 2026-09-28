@@ -320,6 +320,7 @@ export function ShortletBookingForm({
                 src={property.images[0]}
                 alt=""
                 fill
+                sizes="96px"
                 crossOrigin="anonymous"
                 unoptimized
                 onError={(event) =>

@@ -115,6 +115,15 @@ export function trustedUploadProxyUrl(input: string, purpose: MediaPurpose) {
   }
 }
 
+/**
+ * Keeps ordinary external/avatar URLs intact, while routing PropertyArk
+ * uploads through the same-origin media endpoint. The backend serves uploads
+ * with a same-origin response policy, so browsers cannot embed them directly.
+ */
+export function normalizeAvatarMediaUrl(input: string) {
+  return trustedUploadProxyUrl(input, "property") ?? input;
+}
+
 export function isAllowedMediaContentType(
   contentType: string | null,
   purpose: MediaPurpose,

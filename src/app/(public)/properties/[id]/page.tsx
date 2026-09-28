@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { Navbar } from "@/components/shared/navbar";
 import { Breadcrumb } from "@/components/shared/breadcrumb";
@@ -19,6 +21,67 @@ import {
 } from "@/features/properties/server/get-available-properties";
 import { CONTAINER, cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { serializeJsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
+
+const getPropertyResults = cache(() => getAvailablePropertiesServer());
+
+async function getProperty(id: string) {
+  const { properties } = await getPropertyResults();
+  return properties.find((property) => property.id === id);
+}
+
+function propertyDescription(description: string) {
+  const normalized = description.replace(/\s+/g, " ").trim();
+  return normalized.length > 155
+    ? `${normalized.slice(0, 152).trimEnd()}...`
+    : normalized;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  if (id.startsWith("draft:"))
+    return { robots: { index: false, follow: false } };
+
+  try {
+    const property = await getProperty(id);
+    if (!property) return { robots: { index: false, follow: false } };
+
+    const description = propertyDescription(property.description);
+    const path = `/properties/${property.id}`;
+    return {
+      title: property.title,
+      description,
+      alternates: { canonical: path },
+      openGraph: {
+        title: property.title,
+        description,
+        url: path,
+        siteName: SITE_NAME,
+        locale: "en_NG",
+        type: "website",
+        images: property.images.map((url) => ({
+          url,
+          alt: property.title,
+        })),
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: property.title,
+        description,
+        images: property.images.slice(0, 1),
+      },
+    };
+  } catch {
+    return {
+      title: "Property listing",
+      robots: { index: false, follow: false },
+    };
+  }
+}
 
 export default async function PropertyDetailPage({
   params,
@@ -30,7 +93,7 @@ export default async function PropertyDetailPage({
     redirect(`/vendor/properties/new?draft=${id.slice("draft:".length)}`);
 
   const [{ properties }, featuredProperties] = await Promise.all([
-    getAvailablePropertiesServer(),
+    getPropertyResults(),
     getFeaturedPropertiesServer(),
   ]);
   const base = properties.find((property) => property.id === id);
@@ -51,9 +114,90 @@ export default async function PropertyDetailPage({
   const similar = properties
     .filter((candidate) => candidate.id !== property.id)
     .slice(0, 12);
+  const propertyUrl = `${SITE_URL}/properties/${property.id}`;
+  const propertyJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "@id": `${propertyUrl}#listing`,
+    name: property.title,
+    description: propertyDescription(property.description),
+    image: property.images,
+    url: propertyUrl,
+    sku: property.id,
+    category: property.type,
+    brand: { "@type": "Brand", name: SITE_NAME },
+    offers: {
+      "@type": "Offer",
+      url: propertyUrl,
+      price: property.price,
+      priceCurrency: property.currency,
+      availability:
+        property.status === "available"
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock",
+      seller: {
+        "@type": "Organization",
+        name: property.vendorName || SITE_NAME,
+      },
+    },
+    additionalProperty: [
+      {
+        "@type": "PropertyValue",
+        name: "Location",
+        value: [
+          property.location.address,
+          property.location.city,
+          property.location.state,
+          property.location.country,
+        ]
+          .filter(Boolean)
+          .join(", "),
+      },
+      {
+        "@type": "PropertyValue",
+        name: "Bedrooms",
+        value: property.bedrooms,
+      },
+      {
+        "@type": "PropertyValue",
+        name: "Bathrooms",
+        value: property.bathrooms,
+      },
+    ],
+  };
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: SITE_URL,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Properties",
+        item: `${SITE_URL}/properties`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: property.title,
+        item: propertyUrl,
+      },
+    ],
+  };
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: serializeJsonLd([propertyJsonLd, breadcrumbJsonLd]),
+        }}
+      />
       <PropertyViewTracker propertyId={property.id} />
       <Navbar reserveSpace />
       <Breadcrumb

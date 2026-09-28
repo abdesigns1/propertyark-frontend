@@ -35,6 +35,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { adminDisplayIdentity } from "@/features/admin/lib/admin-identity";
 import { useAuthStore } from "@/store/auth.store";
 
 export function AdminDashboardHeader() {
@@ -43,13 +44,7 @@ export function AdminDashboardHeader() {
   const user = useAuthStore((state) => state.user);
   const role = useAuthStore((state) => state.role);
   const clearAuth = useAuthStore((state) => state.clearAuth);
-  const initials =
-    user?.fullName
-      ?.split(" ")
-      .map((part) => part[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase() || "SY";
+  const identity = adminDisplayIdentity(user, role);
 
   function handleLogout() {
     clearAuth();
@@ -105,7 +100,7 @@ export function AdminDashboardHeader() {
               className="group flex items-center gap-2 rounded-full p-1 pr-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Avatar className="size-9">
-                <AvatarFallback>{initials}</AvatarFallback>
+                <AvatarFallback>{identity.initials}</AvatarFallback>
               </Avatar>
               <ChevronDown className="hidden size-4 transition-transform group-data-[state=open]:rotate-180 sm:block" />
             </button>
@@ -113,13 +108,13 @@ export function AdminDashboardHeader() {
           <DropdownMenuContent align="end" sideOffset={8} className="w-64">
             <DropdownMenuLabel className="p-3">
               <span className="block truncate text-sm font-semibold text-foreground">
-                {user?.fullName || "System Administrator"}
+                {identity.name}
               </span>
               <span className="mt-0.5 block truncate font-normal text-muted-foreground">
                 {user?.email || "PropertyArk administrator"}
               </span>
               <Badge variant="secondary" className="mt-2 capitalize">
-                {role === "staff" ? "Staff" : "Super Admin"}
+                {identity.roleLabel}
               </Badge>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

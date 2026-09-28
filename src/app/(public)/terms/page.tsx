@@ -2,12 +2,14 @@ import { Footer } from "@/components/shared/footer";
 import { PageBanner } from "@/components/shared/page-banner";
 import { CONTAINER } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Terms of Service | PropertyArk",
+export const metadata = createPageMetadata({
+  title: "Terms of Service",
   description:
     "Review the terms that govern your use of PropertyArk's website and services.",
-};
+  path: "/terms",
+});
 
 export default function TermsPage() {
   return (

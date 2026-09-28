@@ -123,19 +123,19 @@ export function PropertySearchForm() {
     <Tabs
       value={purpose}
       onValueChange={setPurpose}
-      className="w-full flex-col items-start gap-0"
+      className="w-full flex-col items-start gap-0 overflow-hidden rounded-2xl bg-card shadow-[0_18px_45px_-24px_rgba(15,23,42,0.45)] ring-1 ring-foreground/5"
       orientation="horizontal"
     >
       <TabsList
         variant="line"
         aria-label="Listing purpose"
-        className="h-14 w-full shrink-0 justify-start gap-0 rounded-b-none rounded-t-xl bg-card px-2 shadow-sm sm:w-auto"
+        className="h-14 w-full shrink-0 justify-start gap-0 rounded-none border-b bg-card px-5 sm:px-6"
       >
         {PURPOSES.map((item) => (
           <TabsTrigger
             key={item.value}
             value={item.value}
-            className="h-full min-w-16 flex-1 px-3 text-sm font-semibold text-muted-foreground sm:min-w-20 sm:flex-none"
+            className="h-full min-w-16 flex-1 px-3 text-sm font-medium text-muted-foreground sm:min-w-24 sm:flex-none"
           >
             <span className={cn(purpose === item.value && "text-primary")}>
               {item.label}
@@ -143,24 +143,21 @@ export function PropertySearchForm() {
             {purpose === item.value && (
               <span
                 aria-hidden="true"
-                className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-primary"
+                className="absolute inset-x-3 bottom-0 h-0.5 bg-primary"
               />
             )}
           </TabsTrigger>
         ))}
       </TabsList>
 
-      <form
-        onSubmit={handleSearch}
-        className="w-full rounded-b-2xl bg-card p-4 shadow-xl ring-1 ring-foreground/5 sm:rounded-tl-none sm:rounded-tr-2xl lg:p-3"
-      >
-        <FieldGroup className="grid gap-0 lg:grid-cols-[1.15fr_0.72fr_0.72fr_0.62fr_0.62fr_auto] lg:items-center">
+      <form onSubmit={handleSearch} className="w-full bg-card">
+        <FieldGroup className="grid gap-0 lg:grid-cols-[1.35fr_0.78fr_0.78fr_0.72fr_0.72fr_auto] lg:items-stretch">
           {purpose === "shortlet" ? (
             <>
-              <Field className="px-4 py-3 lg:border-r">
+              <Field className="min-h-20 justify-center px-5 py-3 lg:border-r">
                 <FieldLabel
                   htmlFor="home-shortlet-destination"
-                  className="font-semibold"
+                  className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
                 >
                   <MapPin aria-hidden="true" className="size-4" />
                   Where
@@ -174,10 +171,10 @@ export function PropertySearchForm() {
                 />
               </Field>
 
-              <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
+              <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
                 <FieldLabel
                   htmlFor="home-shortlet-check-in"
-                  className="font-semibold"
+                  className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
                 >
                   <CalendarDays aria-hidden="true" className="size-4" />
                   Check-in
@@ -196,10 +193,10 @@ export function PropertySearchForm() {
                 />
               </Field>
 
-              <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
+              <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
                 <FieldLabel
                   htmlFor="home-shortlet-check-out"
-                  className="font-semibold"
+                  className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
                 >
                   <CalendarDays aria-hidden="true" className="size-4" />
                   Check-out
@@ -214,10 +211,10 @@ export function PropertySearchForm() {
                 />
               </Field>
 
-              <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
+              <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
                 <FieldLabel
                   htmlFor="home-shortlet-guests"
-                  className="font-semibold"
+                  className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
                 >
                   <Users aria-hidden="true" className="size-4" />
                   Guests
@@ -244,10 +241,10 @@ export function PropertySearchForm() {
                 </Select>
               </Field>
 
-              <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
+              <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
                 <FieldLabel
                   htmlFor="home-shortlet-beds"
-                  className="font-semibold"
+                  className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
                 >
                   <BedDouble aria-hidden="true" className="size-4" />
                   Beds
@@ -273,10 +270,10 @@ export function PropertySearchForm() {
             </>
           ) : (
             <>
-              <Field className="px-4 py-3 lg:border-r">
+              <Field className="min-h-20 justify-center px-5 py-3 lg:border-r">
                 <FieldLabel
                   htmlFor="home-property-search"
-                  className="font-semibold"
+                  className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
                 >
                   <Search aria-hidden="true" className="size-4" />
                   Search
@@ -290,10 +287,10 @@ export function PropertySearchForm() {
                 />
               </Field>
 
-              <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
+              <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
                 <FieldLabel
                   htmlFor="home-property-location"
-                  className="font-semibold"
+                  className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
                 >
                   <MapPin aria-hidden="true" className="size-4" />
                   Location
@@ -318,10 +315,10 @@ export function PropertySearchForm() {
                 </Select>
               </Field>
 
-              <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
+              <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
                 <FieldLabel
                   htmlFor={`home-${purpose}-beds`}
-                  className="font-semibold"
+                  className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
                 >
                   <BedDouble aria-hidden="true" className="size-4" />
                   Beds
@@ -345,10 +342,10 @@ export function PropertySearchForm() {
                 </Select>
               </Field>
 
-              <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
+              <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
                 <FieldLabel
                   htmlFor="home-property-type"
-                  className="font-semibold"
+                  className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
                 >
                   <Building2 aria-hidden="true" className="size-4" />
                   Property Type
@@ -372,10 +369,10 @@ export function PropertySearchForm() {
                 </Select>
               </Field>
 
-              <Field className="border-t px-4 py-3 lg:border-r lg:border-t-0">
+              <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
                 <FieldLabel
                   htmlFor="home-property-budget"
-                  className="font-semibold"
+                  className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
                 >
                   <WalletCards aria-hidden="true" className="size-4" />
                   Budget
@@ -401,11 +398,11 @@ export function PropertySearchForm() {
             </>
           )}
 
-          <div className="border-t p-3 lg:border-t-0 lg:px-5">
+          <div className="border-t p-3 lg:border-t-0 lg:p-0">
             <Button
               type="submit"
               size="lg"
-              className="h-11 w-full min-w-28 lg:w-auto"
+              className="h-11 w-full min-w-32 rounded-xl lg:h-full lg:min-h-20 lg:rounded-none lg:px-7"
             >
               <Search data-icon="inline-start" />
               {purpose === "shortlet" ? "Search stays" : "Search"}

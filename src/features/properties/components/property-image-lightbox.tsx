@@ -225,6 +225,7 @@ function PropertyImageLightboxContent({
                 src={src}
                 alt=""
                 fill
+                sizes="80px"
                 crossOrigin="anonymous"
                 unoptimized
                 onError={(event) =>

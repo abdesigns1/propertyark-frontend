@@ -6,6 +6,14 @@ import { BecomeVendorBanner } from "@/components/contact/become-vendor-banner";
 import { Footer } from "@/components/shared/footer";
 import { CONTAINER } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata = createPageMetadata({
+  title: "Contact PropertyArk",
+  description:
+    "Contact PropertyArk for help with verified listings, property enquiries, inspections, shortlets, and vendor support.",
+  path: "/contact",
+});
 
 export default function ContactPage() {
   return (

@@ -2,12 +2,14 @@ import { Footer } from "@/components/shared/footer";
 import { PageBanner } from "@/components/shared/page-banner";
 import { CONTAINER } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Privacy Policy | PropertyArk",
+export const metadata = createPageMetadata({
+  title: "Privacy Policy",
   description:
     "Learn how PropertyArk collects, uses, and protects your personal information.",
-};
+  path: "/privacy-policy",
+});
 
 export default function PrivacyPolicyPage() {
   return (

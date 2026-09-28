@@ -7,12 +7,14 @@ import { BecomeVendorBanner } from "@/components/contact/become-vendor-banner";
 import { Footer } from "@/components/shared/footer";
 import { Button } from "@/components/ui/button";
 import { CONTAINER, cn } from "@/lib/utils";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPageMetadata({
   title: "Professional Services",
   description:
     "Request trusted accounting, mortgage, legal, or insurance support through PropertyArk.",
-};
+  path: "/professional-services",
+});
 
 const SERVICE_VALUES = [
   "accountant",

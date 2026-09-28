@@ -59,6 +59,7 @@ export function PopularCities() {
                 src={city.image}
                 alt={city.name}
                 fill
+                sizes="(max-width: 1023px) 50vw, 25vw"
                 className="object-cover transition-transform duration-300 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />

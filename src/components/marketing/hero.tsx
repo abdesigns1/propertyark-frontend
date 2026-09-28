@@ -27,7 +27,7 @@ export function Hero() {
             <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
               Buy, Sell &amp; Rent
               <br />
-              <span className="text-white">Verified</span> Properties
+              <span className="text-primary">Verified</span> Properties
             </h1>
             {/* <p className="mx-auto mt-6 max-w-md text-base leading-relaxed text-white/85 lg:mx-0">
               Discover a curated selection of premium real estate, backed by

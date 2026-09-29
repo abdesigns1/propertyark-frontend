@@ -10,6 +10,7 @@ export interface AdminNotification {
   createdAt: string;
   actionUrl: string | null;
   actionLabel: string | null;
+  isOperational?: boolean;
 }
 
 export interface NotificationPageData {
@@ -150,17 +151,26 @@ async function getAllMine(limit = 100) {
       (_, index) => getMine(index + 2, limit),
     ),
   );
-  const notifications = [
+  const combined = [
     ...firstPage.notifications,
     ...remainingPages.flatMap((page) => page.notifications),
   ];
+  const notifications = [
+    ...new Map(
+      combined.map((notification) => [notification.id, notification]),
+    ).values(),
+  ].sort(
+    (first, second) =>
+      new Date(second.createdAt).getTime() -
+      new Date(first.createdAt).getTime(),
+  );
 
   return {
     notifications,
     pagination: {
       page: 1,
       limit: notifications.length || limit,
-      total: firstPage.pagination.total,
+      total: notifications.length,
       pages: 1,
     },
   } satisfies NotificationPageData;

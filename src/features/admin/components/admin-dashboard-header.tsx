@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Bell,
@@ -36,6 +37,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { adminDisplayIdentity } from "@/features/admin/lib/admin-identity";
+import { useAdminNotificationIndicators } from "@/features/admin/hooks/use-admin-notification-indicators";
 import { useAuthStore } from "@/store/auth.store";
 
 export function AdminDashboardHeader() {
@@ -45,6 +47,7 @@ export function AdminDashboardHeader() {
   const role = useAuthStore((state) => state.role);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const identity = adminDisplayIdentity(user, role);
+  const { notificationTotal } = useAdminNotificationIndicators();
 
   function handleLogout() {
     clearAuth();
@@ -85,8 +88,24 @@ export function AdminDashboardHeader() {
       </div>
 
       <div className="ml-auto flex items-center gap-1 sm:gap-2">
-        <Button variant="ghost" size="icon" aria-label="Notifications">
-          <Bell />
+        <Button variant="ghost" size="icon" asChild>
+          <Link
+            href="/admin/notifications"
+            className="relative"
+            aria-label={
+              notificationTotal
+                ? `${notificationTotal} notifications require attention`
+                : "Notifications"
+            }
+          >
+            <Bell />
+            {notificationTotal > 0 && (
+              <Badge
+                className="absolute right-1 top-1 size-2 p-0"
+                aria-hidden="true"
+              />
+            )}
+          </Link>
         </Button>
         <Button variant="ghost" size="icon" aria-label="Help">
           <HelpCircle />

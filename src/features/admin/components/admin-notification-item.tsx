@@ -23,6 +23,7 @@ const propertyTypes = new Set(["PROPERTY", "LISTING"]);
 const verificationTypes = new Set(["KYC", "VERIFICATION"]);
 const inspectionTypes = new Set(["INSPECTION", "INQUIRY", "VIEWING"]);
 const bookingTypes = new Set(["BOOKING", "SHORTLET", "SHORTLET_BOOKING"]);
+const chatTypes = new Set(["CHAT", "MESSAGE", "SUPPORT", "SUPPORT_CHAT"]);
 
 function notificationAppearance(type: string, priority: string) {
   if (priority === "URGENT" || priority === "CRITICAL" || type === "SECURITY") {
@@ -77,6 +78,9 @@ function defaultAction(notification: AdminNotification) {
   }
   if (bookingTypes.has(notification.type)) {
     return { label: "View bookings", href: "/admin/shortlet-bookings" };
+  }
+  if (chatTypes.has(notification.type)) {
+    return { label: "Open support chat", href: "/admin/support" };
   }
   return null;
 }
@@ -135,26 +139,30 @@ export function AdminNotificationItem({
           />
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Badge className={appearance.badgeClass}>{appearance.label}</Badge>
-            {!notification.isRead && (
+            {notification.isOperational ? (
+              <Badge variant="secondary">Action needed</Badge>
+            ) : !notification.isRead ? (
               <span
                 className="size-2 rounded-full bg-primary"
                 aria-label="Unread notification"
               />
-            )}
+            ) : null}
             <div className="ml-auto flex items-center gap-1">
               {actionHref && actionLabel && (
                 <Button variant="link" size="sm" asChild>
                   <Link
                     href={actionHref}
                     onClick={() => {
-                      if (!notification.isRead) onMarkRead(notification.id);
+                      if (!notification.isRead && !notification.isOperational) {
+                        onMarkRead(notification.id);
+                      }
                     }}
                   >
                     {actionLabel}
                   </Link>
                 </Button>
               )}
-              {!notification.isRead && (
+              {!notification.isRead && !notification.isOperational && (
                 <Button
                   variant="ghost"
                   size="sm"

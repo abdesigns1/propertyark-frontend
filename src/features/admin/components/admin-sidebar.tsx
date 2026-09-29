@@ -5,9 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { PropertyArkMark } from "@/components/admin/propertyark-mark";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { adminNavigation } from "@/features/admin/data/dashboard-data";
 import { adminDisplayIdentity } from "@/features/admin/lib/admin-identity";
+import { useAdminNotificationIndicators } from "@/features/admin/hooks/use-admin-notification-indicators";
 import { useAuthStore } from "@/store/auth.store";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +28,13 @@ export function AdminSidebar({
   const role = useAuthStore((state) => state.role);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const identity = adminDisplayIdentity(user, role);
+  const indicators = useAdminNotificationIndicators();
+  const indicatorByHref: Record<string, number> = {
+    "/admin/properties": indicators.propertyPending,
+    "/admin/kyc": indicators.kycPending,
+    "/admin/support": indicators.supportUnread,
+    "/admin/notifications": indicators.notificationTotal,
+  };
 
   return (
     <aside className="flex h-dvh min-h-0 flex-col overflow-hidden bg-primary px-4 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-primary-foreground">
@@ -54,22 +63,37 @@ export function AdminSidebar({
         )}
       </div>
       <nav className="mt-9 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overscroll-contain pr-1 pb-6 [scrollbar-color:rgb(255_255_255_/_0.25)_transparent] [scrollbar-width:thin] lg:gap-0.5 lg:pb-2">
-        {adminNavigation.map(({ label, href, icon: Icon }) => (
-          <Link
-            key={label}
-            href={href}
-            onClick={onNavigate}
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-primary-foreground/85 transition-colors hover:bg-white/10 hover:text-white lg:py-2",
-              collapsed && "justify-center px-2",
-              (pathname === href || pathname.startsWith(`${href}/`)) &&
-                "bg-white/90 text-primary hover:bg-white hover:text-primary",
-            )}
-          >
-            <Icon className="size-5" />
-            <span className={cn(collapsed && "sr-only")}>{label}</span>
-          </Link>
-        ))}
+        {adminNavigation.map(({ label, href, icon: Icon }) => {
+          const indicator = indicatorByHref[href] ?? 0;
+          return (
+            <Link
+              key={label}
+              href={href}
+              onClick={onNavigate}
+              className={cn(
+                "relative flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-primary-foreground/85 transition-colors hover:bg-white/10 hover:text-white lg:py-2",
+                collapsed && "justify-center px-2",
+                (pathname === href || pathname.startsWith(`${href}/`)) &&
+                  "bg-white/90 text-primary hover:bg-white hover:text-primary",
+              )}
+            >
+              <Icon className="size-5" />
+              <span className={cn(collapsed && "sr-only")}>{label}</span>
+              {indicator > 0 && (
+                <Badge
+                  className={cn(
+                    "ml-auto min-w-5 bg-secondary px-1.5 text-secondary-foreground",
+                    collapsed &&
+                      "absolute right-1 top-1 size-2 min-w-0 p-0 text-transparent",
+                  )}
+                  aria-label={`${indicator} ${label.toLowerCase()} items require attention`}
+                >
+                  {collapsed ? "" : indicator > 99 ? "99+" : indicator}
+                </Badge>
+              )}
+            </Link>
+          );
+        })}
       </nav>
       <div aria-hidden="true" className="hidden h-16 shrink-0 lg:block" />
       <div

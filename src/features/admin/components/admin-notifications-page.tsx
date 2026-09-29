@@ -8,10 +8,10 @@ import { AdminNotificationSidebar } from "@/features/admin/components/admin-noti
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
 import {
   useAdminNotifications,
-  useAdminNotificationStats,
   useMarkAdminNotificationRead,
   useMarkAllAdminNotificationsRead,
 } from "@/features/admin/hooks/use-admin-notifications";
+import { useAdminNotificationIndicators } from "@/features/admin/hooks/use-admin-notification-indicators";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getApiErrorMessage } from "@/services/api-error";
 import type { AdminNotification } from "@/services/notification.service";
+import { cn } from "@/lib/utils";
 
 const notificationTabs = [
   { value: "ALL", label: "All Notifications" },
@@ -35,16 +36,30 @@ const notificationTabs = [
 export function AdminNotificationsPage() {
   const [category, setCategory] = useState("ALL");
   const notificationsQuery = useAdminNotifications();
-  const statsQuery = useAdminNotificationStats();
+  const { kycPending, propertyPending, supportUnread } =
+    useAdminNotificationIndicators();
   const markRead = useMarkAdminNotificationRead();
   const markAllRead = useMarkAllAdminNotificationsRead();
   const notifications = useMemo(
     () => notificationsQuery.data?.notifications ?? [],
     [notificationsQuery.data?.notifications],
   );
+  const operationalNotifications = useMemo(
+    () =>
+      buildOperationalNotifications({
+        kycPending,
+        propertyPending,
+        supportUnread,
+      }),
+    [kycPending, propertyPending, supportUnread],
+  );
+  const allNotifications = useMemo(
+    () => [...operationalNotifications, ...notifications],
+    [notifications, operationalNotifications],
+  );
   const visibleNotifications = useMemo(
     () =>
-      notifications.filter((item) => {
+      allNotifications.filter((item) => {
         if (category === "UNREAD") return !item.isRead;
         if (category === "READ") return item.isRead;
         if (category === "CRITICAL") {
@@ -52,22 +67,19 @@ export function AdminNotificationsPage() {
         }
         return true;
       }),
-    [category, notifications],
+    [allNotifications, category],
   );
   const groups = useMemo(
     () => groupNotifications(visibleNotifications),
     [visibleNotifications],
   );
-  const derivedUnread = notifications.filter((item) => !item.isRead).length;
-  const derivedCritical = notifications.filter((item) =>
+  const derivedUnread = allNotifications.filter((item) => !item.isRead).length;
+  const markableUnread = notifications.filter((item) => !item.isRead).length;
+  const derivedCritical = allNotifications.filter((item) =>
     ["URGENT", "CRITICAL"].includes(item.priority),
   ).length;
-  const unread = Math.max(statsQuery.data?.unread ?? 0, derivedUnread);
-  const total = Math.max(
-    notificationsQuery.data?.pagination.total ?? 0,
-    notifications.length,
-    unread,
-  );
+  const unread = derivedUnread;
+  const total = allNotifications.length;
 
   function markNotificationRead(id: string) {
     markRead.mutate(id, {
@@ -104,7 +116,7 @@ export function AdminNotificationsPage() {
               </div>
               <Button
                 variant="outline"
-                disabled={markAllRead.isPending || derivedUnread === 0}
+                disabled={markAllRead.isPending || markableUnread === 0}
                 onClick={markAllAsRead}
               >
                 <CheckCheck data-icon="inline-start" />
@@ -118,7 +130,12 @@ export function AdminNotificationsPage() {
                   <TabsTrigger
                     key={tab.value}
                     value={tab.value}
-                    className="flex-none px-4 py-2 data-active:bg-primary data-active:text-primary-foreground data-active:shadow-sm"
+                    aria-current={category === tab.value ? "page" : undefined}
+                    className={cn(
+                      "flex-none px-4 py-2",
+                      category === tab.value &&
+                        "bg-primary text-primary-foreground shadow-sm hover:text-primary-foreground",
+                    )}
                   >
                     {tab.label}
                   </TabsTrigger>
@@ -180,13 +197,74 @@ export function AdminNotificationsPage() {
           <AdminNotificationSidebar
             total={total}
             unread={unread}
-            critical={Math.max(statsQuery.data?.critical ?? 0, derivedCritical)}
+            critical={derivedCritical}
             read={Math.max(0, total - unread)}
           />
         </div>
       </main>
     </AdminWorkspace>
   );
+}
+
+function buildOperationalNotifications({
+  kycPending,
+  propertyPending,
+  supportUnread,
+}: {
+  kycPending: number;
+  propertyPending: number;
+  supportUnread: number;
+}): AdminNotification[] {
+  const createdAt = new Date().toISOString();
+  const items: AdminNotification[] = [];
+
+  if (kycPending > 0) {
+    items.push({
+      id: "operational-kyc",
+      title: `${kycPending} KYC ${kycPending === 1 ? "submission" : "submissions"} awaiting review`,
+      message: "Review the newly uploaded verification documents.",
+      type: "KYC",
+      priority: "HIGH",
+      isRead: false,
+      createdAt,
+      actionUrl: "/admin/kyc",
+      actionLabel: "Review verification",
+      isOperational: true,
+    });
+  }
+
+  if (propertyPending > 0) {
+    items.push({
+      id: "operational-properties",
+      title: `${propertyPending} ${propertyPending === 1 ? "property is" : "properties are"} awaiting approval`,
+      message: "Review the pending property listings before publication.",
+      type: "PROPERTY",
+      priority: "HIGH",
+      isRead: false,
+      createdAt,
+      actionUrl: "/admin/properties",
+      actionLabel: "View properties",
+      isOperational: true,
+    });
+  }
+
+  if (supportUnread > 0) {
+    items.push({
+      id: "operational-support",
+      title: `${supportUnread} support ${supportUnread === 1 ? "item needs" : "items need"} attention`,
+      message:
+        "Open Support Chat to review unread messages and pending requests.",
+      type: "SUPPORT",
+      priority: "NORMAL",
+      isRead: false,
+      createdAt,
+      actionUrl: "/admin/support",
+      actionLabel: "Open support chat",
+      isOperational: true,
+    });
+  }
+
+  return items;
 }
 
 function groupNotifications(notifications: AdminNotification[]) {

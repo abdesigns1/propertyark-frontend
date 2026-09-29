@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { LockKeyhole } from "lucide-react";
 import { PropertyArkMark } from "@/components/admin/propertyark-mark";
 import { cn } from "@/lib/utils";
 
@@ -98,9 +97,8 @@ export function AdminAuthShell({
             />
           ))}
         </div>
-        <p className="mt-12 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.22em] text-white/80">
-          <LockKeyhole aria-hidden="true" />
-          Enterprise-grade security protocol active
+        <p className="mt-12 text-center text-xs font-medium text-white/80">
+          © 2026 PropertyArk. All rights reserved.
         </p>
       </section>
     </main>

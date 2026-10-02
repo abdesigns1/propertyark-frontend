@@ -21,9 +21,9 @@ export default function HomePage() {
       >
         <PropertySearchForm />
       </div>
-      <FeaturedProperties />
-      <ExploreByCategory />
       <FeaturedListings />
+      <ExploreByCategory />
+      <FeaturedProperties />
       <PopularCities />
       <JourneySteps />
       <CtaBanner />

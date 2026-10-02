@@ -1,5 +1,11 @@
 import type { NextRequest } from "next/server";
 import {
+  API_RATE_LIMITS,
+  appendRateLimitHeaders,
+  checkApiRateLimit,
+  rateLimitExceeded,
+} from "@/lib/api-rate-limit";
+import {
   isAllowedMediaContentType,
   sanitizeMediaPath,
   secureMediaHeaders,
@@ -16,6 +22,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> },
 ) {
+  const rateLimit = checkApiRateLimit(
+    request,
+    "property-media",
+    API_RATE_LIMITS.media,
+  );
+  if (!rateLimit.allowed) return rateLimitExceeded(rateLimit.headers);
+
   const { path } = await params;
   const safePath = sanitizeMediaPath(path);
   if (!safePath) {
@@ -57,6 +70,7 @@ export async function GET(
     }
 
     const headers = secureMediaHeaders(response.headers, "property");
+    appendRateLimitHeaders(headers, rateLimit.headers);
 
     return new Response(response.body, { status: response.status, headers });
   } catch {

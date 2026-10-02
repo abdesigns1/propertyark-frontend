@@ -20,10 +20,10 @@ export function FeaturedProperties() {
       <SlideInTop className="flex items-end justify-between">
         <div>
           <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
-            Premium Properties
+            Popular Properties
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Top-rated listings verified by our on-ground experts.
+            Top-rated listings verified and featured by our on-ground experts.
           </p>
         </div>
         <Link

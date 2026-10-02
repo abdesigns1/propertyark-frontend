@@ -1,5 +1,11 @@
 import type { NextRequest } from "next/server";
 import {
+  API_RATE_LIMITS,
+  appendRateLimitHeaders,
+  checkApiRateLimit,
+  rateLimitExceeded,
+} from "@/lib/api-rate-limit";
+import {
   isAllowedMediaContentType,
   sanitizeMediaPath,
   secureMediaHeaders,
@@ -45,6 +51,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> },
 ) {
+  const rateLimit = checkApiRateLimit(
+    request,
+    "kyc-media",
+    API_RATE_LIMITS.media,
+  );
+  if (!rateLimit.allowed) return rateLimitExceeded(rateLimit.headers);
+
   const authorization = request.headers.get("authorization") ?? "";
   const cookie = request.headers.get("cookie") ?? "";
   if (!authorization || !(await isAuthorizedReviewer(authorization, cookie))) {
@@ -86,9 +99,12 @@ export async function GET(
       );
     }
 
+    const responseHeaders = secureMediaHeaders(response.headers, "kyc");
+    appendRateLimitHeaders(responseHeaders, rateLimit.headers);
+
     return new Response(response.body, {
       status: response.status,
-      headers: secureMediaHeaders(response.headers, "kyc"),
+      headers: responseHeaders,
     });
   } catch {
     return Response.json(

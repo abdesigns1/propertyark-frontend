@@ -171,170 +171,183 @@ export function Navbar({ reserveSpace = false }: NavbarProps) {
             </Link>
           </div>
 
-          {/* Mobile menu trigger */}
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative text-navbar-foreground hover:bg-white/10 hover:text-navbar-foreground lg:hidden"
-                aria-label={
-                  mobileOpen ? "Close navigation menu" : "Open navigation menu"
-                }
-                aria-expanded={mobileOpen}
-              >
-                <Menu
-                  className={cn(
-                    "absolute transition-all duration-300 ease-out",
-                    mobileOpen
-                      ? "rotate-90 scale-75 opacity-0"
-                      : "rotate-0 scale-100 opacity-100",
-                  )}
-                />
-                <X
-                  className={cn(
-                    "absolute transition-all duration-300 ease-out",
-                    mobileOpen
-                      ? "rotate-0 scale-100 opacity-100"
-                      : "-rotate-90 scale-75 opacity-0",
-                  )}
-                />
+          {/* Mobile actions */}
+          <div className="flex items-center gap-2 lg:hidden">
+            {!isAuthenticated && (
+              <Button asChild variant="secondary" size="sm">
+                <Link href="/register">Get Started</Link>
               </Button>
-            </SheetTrigger>
+            )}
 
-            {/* The sheet uses its own solid surface and semantic text colors. */}
-            <SheetContent
-              side="right"
-              className="duration-300 ease-out data-closed:duration-200 data-closed:ease-in lg:hidden"
-            >
-              <SheetHeader>
-                <SheetTitle>Menu</SheetTitle>
-              </SheetHeader>
-              <div className="flex flex-col gap-4 px-4 pb-4">
-                <nav className="flex flex-col gap-3">
-                  {MAIN_NAV_LINKS.map((link) => (
-                    <Suspense
-                      key={link.href}
-                      fallback={
-                        <Link
-                          href={link.href}
-                          onClick={() => setMobileOpen(false)}
-                          className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground"
-                        >
-                          {link.label}
-                        </Link>
-                      }
-                    >
-                      <MainNavLink
-                        link={link}
-                        mobile
-                        onNavigate={() => setMobileOpen(false)}
-                      />
-                    </Suspense>
-                  ))}
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative text-navbar-foreground hover:bg-white/10 hover:text-navbar-foreground lg:hidden"
+                  aria-label={
+                    mobileOpen
+                      ? "Close navigation menu"
+                      : "Open navigation menu"
+                  }
+                  aria-expanded={mobileOpen}
+                >
+                  <Menu
+                    className={cn(
+                      "absolute transition-all duration-300 ease-out",
+                      mobileOpen
+                        ? "rotate-90 scale-75 opacity-0"
+                        : "rotate-0 scale-100 opacity-100",
+                    )}
+                  />
+                  <X
+                    className={cn(
+                      "absolute transition-all duration-300 ease-out",
+                      mobileOpen
+                        ? "rotate-0 scale-100 opacity-100"
+                        : "-rotate-90 scale-75 opacity-0",
+                    )}
+                  />
+                </Button>
+              </SheetTrigger>
 
-                  <Collapsible
-                    open={professionalsOpen}
-                    onOpenChange={setProfessionalsOpen}
-                  >
-                    <CollapsibleTrigger asChild>
-                      <button
-                        className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                        aria-expanded={professionalsOpen}
-                      >
-                        Professionals
-                        <ChevronDown
-                          className={cn(
-                            "h-4 w-4 transition-transform duration-200",
-                            professionalsOpen && "rotate-180",
-                          )}
-                        />
-                      </button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-1 data-[state=open]:slide-in-from-top-1">
-                      <div className="flex flex-col gap-1 py-1 pl-3">
-                        {PROFESSIONALS_LINKS.map((link) => (
+              {/* The sheet uses its own solid surface and semantic text colors. */}
+              <SheetContent
+                side="right"
+                className="duration-300 ease-out data-closed:duration-200 data-closed:ease-in lg:hidden"
+              >
+                <SheetHeader>
+                  <SheetTitle>Menu</SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col gap-4 px-4 pb-4">
+                  <nav className="flex flex-col gap-3">
+                    {MAIN_NAV_LINKS.map((link) => (
+                      <Suspense
+                        key={link.href}
+                        fallback={
                           <Link
-                            key={link.label}
                             href={link.href}
                             onClick={() => setMobileOpen(false)}
-                            className="rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                            className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground"
                           >
                             {link.label}
                           </Link>
-                        ))}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
+                        }
+                      >
+                        <MainNavLink
+                          link={link}
+                          mobile
+                          onNavigate={() => setMobileOpen(false)}
+                        />
+                      </Suspense>
+                    ))}
 
-                  <Link
-                    href={CONTACT_LINK.href}
-                    onClick={() => setMobileOpen(false)}
-                    className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  >
-                    {CONTACT_LINK.label}
-                  </Link>
-                </nav>
-              </div>
-              <SheetFooter className="flex flex-col gap-3 px-4 pb-4 pt-2">
-                {isAuthenticated ? (
-                  <>
-                    <div className="flex items-center gap-3 px-1">
-                      <DashboardUserAvatar />
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">
-                          {user.firstName}
-                        </span>
-                        <span className="text-xs capitalize text-muted-foreground">
-                          {role ?? "user"}
-                        </span>
+                    <Collapsible
+                      open={professionalsOpen}
+                      onOpenChange={setProfessionalsOpen}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <button
+                          className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                          aria-expanded={professionalsOpen}
+                        >
+                          Professionals
+                          <ChevronDown
+                            className={cn(
+                              "h-4 w-4 transition-transform duration-200",
+                              professionalsOpen && "rotate-180",
+                            )}
+                          />
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-top-1 data-[state=open]:slide-in-from-top-1">
+                        <div className="flex flex-col gap-1 py-1 pl-3">
+                          {PROFESSIONALS_LINKS.map((link) => (
+                            <Link
+                              key={link.label}
+                              href={link.href}
+                              onClick={() => setMobileOpen(false)}
+                              className="rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                            >
+                              {link.label}
+                            </Link>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+
+                    <Link
+                      href={CONTACT_LINK.href}
+                      onClick={() => setMobileOpen(false)}
+                      className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    >
+                      {CONTACT_LINK.label}
+                    </Link>
+                  </nav>
+                </div>
+                <SheetFooter className="flex flex-col gap-3 px-4 pb-4 pt-2">
+                  {isAuthenticated ? (
+                    <>
+                      <div className="flex items-center gap-3 px-1">
+                        <DashboardUserAvatar />
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">
+                            {user.firstName}
+                          </span>
+                          <span className="text-xs capitalize text-muted-foreground">
+                            {role ?? "user"}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <Button variant="outline" asChild className="w-full">
-                      <Link
-                        href={dashboardPath}
-                        onClick={() => setMobileOpen(false)}
+                      <Button variant="outline" asChild className="w-full">
+                        <Link
+                          href={dashboardPath}
+                          onClick={() => setMobileOpen(false)}
+                        >
+                          <LayoutDashboard data-icon="inline-start" />
+                          Dashboard
+                        </Link>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="w-full"
+                        onClick={() => void handleLogout()}
                       >
-                        <LayoutDashboard data-icon="inline-start" />
-                        Dashboard
-                      </Link>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="w-full"
-                      onClick={() => void handleLogout()}
-                    >
-                      <LogOut data-icon="inline-start" />
-                      Log out
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      asChild
-                      className="w-full rounded-2xl bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                    >
-                      <Link href="/login" onClick={() => setMobileOpen(false)}>
-                        Login
-                      </Link>
-                    </Button>
-                    <Button
-                      asChild
-                      className="w-full rounded-2xl bg-secondary text-secondary-foreground hover:bg-secondary-hover"
-                    >
-                      <Link
-                        href="/register"
-                        onClick={() => setMobileOpen(false)}
+                        <LogOut data-icon="inline-start" />
+                        Log out
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        asChild
+                        className="w-full rounded-2xl bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                       >
-                        Get Started
-                      </Link>
-                    </Button>
-                  </>
-                )}
-              </SheetFooter>
-            </SheetContent>
-          </Sheet>
+                        <Link
+                          href="/login"
+                          onClick={() => setMobileOpen(false)}
+                        >
+                          Login
+                        </Link>
+                      </Button>
+                      <Button
+                        asChild
+                        className="w-full rounded-2xl bg-secondary text-secondary-foreground hover:bg-secondary-hover"
+                      >
+                        <Link
+                          href="/register"
+                          onClick={() => setMobileOpen(false)}
+                        >
+                          Get Started
+                        </Link>
+                      </Button>
+                    </>
+                  )}
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+          </div>
 
           {/* Right actions (desktop only) */}
           <div className="hidden items-center gap-4 lg:flex">

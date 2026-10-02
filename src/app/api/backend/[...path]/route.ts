@@ -1,4 +1,10 @@
 import type { NextRequest } from "next/server";
+import {
+  API_RATE_LIMITS,
+  appendRateLimitHeaders,
+  checkApiRateLimit,
+  rateLimitExceeded,
+} from "@/lib/api-rate-limit";
 
 const FORWARDED_REQUEST_HEADERS = [
   "accept",
@@ -20,6 +26,17 @@ async function proxyRequest(
   }
 
   const { path } = await params;
+  const policy =
+    request.method === "GET" || request.method === "HEAD"
+      ? API_RATE_LIMITS.read
+      : API_RATE_LIMITS.write;
+  const rateLimit = checkApiRateLimit(
+    request,
+    `api-backend:${request.method}`,
+    policy,
+  );
+  if (!rateLimit.allowed) return rateLimitExceeded(rateLimit.headers);
+
   const upstreamUrl = new URL(
     `${apiBaseUrl.replace(/\/$/, "")}/${path.map(encodeURIComponent).join("/")}`,
   );
@@ -47,6 +64,7 @@ async function proxyRequest(
     const setCookie = upstreamResponse.headers.get("set-cookie");
     if (contentType) responseHeaders.set("content-type", contentType);
     if (setCookie) responseHeaders.set("set-cookie", setCookie);
+    appendRateLimitHeaders(responseHeaders, rateLimit.headers);
 
     return new Response(upstreamResponse.body, {
       status: upstreamResponse.status,

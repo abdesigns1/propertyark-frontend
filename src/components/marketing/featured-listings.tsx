@@ -37,7 +37,7 @@ export function FeaturedListings() {
             Featured Properties
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Top-rated listings verified by our on-ground experts.
+            Top-rated listings verified and featured by our on-ground experts.
           </p>
         </div>
         <Link

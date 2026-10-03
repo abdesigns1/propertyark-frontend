@@ -21,6 +21,10 @@ import {
 } from "lucide-react";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
 import { AdminTablePagination } from "@/features/admin/components/admin-table-pagination";
+import {
+  AdminStatCard,
+  type AdminStatTone,
+} from "@/features/admin/components/admin-stat-card";
 import { useAdminAllActivities } from "@/features/admin/hooks/use-admin-activity";
 import { useAdminCreditSettings } from "@/features/admin/hooks/use-admin-credit";
 import { Badge } from "@/components/ui/badge";
@@ -931,34 +935,18 @@ function SummaryCard({
   value: string;
   detail: string;
   icon: typeof ReceiptText;
-  tone?: "primary" | "success" | "warning" | "destructive" | "secondary";
+  tone?: AdminStatTone;
   loading: boolean;
 }) {
-  const toneClass = {
-    primary: "bg-primary/10 text-primary",
-    success: "bg-success/10 text-success",
-    warning: "bg-warning/10 text-warning",
-    destructive: "bg-destructive/10 text-destructive",
-    secondary: "bg-secondary/10 text-secondary",
-  }[tone];
-
   return (
-    <Card>
-      <CardHeader className="gap-4">
-        <div
-          className={`flex size-9 items-center justify-center rounded-lg ${toneClass}`}
-        >
-          <Icon />
-        </div>
-        <CardDescription className="min-h-10 text-sm font-semibold text-foreground/80">
-          {title}
-        </CardDescription>
-        <CardTitle className="font-numeric text-3xl font-bold tracking-tight text-foreground">
-          {loading ? <Skeleton className="h-9 w-28" /> : value}
-        </CardTitle>
-        <p className="text-xs text-muted-foreground">{detail}</p>
-      </CardHeader>
-    </Card>
+    <AdminStatCard
+      label={title}
+      value={value}
+      note={detail}
+      icon={Icon}
+      tone={tone}
+      loading={loading}
+    />
   );
 }
 

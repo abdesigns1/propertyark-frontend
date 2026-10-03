@@ -71,7 +71,7 @@ function SummaryMetric({
   return (
     <div
       className={cn(
-        "rounded-lg border p-4",
+        "rounded-lg border p-4 transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none",
         tone === "critical"
           ? "border-destructive/15 bg-destructive/5 text-destructive"
           : tone === "primary"

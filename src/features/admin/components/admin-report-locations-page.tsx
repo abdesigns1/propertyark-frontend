@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { ArrowLeft, Building2, Eye, MapPinned, Search } from "lucide-react";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
 import { AdminTablePagination } from "@/features/admin/components/admin-table-pagination";
+import { AdminStatCard } from "@/features/admin/components/admin-stat-card";
 import { useAdminReportsAnalytics } from "@/features/admin/hooks/use-admin-reports";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -232,17 +233,12 @@ function LocationStat({
   icon: typeof MapPinned;
 }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-4 p-5">
-        <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-          <Icon />
-        </span>
-        <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="truncate text-xl font-semibold">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
+    <AdminStatCard
+      label={label}
+      value={value}
+      note="Location performance overview"
+      icon={Icon}
+    />
   );
 }
 

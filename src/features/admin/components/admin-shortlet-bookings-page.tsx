@@ -12,8 +12,10 @@ import {
   Filter,
   Hourglass,
   KeyRound,
+  RotateCcw,
 } from "lucide-react";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
+import { AdminStatCard } from "@/features/admin/components/admin-stat-card";
 import { useAdminShortletBookings } from "@/features/admin/hooks/use-admin-dashboard";
 import {
   normalizePropertyMediaUrl,
@@ -28,7 +30,13 @@ import {
 } from "@/features/admin/lib/admin-shortlet-display";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -92,60 +100,86 @@ export function AdminShortletBookingsPage() {
         </header>
         <BookingStats data={query.data} loading={query.isLoading} />
         <Card className="mt-10 overflow-hidden py-0">
-          <CardContent className="p-0">
-            <div className="flex flex-col gap-4 bg-surface/60 p-5 lg:flex-row lg:items-center">
-              <div className="flex items-center gap-2 font-semibold">
-                <Filter className="size-4" /> Filter by:
-              </div>
-              <div className="grid flex-1 gap-3 sm:grid-cols-3 lg:max-w-2xl">
-                <FilterSelect
-                  value={status}
-                  setValue={setStatus}
-                  label="Status"
-                  items={[
-                    "ALL",
-                    "PENDING",
-                    "CONFIRMED",
-                    "CHECKED_IN",
-                    "COMPLETED",
-                    "CANCELLED",
-                  ]}
-                />
-                <FilterSelect
-                  value={stayDate}
-                  setValue={setStayDate}
-                  label="Stay Date"
-                  items={["ALL", "UPCOMING", "PAST"]}
-                />
-                <FilterSelect
-                  value={payment}
-                  setValue={setPayment}
-                  label="Payment"
-                  items={["ALL", "PAID", "UNPAID"]}
-                />
-              </div>
-              <Button
-                variant="link"
-                onClick={() => {
-                  setStatus("ALL");
-                  setStayDate("ALL");
-                  setPayment("ALL");
-                }}
-              >
-                Clear Filters
-              </Button>
+          <CardHeader className="gap-4 border-b bg-surface/50 py-5 lg:grid-cols-[minmax(190px,auto)_minmax(0,1fr)_auto] lg:items-center">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="size-4 text-primary" />
+                Filter bookings
+              </CardTitle>
+              <CardDescription className="mt-1">
+                {bookings.length.toLocaleString("en-NG")} matching records
+              </CardDescription>
             </div>
-            <div className="overflow-x-auto border-t">
+            <div className="grid gap-3 sm:grid-cols-3 lg:max-w-2xl">
+              <FilterSelect
+                value={status}
+                setValue={setStatus}
+                label="Status"
+                items={[
+                  "ALL",
+                  "PENDING",
+                  "CONFIRMED",
+                  "CHECKED_IN",
+                  "COMPLETED",
+                  "CANCELLED",
+                ]}
+              />
+              <FilterSelect
+                value={stayDate}
+                setValue={setStayDate}
+                label="Stay Date"
+                items={["ALL", "UPCOMING", "PAST"]}
+              />
+              <FilterSelect
+                value={payment}
+                setValue={setPayment}
+                label="Payment"
+                items={["ALL", "PAID", "UNPAID"]}
+              />
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="justify-self-start lg:justify-self-end"
+              disabled={
+                status === "ALL" && stayDate === "ALL" && payment === "ALL"
+              }
+              onClick={() => {
+                setStatus("ALL");
+                setStayDate("ALL");
+                setPayment("ALL");
+              }}
+            >
+              <RotateCcw data-icon="inline-start" />
+              Reset filters
+            </Button>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
               <Table className="min-w-[1050px]">
                 <TableHeader className="bg-primary/5">
-                  <TableRow>
-                    <TableHead>Booking ID</TableHead>
-                    <TableHead>Property</TableHead>
-                    <TableHead>Guest &amp; Vendor</TableHead>
-                    <TableHead>Dates</TableHead>
-                    <TableHead>Amount &amp; Payment</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="h-12">
+                    <TableHead className="font-semibold text-foreground">
+                      Booking ID
+                    </TableHead>
+                    <TableHead className="font-semibold text-foreground">
+                      Property
+                    </TableHead>
+                    <TableHead className="font-semibold text-foreground">
+                      Guest &amp; Vendor
+                    </TableHead>
+                    <TableHead className="font-semibold text-foreground">
+                      Dates
+                    </TableHead>
+                    <TableHead className="font-semibold text-foreground">
+                      Amount &amp; Payment
+                    </TableHead>
+                    <TableHead className="font-semibold text-foreground">
+                      Status
+                    </TableHead>
+                    <TableHead className="text-right font-semibold text-foreground">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -223,48 +257,19 @@ function BookingStats({
   ];
   return (
     <section className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
-      {cards.map(({ label, value, icon: Icon, tone }) => (
-        <Card
+      {cards.map(({ label, value, icon, tone }) => (
+        <AdminStatCard
           key={label}
-          className={cn(
-            "min-h-36",
-            tone === "destructive" && "border-destructive bg-destructive/5",
-          )}
-        >
-          <CardContent className="flex h-full flex-col justify-between">
-            <div className="flex justify-between gap-3">
-              <p
-                className={cn(
-                  "max-w-28 text-sm font-medium leading-tight text-muted-foreground",
-                  tone === "destructive" && "text-destructive",
-                )}
-              >
-                {label}
-              </p>
-              <Icon
-                className={cn(
-                  "size-5 text-primary",
-                  tone === "warning" && "text-warning",
-                  tone === "muted" && "text-muted-foreground",
-                  tone === "success" && "text-success",
-                  tone === "destructive" && "text-destructive",
-                )}
-              />
-            </div>
-            {loading ? (
-              <Skeleton className="h-8 w-20" />
-            ) : (
-              <p
-                className={cn(
-                  "text-2xl font-semibold",
-                  tone === "destructive" && "text-destructive",
-                )}
-              >
-                {value.toLocaleString()}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+          label={label}
+          value={value}
+          note="Current booking overview"
+          icon={icon}
+          tone={
+            (tone ?? "primary") as
+              "primary" | "warning" | "muted" | "success" | "destructive"
+          }
+          loading={loading}
+        />
       ))}
     </section>
   );
@@ -377,7 +382,7 @@ function FilterSelect({
 }) {
   return (
     <Select value={value} onValueChange={setValue}>
-      <SelectTrigger>
+      <SelectTrigger className="w-full bg-background" aria-label={label}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

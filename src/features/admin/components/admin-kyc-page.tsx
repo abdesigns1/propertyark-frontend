@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
 import { AdminKycDocumentPreview } from "@/features/admin/components/admin-kyc-document-preview";
+import { AdminStatCard } from "@/features/admin/components/admin-stat-card";
 import {
   useAdminKycRequests,
   useAdminKycStats,
@@ -193,41 +194,16 @@ function KycStats({
 }) {
   return (
     <section className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
-      {statConfig.map(({ key, label, icon: Icon, tone }) => (
-        <Card key={key}>
-          <CardContent className="p-6">
-            {loading ? (
-              <Skeleton className="h-28" />
-            ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <span
-                    className={cn(
-                      "rounded-lg bg-primary/10 p-2 text-primary",
-                      tone === "destructive" &&
-                        "bg-destructive/10 text-destructive",
-                      tone === "warning" && "bg-warning/10 text-warning",
-                      tone === "success" && "bg-success/10 text-success",
-                      tone === "muted" && "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    <Icon className="size-5" />
-                  </span>
-                </div>
-                <p className="mt-4 text-sm text-muted-foreground">{label}</p>
-                <p className="mt-1 text-3xl font-bold">
-                  {stats?.[key] ?? 0}
-                  {key === "averageProcessingHours" && (
-                    <span className="ml-1 text-base">hrs</span>
-                  )}
-                </p>
-                <div className="mt-5 h-1.5 rounded-full bg-muted">
-                  <div className="h-full w-2/3 rounded-full bg-primary" />
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+      {statConfig.map(({ key, label, icon, tone }) => (
+        <AdminStatCard
+          key={key}
+          label={label}
+          value={`${stats?.[key] ?? 0}${key === "averageProcessingHours" ? " hrs" : ""}`}
+          note="Live verification overview"
+          icon={icon}
+          tone={tone}
+          loading={loading}
+        />
       ))}
     </section>
   );

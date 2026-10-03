@@ -6,10 +6,9 @@ import {
   UserCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { AdminStatCard } from "@/features/admin/components/admin-stat-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AdminUserStats } from "@/services/admin.service";
-import { cn } from "@/lib/utils";
 
 interface AdminUserStatsProps {
   stats?: AdminUserStats;
@@ -72,45 +71,23 @@ export function AdminUserStatsCards({ stats, isLoading }: AdminUserStatsProps) {
         const value = stats?.[card.key] ?? 0;
 
         return (
-          <Card key={card.key} className="min-h-[205px] py-0 shadow-sm">
-            <CardContent className="flex h-full flex-col p-6">
-              <span
-                className={cn(
-                  "flex size-10 items-center justify-center rounded-lg",
-                  card.iconClassName,
-                )}
-              >
-                <Icon className="size-5" />
-              </span>
-              <p className="mt-5 text-base text-muted-foreground">
-                {card.label}
-              </p>
-              <p className="mt-1 text-3xl font-semibold tracking-tight">
-                {value.toLocaleString()}
-              </p>
-              <div className="mt-auto flex min-h-10 items-center border-t pt-4 text-xs text-muted-foreground">
-                {card.key === "pending" ? (
-                  <div className="flex w-full items-center justify-between gap-3">
-                    <Badge
-                      variant="secondary"
-                      className="h-auto rounded-md px-2 py-1 text-[10px] uppercase leading-3"
-                    >
-                      Attention required
-                    </Badge>
-                    <span>{card.description}</span>
-                  </div>
-                ) : (
-                  <span
-                    className={cn(
-                      card.key === "total" && "font-medium text-primary",
-                    )}
-                  >
-                    {card.description}
-                  </span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <AdminStatCard
+            key={card.key}
+            label={card.label}
+            value={value}
+            icon={Icon}
+            tone={card.key === "pending" ? "warning" : "primary"}
+            note={
+              card.key === "pending" ? (
+                <div className="flex items-center justify-between gap-3">
+                  <Badge variant="secondary">Attention required</Badge>
+                  <span>{card.description}</span>
+                </div>
+              ) : (
+                card.description
+              )
+            }
+          />
         );
       })}
     </div>

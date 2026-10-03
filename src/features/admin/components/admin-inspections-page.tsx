@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
 import { AdminTablePagination } from "@/features/admin/components/admin-table-pagination";
+import { AdminStatCard } from "@/features/admin/components/admin-stat-card";
 import { useAdminInspections } from "@/features/admin/hooks/use-admin-dashboard";
 import {
   inspectionDateLabel,
@@ -267,53 +268,16 @@ function InspectionStats({
   ];
   return (
     <section className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
-      {cards.map(({ label, value, note, icon: Icon, tone }) => (
-        <Card
+      {cards.map(({ label, value, note, icon, tone }) => (
+        <AdminStatCard
           key={label}
-          className={cn(
-            "relative overflow-hidden",
-            tone === "destructive" && "border-destructive",
-          )}
-        >
-          {" "}
-          <CardContent className="flex min-h-40 flex-col justify-between">
-            <div
-              className={cn(
-                "flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary",
-                tone === "warning" && "bg-warning/15 text-warning",
-                tone === "destructive" && "bg-destructive/10 text-destructive",
-                tone === "muted" && "bg-muted text-muted-foreground",
-              )}
-            >
-              <Icon className="size-5" />
-            </div>
-            <div>
-              <p
-                className={cn(
-                  "text-sm text-muted-foreground",
-                  tone === "destructive" && "text-destructive",
-                )}
-              >
-                {label}
-              </p>
-              {loading ? (
-                <Skeleton className="mt-2 h-8 w-20" />
-              ) : (
-                <p
-                  className={cn(
-                    "mt-1 text-3xl font-semibold",
-                    tone === "destructive" && "text-destructive",
-                  )}
-                >
-                  {value.toLocaleString()}
-                </p>
-              )}
-              <p className="mt-2 text-xs font-medium text-muted-foreground">
-                {note}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+          label={label}
+          value={value}
+          note={note}
+          icon={icon}
+          tone={tone as "primary" | "warning" | "destructive" | "muted"}
+          loading={loading}
+        />
       ))}
     </section>
   );

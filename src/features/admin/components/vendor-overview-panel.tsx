@@ -29,6 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Property } from "@/features/properties/types";
 import { AdminInspectionsTable } from "@/features/admin/components/admin-inspections-table";
+import { AdminStatCard } from "@/features/admin/components/admin-stat-card";
 import { useAdminVendorInspections } from "@/features/admin/hooks/use-admin-dashboard";
 import type { AdminUser } from "@/services/admin.service";
 import { cn } from "@/lib/utils";
@@ -469,17 +470,12 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <Card className="shadow-none">
-      <CardContent className="flex items-center gap-4 p-5">
-        <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Icon className="size-5" />
-        </span>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-xl font-semibold">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
+    <AdminStatCard
+      label={label}
+      value={value}
+      note="Vendor portfolio overview"
+      icon={Icon}
+    />
   );
 }
 

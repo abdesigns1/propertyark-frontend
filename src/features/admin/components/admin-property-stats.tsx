@@ -6,7 +6,7 @@ import {
   ClipboardClock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { AdminStatCard } from "@/features/admin/components/admin-stat-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AdminPropertyManagementData } from "@/services/admin.service";
 
@@ -70,35 +70,23 @@ export function AdminPropertyStats({
   return (
     <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
       {cards.map(({ label, value, icon: Icon, note, tone }) => (
-        <Card key={label} className="min-h-[218px] shadow-sm">
-          <CardContent className="flex h-full flex-col p-6">
-            <span
-              className={
-                tone === "secondary"
-                  ? "flex size-10 items-center justify-center rounded-lg bg-secondary/15 text-secondary-hover"
-                  : "flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary"
-              }
-            >
-              <Icon className="size-5" />
-            </span>
-            <p className="mt-5 text-muted-foreground">{label}</p>
-            <p className="mt-1 text-3xl font-semibold">
-              {value.toLocaleString()}
-            </p>
-            <div className="mt-4 border-t pt-4 text-xs text-muted-foreground">
-              {tone === "secondary" ? (
-                <div className="flex items-center justify-between gap-3">
-                  <Badge className="bg-secondary/15 text-secondary-hover">
-                    Attention required
-                  </Badge>
-                  <span>High priority</span>
-                </div>
-              ) : (
-                note
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <AdminStatCard
+          key={label}
+          label={label}
+          value={value}
+          icon={Icon}
+          tone={tone === "secondary" ? "warning" : "primary"}
+          note={
+            tone === "secondary" ? (
+              <div className="flex items-center justify-between gap-3">
+                <Badge variant="secondary">Attention required</Badge>
+                <span>High priority</span>
+              </div>
+            ) : (
+              note
+            )
+          }
+        />
       ))}
     </div>
   );

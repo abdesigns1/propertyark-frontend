@@ -14,6 +14,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
+import { AdminStatCard } from "@/features/admin/components/admin-stat-card";
 import {
   RevenuePerformanceCard,
   TransactionAnalyticsCard,
@@ -33,7 +34,6 @@ import {
 import { useAdminGrowthHistory } from "@/features/admin/hooks/use-admin-dashboard";
 import { useAdminReportsAnalytics } from "@/features/admin/hooks/use-admin-reports";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -322,45 +322,34 @@ function ReportStatCard({
 }: ReportStatCardProps) {
   const positive = change > 0;
   return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between">
-          <span
-            className={cn(
-              "grid size-10 place-items-center rounded-lg",
-              tone === "blue"
-                ? "bg-primary/10 text-primary"
-                : "bg-secondary/15 text-secondary",
-            )}
-          >
-            <Icon className="size-5" />
-          </span>
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 text-xs font-medium",
-              positive
-                ? "text-emerald-600"
-                : change < 0
-                  ? "text-destructive"
-                  : "text-muted-foreground",
-            )}
-          >
-            {positive ? (
-              <ArrowUpRight className="size-3" />
-            ) : change < 0 ? (
-              <ArrowDownRight className="size-3" />
-            ) : (
-              "−"
-            )}
-            {Math.abs(change).toFixed(1)}%
-          </span>
-        </div>
-        <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {label}
-        </p>
-        <p className="mt-1 text-2xl font-bold tracking-tight">{value}</p>
-      </CardContent>
-    </Card>
+    <AdminStatCard
+      label={label}
+      value={value}
+      note="Compared with the previous period"
+      icon={Icon}
+      tone={tone === "blue" ? "primary" : "secondary"}
+      action={
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 text-xs font-medium",
+            positive
+              ? "text-success"
+              : change < 0
+                ? "text-destructive"
+                : "text-muted-foreground",
+          )}
+        >
+          {positive ? (
+            <ArrowUpRight className="size-3" />
+          ) : change < 0 ? (
+            <ArrowDownRight className="size-3" />
+          ) : (
+            "−"
+          )}
+          {Math.abs(change).toFixed(1)}%
+        </span>
+      }
+    />
   );
 }
 

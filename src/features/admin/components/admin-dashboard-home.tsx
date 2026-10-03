@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Bar, CartesianGrid, ComposedChart, XAxis, YAxis } from "recharts";
 import { AdminSidebar } from "@/features/admin/components/admin-sidebar";
+import { AdminStatCard } from "@/features/admin/components/admin-stat-card";
 import {
   useAdminDashboard,
   useAdminGrowthHistory,
@@ -356,28 +357,15 @@ function OverviewCards({
   ];
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-      {cards.map(({ label, value, note, icon: Icon }, index) => (
-        <Card key={label} className="py-0">
-          <CardContent className="p-5">
-            <div className="flex items-start">
-              <span
-                className={cn(
-                  "flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary",
-                  index === 4 && "bg-destructive/10 text-destructive",
-                )}
-              >
-                <Icon className="size-5" />
-              </span>
-            </div>
-            <p className="mt-4 text-sm text-muted-foreground">{label}</p>
-            <p className="text-2xl font-semibold tracking-tight">
-              {typeof value === "number" ? value.toLocaleString() : value}
-            </p>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              {note}
-            </p>
-          </CardContent>
-        </Card>
+      {cards.map(({ label, value, note, icon }, index) => (
+        <AdminStatCard
+          key={label}
+          label={label}
+          value={value ?? 0}
+          note={note}
+          icon={icon}
+          tone={index === 4 ? "destructive" : "primary"}
+        />
       ))}
     </div>
   );

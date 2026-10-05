@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 
 export function BackgroundVideo({
   src,
   poster,
+  className,
 }: {
   src: string;
   poster: string;
+  className?: string;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -53,7 +56,7 @@ export function BackgroundVideo({
       onCanPlay={(event) => {
         void event.currentTarget.play().catch(() => undefined);
       }}
-      className="size-full object-cover"
+      className={cn("size-full object-cover", className)}
     >
       <source src={src} type="video/mp4" />
     </video>

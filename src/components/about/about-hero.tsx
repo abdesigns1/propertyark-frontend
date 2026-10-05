@@ -12,7 +12,7 @@ export function AboutHero() {
     <section className="w-full overflow-hidden bg-background">
       <AboutNavbar />
 
-      <div className="relative aspect-video w-full overflow-hidden bg-navbar">
+      <div className="relative aspect-video w-full overflow-hidden bg-navbar lg:aspect-auto lg:h-[60svh]">
         <BackgroundVideo
           src={ABOUT_VIDEO_URL}
           poster={ABOUT_VIDEO_POSTER}

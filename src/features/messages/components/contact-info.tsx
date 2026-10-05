@@ -31,12 +31,7 @@ export function ContactInfo() {
           <p className="text-sm font-semibold text-foreground">Phone Number</p>
           <div className="mt-2 h-0.5 w-8 bg-secondary" />
           <p className="mt-3 text-sm font-medium text-foreground">
-            (808) 998-34256
-          </p>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Assistance hours:
-            <br />
-            Monday - Friday 9 am to 5 pm EST
+            ‪+234 805 563 4538‬
           </p>
         </div>
       </div>

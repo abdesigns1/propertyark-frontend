@@ -31,7 +31,7 @@ export function ContactInfo() {
           <p className="text-sm font-semibold text-foreground">Phone Number</p>
           <div className="mt-2 h-0.5 w-8 bg-secondary" />
           <p className="mt-3 text-sm font-medium text-foreground">
-            ‪+234 805 563 4538‬
+            +234 913 412 7050
           </p>
         </div>
       </div>

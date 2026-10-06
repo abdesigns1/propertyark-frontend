@@ -273,9 +273,18 @@ export function VendorProperties() {
     mutationFn: (propertyId: string) =>
       propertyService.feature(propertyId, featureCost),
     onSuccess: async () => {
+      const featuredPropertyId = featureTarget?.id;
       setFeatureTarget(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: creditPaymentKeys.info }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "properties"] }),
+        ...(featuredPropertyId
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: ["admin", "property", featuredPropertyId],
+              }),
+            ]
+          : []),
         queryClient.invalidateQueries({ queryKey: ["properties", "featured"] }),
         queryClient.invalidateQueries({
           queryKey: ["properties", "available"],
@@ -634,6 +643,7 @@ export function VendorProperties() {
                                 </DropdownMenuItem>
                                 {!property.id.startsWith("draft:") &&
                                   propertyStatus.key === "published" &&
+                                  featuredQuery.isSuccess &&
                                   !property.isFeatured && (
                                     <DropdownMenuItem
                                       onSelect={() =>

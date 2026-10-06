@@ -53,8 +53,12 @@ const BASE_DEFAULTS = {
 type RegisterRole = "user" | "vendor";
 const RECOVERABLE_REGISTRATION_STATUSES = new Set([403, 502, 503, 504]);
 
-export function RegisterForm() {
-  const [role, setRole] = useState<RegisterRole>("user");
+export function RegisterForm({
+  initialRole = "user",
+}: {
+  initialRole?: RegisterRole;
+}) {
+  const [role, setRole] = useState<RegisterRole>(initialRole);
   const router = useRouter();
 
   const registerBuyer = useRegisterBuyer();

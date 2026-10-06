@@ -11,11 +11,11 @@ import {
   ChevronRight,
   CircleCheck,
   Download,
-  MessageSquareText,
-  Pencil,
+  MoreHorizontal,
   Plus,
   Search,
   UserRoundCheck,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -30,6 +30,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   InputGroup,
   InputGroupAddon,
@@ -171,12 +178,14 @@ function StatCard({
 function BookingsTable({
   bookings,
   onConfirm,
+  onReject,
   onSelect,
   onExport,
   isUpdating,
 }: {
   bookings: ShortletBooking[];
   onConfirm: (bookingId: string) => void;
+  onReject: (bookingId: string) => void;
   onSelect: (bookingId: string) => void;
   onExport: () => void;
   isUpdating: boolean;
@@ -251,33 +260,43 @@ function BookingsTable({
                       <BookingStatusBadge status={booking.status} />
                     </TableCell>
                     <TableCell>
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={`Message ${booking.guestName}`}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            toast.info(
-                              `Opening conversation with ${booking.guestName}.`,
-                            );
-                          }}
-                        >
-                          <MessageSquareText />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={`Confirm booking ${booking.id}`}
-                          disabled={booking.status !== "PENDING" || isUpdating}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onConfirm(booking.id);
-                          }}
-                          className="text-primary hover:text-primary"
-                        >
-                          <Check />
-                        </Button>
+                      <div className="flex justify-end">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={`Actions for booking ${booking.id}`}
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <MoreHorizontal />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <DropdownMenuGroup>
+                              <DropdownMenuItem
+                                disabled={
+                                  booking.status !== "PENDING" || isUpdating
+                                }
+                                onSelect={() => onConfirm(booking.id)}
+                              >
+                                <Check /> Accept booking
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                disabled={
+                                  booking.status !== "PENDING" || isUpdating
+                                }
+                                onSelect={() => onReject(booking.id)}
+                              >
+                                <X /> Reject booking
+                              </DropdownMenuItem>
+                            </DropdownMenuGroup>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -810,10 +829,7 @@ export function ShortletBookingManagement() {
     );
   }
 
-  const { stats, properties, pricing, activities } = dashboard.data;
-  const selectedPricingProperty =
-    properties.find((property) => property.id === pricing.propertyId)?.name ??
-    "Selected property";
+  const { stats, properties, activities } = dashboard.data;
 
   function confirmBooking(bookingId: string) {
     updateBooking.mutate({ bookingId, action: "approve" });
@@ -1010,6 +1026,7 @@ export function ShortletBookingManagement() {
           <BookingsTable
             bookings={filteredBookings}
             onConfirm={confirmBooking}
+            onReject={rejectBooking}
             onSelect={setSelectedBookingId}
             onExport={exportCsv}
             isUpdating={updateBooking.isPending}
@@ -1089,43 +1106,6 @@ export function ShortletBookingManagement() {
               </CardContent>
             </Card>
           </div>
-
-          <Card className="border-primary/25 bg-primary/5 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-primary">Pricing Settings</CardTitle>
-              <CardAction>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Edit pricing settings"
-                  onClick={() => toast.info("Pricing editor will open here.")}
-                >
-                  <Pencil />
-                </Button>
-              </CardAction>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              <div className="flex items-center justify-between gap-3 rounded-lg bg-background p-3">
-                <span className="text-sm text-muted-foreground">
-                  Base Weekday Rate
-                </span>
-                <strong className="font-numeric">
-                  {currency.format(pricing.weekdayRate)}
-                </strong>
-              </div>
-              <div className="flex items-center justify-between gap-3 rounded-lg bg-background p-3">
-                <span className="text-sm text-muted-foreground">
-                  Weekend Rate
-                </span>
-                <strong className="font-numeric">
-                  {currency.format(pricing.weekendRate)}
-                </strong>
-              </div>
-              <p className="text-sm italic text-muted-foreground">
-                Rates apply to {selectedPricingProperty}
-              </p>
-            </CardContent>
-          </Card>
 
           <Card className="shadow-sm">
             <CardHeader>

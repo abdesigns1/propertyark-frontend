@@ -31,6 +31,7 @@ import {
   useChatSessions,
 } from "@/features/messages/hooks/use-chat";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { SheetClose } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth.store";
@@ -142,11 +143,12 @@ export function DashboardNavigation({
             key={label}
             href={href}
             aria-current={active ? "page" : undefined}
+            title={collapsed ? label : undefined}
             className={cn(
               "relative flex min-h-12 items-center gap-4 rounded-xl px-4 py-2.5 text-[15px] font-medium leading-6 text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary",
               compactDesktopNavigation &&
                 "min-h-10 flex-none gap-3 px-3 py-1.5 text-sm leading-5",
-              collapsed && "justify-center px-2",
+              collapsed && "mx-auto size-10 min-h-10 justify-center gap-0 p-0",
               active && "bg-primary/10 font-semibold text-primary",
             )}
           >
@@ -176,7 +178,13 @@ export function DashboardNavigation({
               </>
             ) : hasNewActivity ? (
               <>
-                <Badge className="ml-auto size-2 p-0" aria-hidden="true" />
+                <Badge
+                  className={cn(
+                    "ml-auto size-2 p-0",
+                    collapsed && "absolute top-1 right-1 ml-0",
+                  )}
+                  aria-hidden="true"
+                />
                 <span className="sr-only">New activity</span>
               </>
             ) : null}
@@ -217,7 +225,11 @@ export function DashboardUserSummary({
   return role === "vendor" ? (
     <Link
       href="/vendor/profile"
-      className="block rounded-xl p-1 transition-colors hover:bg-primary/5"
+      title={collapsed ? user.fullName : undefined}
+      className={cn(
+        "block rounded-xl p-1 transition-colors hover:bg-primary/5",
+        collapsed && "mx-auto size-12 p-1",
+      )}
     >
       {summary}
     </Link>
@@ -236,31 +248,38 @@ export function DashboardSidebar({
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 hidden flex-col overflow-hidden bg-surface px-4 py-4 transition-[width] duration-200 lg:flex",
-        collapsed ? "w-20" : "w-64",
+        "fixed inset-y-0 left-0 hidden flex-col overflow-hidden border-r bg-surface py-4 transition-[width,padding] duration-200 lg:flex",
+        collapsed ? "w-20 px-2" : "w-64 px-4",
       )}
     >
       <div
         className={cn(
           "flex items-center",
-          collapsed ? "flex-col justify-center gap-2" : "justify-between",
+          collapsed ? "flex-col justify-center gap-3" : "justify-between",
         )}
       >
         <DashboardBrand compact iconOnly={collapsed} />
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => onCollapsedChange?.(!collapsed)}
-          className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={cn(collapsed && "size-10")}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
-        </button>
+        </Button>
       </div>
-      <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
+      <div
+        className={cn(
+          "mt-4 min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin]",
+          collapsed &&
+            "pr-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        )}
+      >
         <DashboardNavigation collapsed={collapsed} />
       </div>
-      <div className="mt-3 shrink-0">
+      <div className={cn("mt-3 shrink-0", collapsed && "border-t pt-3")}>
         <DashboardUserSummary collapsed={collapsed} />
       </div>
     </aside>

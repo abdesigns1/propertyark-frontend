@@ -2,7 +2,14 @@ import { AuthImagePanel } from "@/components/shared/auth-image-panel";
 import { AuthMobileBrand } from "@/components/shared/auth-mobile-brand";
 import { RegisterForm } from "@/features/authentication/components/register-form";
 
-export default function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ role?: string | string[] }>;
+}) {
+  const requestedRole = (await searchParams).role;
+  const initialRole = requestedRole === "vendor" ? "vendor" : "user";
+
   const slides = [
     {
       imageSrc:
@@ -36,7 +43,7 @@ export default function RegisterPage() {
       <div className="flex items-center justify-center px-6 py-8 sm:px-12 sm:py-12">
         <div className="w-full max-w-md">
           <AuthMobileBrand />
-          <RegisterForm />
+          <RegisterForm initialRole={initialRole} />
         </div>
       </div>
     </div>

@@ -89,6 +89,7 @@ import {
 } from "@/features/vendor/lib/vendor-property-display";
 import { VendorPropertyThumbnail } from "@/features/vendor/components/vendor-property-thumbnail";
 import { FeaturedPlacementCountdown } from "@/features/vendor/components/featured-placement-countdown";
+import { ExplorePrimeCard } from "@/features/vendor/components/explore-prime-card";
 import {
   creditPaymentKeys,
   useCreditRules,
@@ -383,6 +384,7 @@ export function VendorProperties() {
           icon={Percent}
         />
       </section>
+      <ExplorePrimeCard />
       <Card>
         <CardContent className="grid gap-3 py-1 md:grid-cols-[minmax(260px,1fr)_auto_auto_auto_auto]">
           <div className="relative">

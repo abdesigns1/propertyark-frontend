@@ -16,10 +16,10 @@ export function ContactInfo() {
           <p className="text-sm font-semibold text-foreground">Email Address</p>
           <div className="mt-2 h-0.5 w-8 bg-secondary" />
           <a
-            href="mailto:propertyark26@gmail.com"
+            href="mailto:info@propertyark.ng"
             className="mt-3 inline-block text-sm font-medium text-foreground hover:text-primary"
           >
-            propertyark26@gmail.com
+            info@propertyark.ng
           </a>
           <p className="mt-3 text-sm text-muted-foreground">
             Response hours:

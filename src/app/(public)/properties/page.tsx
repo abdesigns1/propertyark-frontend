@@ -219,13 +219,6 @@ function PropertiesContent() {
     (currentPage - 1) * PROPERTIES_PER_PAGE,
     currentPage * PROPERTIES_PER_PAGE,
   );
-  const firstVisibleProperty = totalProperties
-    ? (currentPage - 1) * PROPERTIES_PER_PAGE + 1
-    : 0;
-  const lastVisibleProperty = Math.min(
-    currentPage * PROPERTIES_PER_PAGE,
-    totalProperties,
-  );
   const activeFilterCount =
     filters.types.length +
     Number(Boolean(filters.location.trim())) +
@@ -308,13 +301,6 @@ function PropertiesContent() {
                       Available properties
                     </h2>
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {availableProperties.isLoading
-                      ? "Loading current listings…"
-                      : totalProperties
-                        ? `Showing ${firstVisibleProperty}–${lastVisibleProperty} of ${totalProperties.toLocaleString()} listings`
-                        : "Browse verified listings across PropertyArk"}
-                  </p>
                 </div>
               </div>
 

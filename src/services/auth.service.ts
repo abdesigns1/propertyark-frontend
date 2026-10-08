@@ -105,6 +105,17 @@ export const authService = {
       .post<{ message?: string }>("/auth/forgot-password", { email })
       .then(({ data }) => data),
 
+  resetPassword: (payload: {
+    email: string;
+    token: string;
+    password: string;
+  }) =>
+    api
+      .put<{ message?: string }>("/auth/reset-password", payload, {
+        baseURL: "/api/v1",
+      })
+      .then(({ data }) => data),
+
   registerStaff: (payload: StaffRegistrationPayload) =>
     api.post("/auth/reg/staff", payload).then(({ data }) => data),
 

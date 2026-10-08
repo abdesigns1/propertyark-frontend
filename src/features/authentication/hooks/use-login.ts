@@ -13,3 +13,10 @@ export function useForgotPassword() {
     mutationFn: (email: string) => authService.forgotPassword(email),
   });
 }
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (payload: { email: string; token: string; password: string }) =>
+      authService.resetPassword(payload),
+  });
+}

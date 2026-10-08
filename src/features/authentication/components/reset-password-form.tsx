@@ -17,8 +17,6 @@ import {
 } from "@/features/authentication/validation/reset-password.schema";
 import { getApiErrorMessage } from "@/services/api-error";
 
-const RESET_TOKEN_PATTERN = /^[a-f\d]{64}$/i;
-
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -27,8 +25,10 @@ export function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email")?.trim() ?? "";
   const token = searchParams.get("token")?.trim() ?? "";
-  const hasValidResetLink =
-    isValidEmail(email) && RESET_TOKEN_PATTERN.test(token);
+  // Token formats are owned by the backend and may change. The client only
+  // checks that the reset credentials exist; the API remains responsible for
+  // validating expiry, integrity, and whether the token has already been used.
+  const hasValidResetLink = isValidEmail(email) && token.length > 0;
   const [isComplete, setIsComplete] = useState(false);
   const resetPassword = useResetPassword();
   const { control, handleSubmit } = useForm<ResetPasswordValues>({
@@ -53,6 +53,9 @@ export function ResetPasswordForm() {
         </div>
         <Button asChild className="h-12">
           <Link href="/forgot-password">Request a new reset link</Link>
+        </Button>
+        <Button asChild variant="outline" className="h-12">
+          <Link href="/login">Back to login</Link>
         </Button>
       </div>
     );

@@ -229,7 +229,7 @@ export default function PrivacyPolicyPage() {
                 <br />
                 Website:{" "}
                 <a
-                  href="http://www.propertyark.ng"
+                  href="https://www.propertyark.ng"
                   target="_blank"
                   rel="noreferrer"
                   className="text-primary hover:underline"

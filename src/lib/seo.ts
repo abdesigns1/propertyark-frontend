@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const SITE_NAME = "PropertyArk";
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
-  "https://propertyark.vercel.app";
+  "https://www.propertyark.ng";
 export const DEFAULT_OG_IMAGE = "/assets/images/hero-property.jpg";
 
 interface PageMetadataOptions {

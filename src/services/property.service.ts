@@ -516,10 +516,31 @@ export const propertyService = {
     };
   },
   getFeatured: async () => {
-    const { data } = await api.get<unknown>("/credit-points/featured");
-    return normalizeVendorPropertiesResponse(data, 1, 100).properties.map(
-      normalizePropertyResponse,
+    const [{ data }, availableProperties] = await Promise.all([
+      api.get<unknown>("/credit-points/featured"),
+      getFilteredAvailable().catch(() => []),
+    ]);
+    const featuredProperties = normalizeVendorPropertiesResponse(
+      data,
+      1,
+      100,
+    ).properties.map(normalizePropertyResponse);
+    const availableById = new Map(
+      availableProperties.map((property) => [property.id, property]),
     );
+
+    return featuredProperties.map((featuredProperty) => {
+      const completeProperty = availableById.get(featuredProperty.id);
+      if (!completeProperty) return featuredProperty;
+
+      return {
+        ...completeProperty,
+        isFeatured: true,
+        featuredAt: featuredProperty.featuredAt,
+        featuredUntil: featuredProperty.featuredUntil,
+        featureExpiresAt: featuredProperty.featureExpiresAt,
+      };
+    });
   },
   getFeaturedApiItems: async () => {
     const { data } = await api.get<unknown>("/credit-points/featured");

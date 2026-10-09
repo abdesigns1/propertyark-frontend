@@ -1,20 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type TouchEvent,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { BadgeCheck, BedDouble, Bath, MapPin, Ruler } from "lucide-react";
+import {
+  BadgeCheck,
+  Bath,
+  BedDouble,
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
+  Ruler,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Price } from "@/components/shared/price";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
 
 import {
   PURPOSE_LABELS,
@@ -32,11 +39,15 @@ interface PropertyCardProps {
 
 const GLASS_CAROUSEL_BUTTON =
   "border border-white/55 bg-white/30 text-white shadow-lg shadow-black/15 backdrop-blur-md hover:bg-white/45 hover:text-white focus-visible:ring-white/80 disabled:bg-white/20 disabled:text-white/70";
+const SWIPE_THRESHOLD_PX = 45;
 
 export function PropertyCard({
   property,
   compactPrice = false,
 }: PropertyCardProps) {
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+  const suppressImageLink = useRef(false);
   const {
     id,
     title,
@@ -55,47 +66,103 @@ export function PropertyCard({
     const uniqueImages = [...new Set(images.filter(Boolean))];
     return uniqueImages.length ? uniqueImages : [PROPERTY_IMAGE_FALLBACK];
   }, [images]);
+
+  function showPreviousImage() {
+    setActiveImageIndex((current) =>
+      current === 0 ? carouselImages.length - 1 : current - 1,
+    );
+  }
+
+  function showNextImage() {
+    setActiveImageIndex((current) =>
+      current === carouselImages.length - 1 ? 0 : current + 1,
+    );
+  }
+
+  function handleTouchStart(event: TouchEvent<HTMLDivElement>) {
+    touchStartX.current = event.touches[0]?.clientX ?? null;
+    suppressImageLink.current = false;
+  }
+
+  function handleTouchEnd(event: TouchEvent<HTMLDivElement>) {
+    if (touchStartX.current === null) return;
+
+    const endX = event.changedTouches[0]?.clientX ?? touchStartX.current;
+    const distance = endX - touchStartX.current;
+    touchStartX.current = null;
+
+    if (Math.abs(distance) < SWIPE_THRESHOLD_PX) return;
+    suppressImageLink.current = true;
+    if (distance > 0) showPreviousImage();
+    else showNextImage();
+
+    window.setTimeout(() => {
+      suppressImageLink.current = false;
+    }, 0);
+  }
+
+  function handleImageClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (!suppressImageLink.current) return;
+    event.preventDefault();
+  }
+
   return (
     <div className="group overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
       {/* Image */}
       <div className="relative aspect-[4/3] w-full overflow-hidden">
-        <Carousel
-          opts={{ loop: carouselImages.length > 1 }}
-          className="size-full"
-          aria-label={`${title} property images`}
+        <div
+          className="flex size-full touch-pan-y transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(-${activeImageIndex * 100}%)` }}
+          aria-live="polite"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
         >
-          <CarouselContent className="ml-0 size-full">
-            {carouselImages.map((image, index) => (
-              <CarouselItem
-                key={`${image}-${index}`}
-                className="relative aspect-[4/3] pl-0"
-                aria-label={`Image ${index + 1} of ${carouselImages.length}`}
-              >
-                <PropertyCarouselImage
-                  src={image}
-                  alt={`${title}, image ${index + 1}`}
-                />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
+          {carouselImages.map((image, index) => (
+            <Link
+              key={`${image}-${index}`}
+              href={`/properties/${id}`}
+              className="relative block size-full shrink-0"
+              aria-label={`View ${title} details from image ${index + 1} of ${carouselImages.length}`}
+              onClick={handleImageClick}
+            >
+              <PropertyCarouselImage
+                src={image}
+                alt={`${title}, image ${index + 1}`}
+              />
+            </Link>
+          ))}
+        </div>
 
-          {carouselImages.length > 1 && (
-            <>
-              <CarouselPrevious
-                className={cn(
-                  GLASS_CAROUSEL_BUTTON,
-                  "left-3 top-1/2 -translate-y-1/2 opacity-0 transition-[opacity,background-color] group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100",
-                )}
-              />
-              <CarouselNext
-                className={cn(
-                  GLASS_CAROUSEL_BUTTON,
-                  "right-3 top-1/2 -translate-y-1/2 opacity-0 transition-[opacity,background-color] group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100",
-                )}
-              />
-            </>
-          )}
-        </Carousel>
+        {carouselImages.length > 1 && (
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon-sm"
+              onClick={showPreviousImage}
+              aria-label={`Show previous image of ${title}`}
+              className={cn(
+                GLASS_CAROUSEL_BUTTON,
+                "absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full opacity-0 transition-[opacity,background-color] group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100",
+              )}
+            >
+              <ChevronLeft />
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon-sm"
+              onClick={showNextImage}
+              aria-label={`Show next image of ${title}`}
+              className={cn(
+                GLASS_CAROUSEL_BUTTON,
+                "absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full opacity-0 transition-[opacity,background-color] group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100",
+              )}
+            >
+              <ChevronRight />
+            </Button>
+          </>
+        )}
 
         <div className="absolute left-3 top-3 flex flex-wrap items-center gap-2">
           <span

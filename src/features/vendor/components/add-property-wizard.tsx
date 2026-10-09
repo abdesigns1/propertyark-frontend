@@ -63,7 +63,6 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { getApiErrorMessage } from "@/services/api-error";
 import { propertyService } from "@/services/property.service";
-import { cn } from "@/lib/utils";
 import { useAccountKey } from "@/lib/account-identity";
 import { vendorDashboardQueryKey } from "@/features/vendor/hooks/use-vendor-dashboard";
 import {
@@ -84,12 +83,17 @@ import {
   PropertyUploadBox,
 } from "@/features/vendor/components/add-property-wizard-ui";
 import {
+  ReorderablePropertyPhotoGrid,
+  type ReorderablePropertyPhoto,
+} from "@/features/vendor/components/reorderable-property-photo-grid";
+import {
   GoogleAddressAutocomplete,
   type SelectedGoogleAddress,
 } from "@/features/vendor/components/google-address-autocomplete";
 import {
   formatPropertyMoney,
   INITIAL_PROPERTY_VALUES,
+  PROPERTY_DESCRIPTION_MAX_LENGTH,
   PRICE_FIELDS,
   PRICE_LABELS,
   readablePropertyValue,
@@ -104,6 +108,23 @@ import {
   saveDraftMedia,
   savePropertyDraft,
 } from "@/features/vendor/lib/property-drafts";
+
+function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
+  if (
+    fromIndex === toIndex ||
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= items.length ||
+    toIndex >= items.length
+  ) {
+    return items;
+  }
+
+  const next = [...items];
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+  return next;
+}
 
 export function AddPropertyWizard({
   initialDraftId,
@@ -144,6 +165,9 @@ export function AddPropertyWizard({
   const [deletingMediaIds, setDeletingMediaIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [settingPrimaryMediaId, setSettingPrimaryMediaId] = useState<
+    string | null
+  >(null);
   const editInitialized = useRef(false);
   const propertyCreationCost =
     creditRules.data?.propertyCreationCost ??
@@ -265,9 +289,19 @@ export function AddPropertyWizard({
         const media = property.media?.length
           ? property.media
           : await propertyService.getMedia(property.id);
-        setExistingMedia(media);
+        setExistingMedia(
+          [...media].sort(
+            (first, second) =>
+              Number(second.isPrimary) - Number(first.isPrimary),
+          ),
+        );
       } catch {
-        setExistingMedia(property.media ?? []);
+        setExistingMedia(
+          [...(property.media ?? [])].sort(
+            (first, second) =>
+              Number(second.isPrimary) - Number(first.isPrimary),
+          ),
+        );
       }
     })();
   }, [
@@ -368,6 +402,8 @@ export function AddPropertyWizard({
       if (values.description.trim().length < 20)
         next.description =
           "Add at least 20 characters describing the property.";
+      else if (values.description.length > PROPERTY_DESCRIPTION_MAX_LENGTH)
+        next.description = `Keep the property description within ${PROPERTY_DESCRIPTION_MAX_LENGTH.toLocaleString()} characters.`;
       if (values.listingType === "FOR_SHORTLET") {
         if (!values.shortletCheckInTime)
           next.shortletCheckInTime = "Select the standard check-in time.";
@@ -462,6 +498,56 @@ export function AddPropertyWizard({
         next.delete(media.id);
         return next;
       });
+    }
+  };
+  const reorderPhotos = (fromIndex: number, toIndex: number) => {
+    setPhotos((current) => moveItem(current, fromIndex, toIndex));
+  };
+  const reorderExistingImages = async (fromIndex: number, toIndex: number) => {
+    if (!initialPropertyId || settingPrimaryMediaId) return;
+
+    const previousMedia = existingMedia;
+    const images = existingMedia.filter((item) => item.type === "IMAGE");
+    const otherMedia = existingMedia.filter((item) => item.type !== "IMAGE");
+    const reorderedImages = moveItem(images, fromIndex, toIndex);
+    const previousCoverId = images[0]?.id;
+    const nextCover = reorderedImages[0];
+
+    setExistingMedia([...reorderedImages, ...otherMedia]);
+    if (!nextCover || nextCover.id === previousCoverId) return;
+
+    setSettingPrimaryMediaId(nextCover.id);
+    try {
+      await propertyService.setPrimaryMedia(nextCover.id);
+      setExistingMedia((current) =>
+        current.map((item) => ({
+          ...item,
+          isPrimary: item.id === nextCover.id,
+        })),
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["properties", "available"],
+        }),
+        ...(accountKey
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: vendorPropertiesQueryKey(accountKey),
+              }),
+              queryClient.invalidateQueries({
+                queryKey: vendorDashboardQueryKey(accountKey),
+              }),
+            ]
+          : []),
+      ]);
+      toast.success("The property cover photo was updated.");
+    } catch (error) {
+      setExistingMedia(previousMedia);
+      toast.error(
+        getApiErrorMessage(error, "The cover photo could not be updated."),
+      );
+    } finally {
+      setSettingPrimaryMediaId(null);
     }
   };
   const addDocuments = (kind: keyof LegalFiles, incoming: File[]) => {
@@ -852,14 +938,16 @@ export function AddPropertyWizard({
                   <Textarea
                     id="property-description"
                     className="min-h-32"
-                    maxLength={500}
+                    maxLength={PROPERTY_DESCRIPTION_MAX_LENGTH}
                     value={values.description}
                     onChange={(e) => update("description", e.target.value)}
                     placeholder="Highlight the key features and selling points of the property"
                     aria-invalid={Boolean(errors.description)}
                   />
                   <FieldDescription>
-                    {values.description.length} / 500 characters
+                    {values.description.length.toLocaleString()} /{" "}
+                    {PROPERTY_DESCRIPTION_MAX_LENGTH.toLocaleString()}{" "}
+                    characters
                   </FieldDescription>
                   <FieldError>{errors.description}</FieldError>
                 </Field>
@@ -1238,91 +1326,62 @@ export function AddPropertyWizard({
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               {existingMedia.some((item) => item.type === "IMAGE") && (
-                <div className="grid grid-cols-2 gap-3">
-                  {existingMedia
-                    .filter((item) => item.type === "IMAGE")
-                    .map((item, index) => (
-                      <figure
-                        key={item.id}
-                        className={cn(
-                          "group relative aspect-square overflow-hidden rounded-lg border",
-                          index === 0 &&
-                            "col-span-2 aspect-video ring-2 ring-primary",
-                        )}
-                      >
-                        <Image
-                          src={item.url}
-                          alt={`Existing property photo ${index + 1}`}
-                          fill
-                          sizes={index === 0 ? "800px" : "400px"}
-                          className="object-cover"
-                        />
-                        <Badge
-                          variant="secondary"
-                          className="absolute left-2 top-2"
-                        >
-                          {index === 0 ? "Current cover" : "Saved photo"}
-                        </Badge>
-                        <Button
-                          type="button"
-                          size="icon-sm"
-                          variant="destructive"
-                          className="absolute right-2 top-2"
-                          disabled={deletingMediaIds.has(item.id)}
-                          aria-label={`Delete property image ${index + 1}`}
-                          onClick={() => void deleteExistingMedia(item)}
-                        >
-                          {deletingMediaIds.has(item.id) ? (
-                            <LoaderCircle className="animate-spin" />
-                          ) : (
-                            <Trash2 />
-                          )}
-                        </Button>
-                      </figure>
-                    ))}
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    Drag a saved photo into the first position, or use the arrow
+                    controls, to make it the property cover.
+                  </p>
+                  <ReorderablePropertyPhotoGrid
+                    photos={existingMedia
+                      .filter((item) => item.type === "IMAGE")
+                      .map((item, index): ReorderablePropertyPhoto => ({
+                        id: item.id,
+                        src: item.url,
+                        alt: `Existing property photo ${index + 1}`,
+                        isBusy:
+                          deletingMediaIds.has(item.id) ||
+                          settingPrimaryMediaId !== null,
+                      }))}
+                    coverLabel="Current cover"
+                    onReorder={(fromIndex, toIndex) =>
+                      void reorderExistingImages(fromIndex, toIndex)
+                    }
+                    onRemove={(photo) => {
+                      const media = existingMedia.find(
+                        (item) => item.id === photo.id,
+                      );
+                      if (media) void deleteExistingMedia(media);
+                    }}
+                  />
                 </div>
               )}
               {photoUrls.length ? (
-                <div className="grid grid-cols-2 gap-3">
-                  {photoUrls.map(({ file, url }, index) => (
-                    <figure
-                      key={url}
-                      className={cn(
-                        "group relative aspect-square overflow-hidden rounded-lg border",
-                        index === 0 &&
-                          "col-span-2 aspect-video ring-2 ring-primary",
-                      )}
-                    >
-                      <Image
-                        src={url}
-                        alt={file.name}
-                        fill
-                        unoptimized
-                        className="object-cover"
-                      />
-                      {index === 0 && (
-                        <Badge className="absolute left-2 top-2">
-                          Cover photo
-                        </Badge>
-                      )}
-                      <Button
-                        type="button"
-                        size="icon-sm"
-                        variant="destructive"
-                        className="absolute right-2 top-2"
-                        aria-label={`Remove ${file.name}`}
-                        onClick={() =>
-                          setPhotos((current) =>
-                            current.filter(
-                              (_, photoIndex) => photoIndex !== index,
-                            ),
-                          )
-                        }
-                      >
-                        <Trash2 />
-                      </Button>
-                    </figure>
-                  ))}
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs text-muted-foreground">
+                    Drag photos or use the arrow controls to arrange their
+                    upload order.
+                  </p>
+                  <ReorderablePropertyPhotoGrid
+                    photos={photoUrls.map(
+                      ({ file, url }): ReorderablePropertyPhoto => ({
+                        id: url,
+                        src: url,
+                        alt: file.name,
+                        unoptimized: true,
+                      }),
+                    )}
+                    coverLabel={
+                      existingMedia.some((item) => item.type === "IMAGE")
+                        ? undefined
+                        : "Cover photo"
+                    }
+                    onReorder={reorderPhotos}
+                    onRemove={(_, index) =>
+                      setPhotos((current) =>
+                        current.filter((_, photoIndex) => photoIndex !== index),
+                      )
+                    }
+                  />
                 </div>
               ) : existingMedia.some((item) => item.type === "IMAGE") ? null : (
                 <p className="py-16 text-center text-sm text-muted-foreground">

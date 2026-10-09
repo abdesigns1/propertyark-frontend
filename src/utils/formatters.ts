@@ -1,10 +1,12 @@
 export function formatCurrencyParts(
   amount: number,
   currency: "NGN" | "USD" = "NGN",
+  { compact = false }: { compact?: boolean } = {},
 ) {
   const symbol = currency === "NGN" ? "₦" : "$";
   const number = new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: 0,
+    notation: compact ? "compact" : "standard",
+    maximumFractionDigits: compact ? 2 : 0,
   }).format(amount);
   return { symbol, number };
 }

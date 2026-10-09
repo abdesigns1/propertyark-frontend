@@ -66,6 +66,7 @@ export const INITIAL_PROPERTY_VALUES: AddPropertyFormValues = {
 };
 
 export const PROPERTY_DESCRIPTION_MAX_LENGTH = 1_500;
+export const MAX_PROPERTY_PHOTOS = 10;
 
 export const PROPERTY_STEPS = [
   "Basic Info",

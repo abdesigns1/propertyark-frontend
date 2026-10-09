@@ -93,6 +93,7 @@ import {
 import {
   formatPropertyMoney,
   INITIAL_PROPERTY_VALUES,
+  MAX_PROPERTY_PHOTOS,
   PROPERTY_DESCRIPTION_MAX_LENGTH,
   PRICE_FIELDS,
   PRICE_LABELS,
@@ -218,7 +219,7 @@ export function AddPropertyWizard({
       queueMicrotask(() => {
         setValues({ ...INITIAL_PROPERTY_VALUES, ...draft.values });
         setStep(draft.step);
-        setPhotos(media?.photos ?? []);
+        setPhotos((media?.photos ?? []).slice(0, MAX_PROPERTY_PHOTOS));
         setVideos(media?.videos ?? []);
         setDocuments(
           media?.documents ?? { ownership: [], identification: [], tax: [] },
@@ -460,8 +461,31 @@ export function AddPropertyWizard({
           ? "Photos must be JPG/PNG and 3 MB or less."
           : "Videos must be MP4 and 10 MB or less.",
       );
-    if (image) setPhotos((current) => [...current, ...valid].slice(0, 20));
-    else setVideos((current) => [...current, ...valid].slice(0, 5));
+    if (image) {
+      const savedPhotoCount = existingMedia.filter(
+        (item) => item.type === "IMAGE",
+      ).length;
+      const availableSlots = Math.max(
+        0,
+        MAX_PROPERTY_PHOTOS - savedPhotoCount - photos.length,
+      );
+      const accepted = valid.slice(0, availableSlots);
+
+      if (accepted.length < valid.length) {
+        toast.info(
+          `A property can have a maximum of ${MAX_PROPERTY_PHOTOS} photos.`,
+        );
+      }
+      setPhotos((current) => [
+        ...current,
+        ...accepted.slice(
+          0,
+          Math.max(0, MAX_PROPERTY_PHOTOS - savedPhotoCount - current.length),
+        ),
+      ]);
+    } else {
+      setVideos((current) => [...current, ...valid].slice(0, 5));
+    }
   };
   const deleteExistingMedia = async (media: PropertyMediaResponse) => {
     if (!initialPropertyId || deletingMediaIds.has(media.id)) return;
@@ -1293,7 +1317,7 @@ export function AddPropertyWizard({
           <div className="flex flex-col gap-6">
             <PropertyUploadBox
               title="Upload Property Images"
-              description="High-resolution JPG or PNG photos, up to 3 MB each. The first photo becomes the cover."
+              description={`Upload up to ${MAX_PROPERTY_PHOTOS} high-resolution JPG or PNG photos, with a maximum of 3 MB each. The first photo becomes the cover.`}
               accept="image/jpeg,image/png"
               icon={ImagePlus}
               onFiles={(files) => addMedia("photos", files)}
@@ -1320,7 +1344,7 @@ export function AddPropertyWizard({
                 <Badge variant="outline">
                   {existingMedia.filter((item) => item.type === "IMAGE")
                     .length + photos.length}{" "}
-                  / 20 photos
+                  / {MAX_PROPERTY_PHOTOS} photos
                 </Badge>
               </CardAction>
             </CardHeader>

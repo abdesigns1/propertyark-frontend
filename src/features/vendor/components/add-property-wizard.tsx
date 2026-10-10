@@ -75,6 +75,7 @@ import {
   vendorPropertiesQueryKey,
 } from "@/features/vendor/hooks/use-vendor-properties";
 import type { PropertyMediaResponse } from "@/features/properties/types/api";
+import { PropertyDescriptionContent } from "@/features/properties/components/property-description-content";
 import { getAmenityIcon } from "@/features/properties/utils/amenity-icons";
 import {
   PropertyFileList,
@@ -86,6 +87,7 @@ import {
   ReorderablePropertyPhotoGrid,
   type ReorderablePropertyPhoto,
 } from "@/features/vendor/components/reorderable-property-photo-grid";
+import { PropertyDescriptionEditor } from "@/features/vendor/components/property-description-editor";
 import {
   GoogleAddressAutocomplete,
   type SelectedGoogleAddress,
@@ -959,19 +961,26 @@ export function AddPropertyWizard({
                   <FieldLabel htmlFor="property-description">
                     Brief Description
                   </FieldLabel>
-                  <Textarea
+                  <PropertyDescriptionEditor
                     id="property-description"
-                    className="min-h-32"
                     maxLength={PROPERTY_DESCRIPTION_MAX_LENGTH}
                     value={values.description}
-                    onChange={(e) => update("description", e.target.value)}
+                    onChange={(description) =>
+                      update("description", description)
+                    }
                     placeholder="Highlight the key features and selling points of the property"
-                    aria-invalid={Boolean(errors.description)}
+                    invalid={Boolean(errors.description)}
                   />
-                  <FieldDescription>
-                    {values.description.length.toLocaleString()} /{" "}
-                    {PROPERTY_DESCRIPTION_MAX_LENGTH.toLocaleString()}{" "}
-                    characters
+                  <FieldDescription className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <span>
+                      Use Enter for a new line. Select text to apply bold,
+                      italic, or bullet points.
+                    </span>
+                    <span className="shrink-0">
+                      {values.description.length.toLocaleString()} /{" "}
+                      {PROPERTY_DESCRIPTION_MAX_LENGTH.toLocaleString()}{" "}
+                      characters
+                    </span>
                   </FieldDescription>
                   <FieldError>{errors.description}</FieldError>
                 </Field>
@@ -1618,7 +1627,10 @@ export function AddPropertyWizard({
                   <p className="text-xs font-semibold uppercase text-muted-foreground">
                     Description
                   </p>
-                  <p className="mt-1 leading-6">{values.description}</p>
+                  <PropertyDescriptionContent
+                    description={values.description}
+                    className="mt-1 text-foreground"
+                  />
                 </div>
               </CardContent>
             </Card>

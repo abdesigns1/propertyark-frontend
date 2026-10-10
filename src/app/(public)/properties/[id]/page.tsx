@@ -8,6 +8,7 @@ import { PropertyHeader } from "@/features/properties/components/property-header
 import { PropertyOverview } from "@/features/properties/components/property-overview";
 import { PropertyInformation } from "@/features/properties/components/property-information";
 import { PropertyAmenities } from "@/features/properties/components/property-amenities";
+import { PropertyDescriptionContent } from "@/features/properties/components/property-description-content";
 import { PropertyVideo } from "@/features/properties/components/property-video";
 import { PropertyMap } from "@/features/properties/components/property-map";
 import { VendorContactCard } from "@/features/properties/components/vendor-contact-card";
@@ -31,7 +32,10 @@ async function getProperty(id: string) {
 }
 
 function propertyDescription(description: string) {
-  const normalized = description.replace(/\s+/g, " ").trim();
+  const normalized = description
+    .replace(/(\*\*|__|\*|_|~~|`)/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
   return normalized.length > 155
     ? `${normalized.slice(0, 152).trimEnd()}...`
     : normalized;
@@ -229,18 +233,20 @@ export default async function PropertyDetailPage({
           <div className="flex flex-col gap-10">
             <PropertyOverview property={property} />
             <PropertyInformation property={property} />
-            {property.amenities && (
-              <PropertyAmenities amenities={property.amenities} />
-            )}
 
             <section>
               <h2 className="text-lg font-semibold text-foreground">
                 Property Description
               </h2>
-              <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-                {property.description}
-              </p>
+              <PropertyDescriptionContent
+                description={property.description}
+                className="mt-4"
+              />
             </section>
+
+            {property.amenities && (
+              <PropertyAmenities amenities={property.amenities} />
+            )}
 
             {property.purpose === "shortlet" && property.shortletDetails && (
               <Card>

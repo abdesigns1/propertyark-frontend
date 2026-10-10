@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PropertyAmenities } from "@/features/properties/components/property-amenities";
+import { PropertyDescriptionContent } from "@/features/properties/components/property-description-content";
 import { PropertyGallery } from "@/features/properties/components/property-gallery";
 import { PropertyHeader } from "@/features/properties/components/property-header";
 import { PropertyInformation } from "@/features/properties/components/property-information";
@@ -92,15 +93,16 @@ export function VendorPropertyPreview({ propertyId }: { propertyId: string }) {
       <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
         <div className="flex flex-col gap-8">
           <PropertyOverview property={property} />
+          <section>
+            <h2 className="text-lg font-semibold">Property description</h2>
+            <PropertyDescriptionContent
+              description={property.description}
+              className="mt-3 leading-7"
+            />
+          </section>
           {(property.amenities?.length ?? 0) > 0 && (
             <PropertyAmenities amenities={property.amenities ?? []} />
           )}
-          <section>
-            <h2 className="text-lg font-semibold">Property description</h2>
-            <p className="mt-3 whitespace-pre-line text-sm leading-7 text-muted-foreground">
-              {property.description || "No description supplied."}
-            </p>
-          </section>
           {property.videoUrl && (
             <PropertyVideo
               thumbnailSrc={property.images[0]}

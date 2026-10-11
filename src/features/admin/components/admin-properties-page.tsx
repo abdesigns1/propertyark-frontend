@@ -4,7 +4,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, Download, Eye, Plus, Search, StarOff } from "lucide-react";
+import {
+  BadgeCheck,
+  Download,
+  Eye,
+  Plus,
+  Search,
+  StarOff,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AdminPropertyStats } from "@/features/admin/components/admin-property-stats";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
@@ -66,6 +74,9 @@ export function AdminPropertiesPage() {
   const [featured, setFeatured] = useState("ALL");
   const [search, setSearch] = useState("");
   const [removeTarget, setRemoveTarget] = useState<AdminManagedProperty | null>(
+    null,
+  );
+  const [deleteTarget, setDeleteTarget] = useState<AdminManagedProperty | null>(
     null,
   );
   const isSearching = Boolean(search.trim());
@@ -143,6 +154,34 @@ export function AdminPropertiesPage() {
     onError: (error) =>
       toast.error(
         getApiErrorMessage(error, "Featured placement could not be removed."),
+      ),
+  });
+
+  const deleteProperty = useMutation({
+    mutationFn: (property: AdminManagedProperty) =>
+      propertyService.remove(property.id),
+    onSuccess: async () => {
+      const deletedPropertyId = deleteTarget?.id;
+      setDeleteTarget(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin", "properties"] }),
+        queryClient.invalidateQueries({ queryKey: ["properties", "featured"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["properties", "available"],
+        }),
+        ...(deletedPropertyId
+          ? [
+              queryClient.removeQueries({
+                queryKey: ["admin", "property", deletedPropertyId],
+              }),
+            ]
+          : []),
+      ]);
+      toast.success("Property deleted.");
+    },
+    onError: (error) =>
+      toast.error(
+        getApiErrorMessage(error, "The property could not be deleted."),
       ),
   });
 
@@ -261,6 +300,7 @@ export function AdminPropertiesPage() {
                 properties={properties}
                 featureCost={featureCost}
                 onRemoveFeatured={setRemoveTarget}
+                onDelete={setDeleteTarget}
               />
             )}
             <PropertyPagination
@@ -305,6 +345,46 @@ export function AdminPropertiesPage() {
               >
                 {removeFeatured.isPending ? <Spinner /> : <StarOff />}
                 Remove featured
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={Boolean(deleteTarget)}
+          onOpenChange={(open) => {
+            if (!open && !deleteProperty.isPending) setDeleteTarget(null);
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete property?</DialogTitle>
+              <DialogDescription>
+                “{deleteTarget?.name}” will be permanently removed from the
+                platform. This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleteProperty.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() =>
+                  deleteTarget && deleteProperty.mutate(deleteTarget)
+                }
+                disabled={deleteProperty.isPending || !deleteTarget}
+              >
+                {deleteProperty.isPending ? (
+                  <Spinner data-icon="inline-start" />
+                ) : (
+                  <Trash2 data-icon="inline-start" />
+                )}
+                {deleteProperty.isPending ? "Deleting..." : "Delete property"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -413,10 +493,12 @@ function PropertiesTable({
   properties,
   featureCost,
   onRemoveFeatured,
+  onDelete,
 }: {
   properties: AdminManagedProperty[];
   featureCost: number;
   onRemoveFeatured: (property: AdminManagedProperty) => void;
+  onDelete: (property: AdminManagedProperty) => void;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -441,6 +523,7 @@ function PropertiesTable({
               property={property}
               featureCost={featureCost}
               onRemoveFeatured={onRemoveFeatured}
+              onDelete={onDelete}
             />
           ))}
         </TableBody>
@@ -458,10 +541,12 @@ function PropertyRow({
   property,
   featureCost,
   onRemoveFeatured,
+  onDelete,
 }: {
   property: AdminManagedProperty;
   featureCost: number;
   onRemoveFeatured: (property: AdminManagedProperty) => void;
+  onDelete: (property: AdminManagedProperty) => void;
 }) {
   const approvalStatus = (property.listingStatus || "PENDING").toUpperCase();
   const propertyStatus = (property.status || "AVAILABLE").toUpperCase();
@@ -544,6 +629,14 @@ function PropertyRow({
               <Eye data-icon="inline-start" />
               View Details
             </Link>
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => onDelete(property)}
+          >
+            <Trash2 data-icon="inline-start" />
+            Delete
           </Button>
         </div>
       </TableCell>

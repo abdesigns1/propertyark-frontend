@@ -9,11 +9,7 @@ import {
 } from "@/features/properties/hooks/use-available-properties";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CONTAINER, cn } from "@/lib/utils";
-import {
-  AnimatedContainer,
-  AnimatedItem,
-  SlideInTop,
-} from "@/components/motion";
+import { SlideInTop } from "@/components/motion";
 
 export function FeaturedListings() {
   const featuredProperties = useFeaturedProperties();
@@ -60,13 +56,13 @@ export function FeaturedListings() {
           Featured listings are temporarily unavailable.
         </p>
       ) : featured.length ? (
-        <AnimatedContainer className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
           {featured.map((property) => (
-            <AnimatedItem key={property.id}>
+            <div key={property.id}>
               <PropertyCard property={property} />
-            </AnimatedItem>
+            </div>
           ))}
-        </AnimatedContainer>
+        </div>
       ) : (
         <p className="mt-8 rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
           More featured properties will appear here soon.

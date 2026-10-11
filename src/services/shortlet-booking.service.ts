@@ -140,9 +140,12 @@ function numberFrom(source: UnknownRecord, keys: string[]) {
 function findBookings(value: unknown): unknown[] {
   if (Array.isArray(value)) return value;
   const bookingKeys = [
+    "data",
     "bookings",
     "allBookings",
     "shortletBookings",
+    "bookingRequests",
+    "reservations",
     "recentBookings",
     "vendorBookings",
     "items",
@@ -338,30 +341,6 @@ function normalizeBooking(value: unknown, index: number): ShortletBooking {
   };
 }
 
-async function adminVendorBookingPayloads() {
-  const { data } = await api.get<unknown>("/users/", {
-    params: { page: 1, limit: 100, role: "VENDOR" },
-  });
-  const payload = asRecord(asRecord(data).data ?? data);
-  const vendors = (Array.isArray(payload.users) ? payload.users : [])
-    .map(asRecord)
-    .filter(
-      (user) =>
-        (stringFrom(user, ["role", "userType"]) ?? "").toUpperCase() ===
-        "VENDOR",
-    );
-  const responses = await Promise.allSettled(
-    vendors.map((vendor) =>
-      api.get("/shortlet-bookings/vendor-stats", {
-        params: { vendorId: stringFrom(vendor, ["id", "_id"]) },
-      }),
-    ),
-  );
-  return responses.flatMap((response) =>
-    response.status === "fulfilled" ? [response.value.data] : [],
-  );
-}
-
 function normalizeDashboard(value: unknown): ShortletDashboardData {
   const source = unwrap(value);
   const statsSource = asRecord(
@@ -478,22 +457,14 @@ export const shortletBookingService = {
     page = 1,
     limit = 10,
   } = {}): Promise<AdminShortletBookingsResult> {
-    const direct = await api
-      .get("/shortlet-bookings/vendor-stats", {
-        params: { page: 1, limit: 1000 },
-      })
-      .then((response) => response.data)
-      .catch(() => null);
-    const directRows = direct ? findBookings(direct) : [];
-    const payloads = directRows.length
-      ? [direct]
-      : [...(direct ? [direct] : []), ...(await adminVendorBookingPayloads())];
+    // The backend scopes this shared endpoint from the bearer token: vendors
+    // receive their own bookings, while admins receive bookings for every
+    // vendor. Do not fan out by vendor or send a vendorId from the frontend.
+    const { data } = await api.get<unknown>("/shortlet-bookings/vendor-stats");
     const records = new Map<string, ShortletBooking>();
-    payloads.forEach((payload) =>
-      findBookings(payload)
-        .map(normalizeBooking)
-        .forEach((booking) => records.set(booking.id, booking)),
-    );
+    findBookings(data)
+      .map(normalizeBooking)
+      .forEach((booking) => records.set(booking.id, booking));
     const all = [...records.values()].sort(
       (first, second) =>
         new Date(second.requestedAt ?? second.checkIn).getTime() -

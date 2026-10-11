@@ -5,11 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { PropertyCard } from "@/features/properties/components/property-card";
 import { useAvailableProperties } from "@/features/properties/hooks/use-available-properties";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  AnimatedContainer,
-  AnimatedItem,
-  SlideInTop,
-} from "@/components/motion";
+import { SlideInTop } from "@/components/motion";
 
 export function FeaturedProperties() {
   const availableProperties = useAvailableProperties(1, 8);
@@ -46,13 +42,13 @@ export function FeaturedProperties() {
           Properties are temporarily unavailable.
         </p>
       ) : featured.length ? (
-        <AnimatedContainer className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
           {featured.map((property) => (
-            <AnimatedItem key={property.id}>
+            <div key={property.id}>
               <PropertyCard property={property} />
-            </AnimatedItem>
+            </div>
           ))}
-        </AnimatedContainer>
+        </div>
       ) : (
         <p className="mt-8 rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
           No available properties have been published yet.

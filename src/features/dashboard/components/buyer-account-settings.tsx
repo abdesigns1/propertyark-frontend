@@ -3,15 +3,12 @@
 import { type FormEvent, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   CheckCircle2,
-  House,
   KeyRound,
   LoaderCircle,
   MapPin,
   ShieldCheck,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { FadeIn } from "@/components/motion";
@@ -57,12 +54,8 @@ import {
 import { useAuthStore } from "@/store/auth.store";
 import { useAccountKey } from "@/lib/account-identity";
 
-const notifications = Array.from({ length: 6 }, (_, index) => ({
-  id: index + 1,
-  message:
-    "Please confirm your email address by clicking on the link we just emailed you. If you cannot find the email, you can request a new confirmation email or change your email address.",
-  date: "March 1, 2026",
-}));
+const accountSettingsTabTriggerClassName =
+  "h-12 flex-none rounded-none px-0 text-base after:bottom-0 after:bg-primary data-active:font-semibold data-active:text-primary data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:after:opacity-100";
 
 function splitName(fullName: string) {
   const parts = fullName.trim().split(/\s+/);
@@ -307,10 +300,7 @@ function BuyerAccountSettingsContent({
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const requestedTab = searchParams.get("tab");
-  const activeTab =
-    requestedTab === "notifications" || requestedTab === "security"
-      ? requestedTab
-      : "profile";
+  const activeTab = requestedTab === "security" ? requestedTab : "profile";
   const updateUser = useAuthStore((state) => state.updateUser);
   const names = splitName(profile.fullName);
   const [firstName, setFirstName] = useState(names.firstName);
@@ -321,8 +311,6 @@ function BuyerAccountSettingsContent({
   const [investorType, setInvestorType] = useState("professional");
   const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl ?? "");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [visibleNotifications, setVisibleNotifications] =
-    useState(notifications);
   const fileInput = useRef<HTMLInputElement>(null);
   const initials =
     `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || "PA";
@@ -424,21 +412,15 @@ function BuyerAccountSettingsContent({
         >
           <TabsTrigger
             value="profile"
-            className="h-12 flex-none rounded-none px-0 text-base after:bg-primary"
+            className={accountSettingsTabTriggerClassName}
           >
             Profile
           </TabsTrigger>
           <TabsTrigger
             value="security"
-            className="h-12 flex-none rounded-none px-0 text-base after:bg-primary"
+            className={accountSettingsTabTriggerClassName}
           >
             Security
-          </TabsTrigger>
-          <TabsTrigger
-            value="notifications"
-            className="h-12 flex-none rounded-none px-0 text-base after:bg-primary"
-          >
-            Notifications
           </TabsTrigger>
         </TabsList>
 
@@ -664,51 +646,6 @@ function BuyerAccountSettingsContent({
 
         <TabsContent value="security" className="w-full">
           <PasswordSettings />
-        </TabsContent>
-
-        <TabsContent value="notifications" className="w-full">
-          <AnimatePresence initial={false}>
-            <div className="flex w-full max-w-2xl flex-col gap-8 pt-6">
-              {visibleNotifications.map((notification, index) => (
-                <motion.article
-                  key={notification.id}
-                  exit={{ opacity: 0, x: 30, height: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="flex w-full items-start gap-3 sm:gap-4"
-                >
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-muted">
-                    <House className="size-6 fill-secondary text-secondary" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={
-                        index === 0
-                          ? "font-semibold leading-snug"
-                          : "leading-snug text-muted-foreground"
-                      }
-                    >
-                      {notification.message}
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {notification.date}
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Dismiss notification"
-                    onClick={() =>
-                      setVisibleNotifications((items) =>
-                        items.filter((item) => item.id !== notification.id),
-                      )
-                    }
-                  >
-                    <X />
-                  </Button>
-                </motion.article>
-              ))}
-            </div>
-          </AnimatePresence>
         </TabsContent>
       </Tabs>
     </div>

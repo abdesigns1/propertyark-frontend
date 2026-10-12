@@ -273,7 +273,10 @@ export function useAdminProperty(propertyId: string) {
       ]);
       return {
         ...property,
-        media: assets.media.length ? assets.media : property.media,
+        // Match the vendor and public views: the property response owns the
+        // current gallery and primary flag. Use the media collection only when
+        // an older property response omits media entirely.
+        media: property.media?.length ? property.media : assets.media,
         documents: assets.documents.length
           ? assets.documents
           : property.documents,
@@ -281,6 +284,8 @@ export function useAdminProperty(propertyId: string) {
     },
     enabled: Boolean(propertyId),
     staleTime: 30_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 }
 

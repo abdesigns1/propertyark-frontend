@@ -4,7 +4,10 @@ import type {
   PropertyStatus,
   PropertyType,
 } from "@/features/properties/types";
-import type { PropertyApiItem } from "@/features/properties/types/api";
+import type {
+  PropertyApiItem,
+  PropertyMediaResponse,
+} from "@/features/properties/types/api";
 
 const PROPERTY_MEDIA_HOST = "propertyark-backend.onrender.com";
 export const PROPERTY_IMAGE_FALLBACK = "/assets/images/hero-property.jpeg";
@@ -102,10 +105,20 @@ export function showPropertyImageFallback(image: HTMLImageElement) {
   image.src = PROPERTY_IMAGE_FALLBACK;
 }
 
-export function normalizePropertyResponse(property: PropertyApiItem): Property {
-  const media = [...(property.media ?? [])].sort(
-    (a, b) => Number(b.isPrimary) - Number(a.isPrimary),
+/**
+ * Preserve the backend's gallery order while consistently placing the saved
+ * primary image first so every surface uses it as the property cover.
+ */
+export function sortPropertyMediaPrimaryFirst(
+  media: PropertyMediaResponse[] = [],
+) {
+  return [...media].sort(
+    (first, second) => Number(second.isPrimary) - Number(first.isPrimary),
   );
+}
+
+export function normalizePropertyResponse(property: PropertyApiItem): Property {
+  const media = sortPropertyMediaPrimaryFirst(property.media);
   const images = media
     .filter((item) => item.type === "IMAGE")
     .map((item) => normalizePropertyMediaUrl(item.url));

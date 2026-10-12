@@ -64,6 +64,7 @@ import type {
 import {
   normalizePropertyMediaUrl,
   showPropertyImageFallback,
+  sortPropertyMediaPrimaryFirst,
 } from "@/features/properties/utils/normalize-property-response";
 import { PropertyImageLightbox } from "@/features/properties/components/property-image-lightbox";
 import { cn } from "@/lib/utils";
@@ -121,7 +122,10 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
   const [unfeatureOpen, setUnfeatureOpen] = useState(false);
   const [reason, setReason] = useState("");
   const images = useMemo(
-    () => property.media?.filter((item) => item.type === "IMAGE") ?? [],
+    () =>
+      sortPropertyMediaPrimaryFirst(property.media).filter(
+        (item) => item.type === "IMAGE",
+      ),
     [property.media],
   );
   const videos = property.media?.filter((item) => item.type === "VIDEO") ?? [];

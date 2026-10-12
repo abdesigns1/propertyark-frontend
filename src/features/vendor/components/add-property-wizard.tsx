@@ -78,6 +78,7 @@ import type { PropertyMediaResponse } from "@/features/properties/types/api";
 import { PropertyDescriptionContent } from "@/features/properties/components/property-description-content";
 import { propertyImageUploadName } from "@/features/properties/lib/property-image-categories";
 import { getAmenityIcon } from "@/features/properties/utils/amenity-icons";
+import { sortPropertyMediaPrimaryFirst } from "@/features/properties/utils/normalize-property-response";
 import {
   PropertyFileList,
   PropertyStepper,
@@ -296,19 +297,9 @@ export function AddPropertyWizard({
         const media = property.media?.length
           ? property.media
           : await propertyService.getMedia(property.id);
-        setExistingMedia(
-          [...media].sort(
-            (first, second) =>
-              Number(second.isPrimary) - Number(first.isPrimary),
-          ),
-        );
+        setExistingMedia(sortPropertyMediaPrimaryFirst(media));
       } catch {
-        setExistingMedia(
-          [...(property.media ?? [])].sort(
-            (first, second) =>
-              Number(second.isPrimary) - Number(first.isPrimary),
-          ),
-        );
+        setExistingMedia(sortPropertyMediaPrimaryFirst(property.media));
       }
     })();
   }, [

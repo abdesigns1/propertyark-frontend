@@ -10,8 +10,7 @@ import {
   sanitizeMediaPath,
   secureMediaHeaders,
 } from "@/lib/property-media-security";
-
-const MEDIA_ORIGIN = "https://propertyark-backend.onrender.com";
+import { getBackendOrigin } from "@/lib/backend-url";
 
 function roleFrom(value: unknown, depth = 0): string | null {
   if (!value || typeof value !== "object" || depth > 4) return null;
@@ -72,7 +71,15 @@ export async function GET(
     );
   }
 
-  const upstreamUrl = new URL(`/uploads/${safePath.join("/")}`, MEDIA_ORIGIN);
+  const mediaOrigin = getBackendOrigin();
+  if (!mediaOrigin) {
+    return Response.json(
+      { message: "The backend media origin is not configured." },
+      { status: 500 },
+    );
+  }
+
+  const upstreamUrl = new URL(`/uploads/${safePath.join("/")}`, mediaOrigin);
   const requestHeaders = new Headers({ authorization });
   if (cookie) requestHeaders.set("cookie", cookie);
   const range = request.headers.get("range");

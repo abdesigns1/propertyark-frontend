@@ -1,5 +1,25 @@
 import type { NextConfig } from "next";
 
+function backendImagePattern() {
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (!apiBaseUrl) return [];
+
+  try {
+    const backend = new URL(apiBaseUrl);
+    if (!["http:", "https:"].includes(backend.protocol)) return [];
+    return [
+      {
+        protocol: backend.protocol.slice(0, -1) as "http" | "https",
+        hostname: backend.hostname,
+        port: backend.port,
+        pathname: "/uploads/**",
+      },
+    ];
+  } catch {
+    return [];
+  }
+}
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -16,11 +36,7 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "img.magnific.com",
       },
-      {
-        protocol: "https",
-        hostname: "propertyark-backend.onrender.com",
-        pathname: "/uploads/**",
-      },
+      ...backendImagePattern(),
     ],
   },
   /* config options here */

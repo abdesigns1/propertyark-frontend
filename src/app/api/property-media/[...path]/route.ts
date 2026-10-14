@@ -10,8 +10,7 @@ import {
   sanitizeMediaPath,
   secureMediaHeaders,
 } from "@/lib/property-media-security";
-
-const MEDIA_ORIGIN = "https://propertyark-backend.onrender.com";
+import { getBackendOrigin } from "@/lib/backend-url";
 
 /**
  * Streams PropertyArk uploads through the frontend origin. The backend marks
@@ -38,7 +37,15 @@ export async function GET(
     );
   }
 
-  const upstreamUrl = new URL(`/uploads/${safePath.join("/")}`, MEDIA_ORIGIN);
+  const mediaOrigin = getBackendOrigin();
+  if (!mediaOrigin) {
+    return Response.json(
+      { message: "The backend media origin is not configured." },
+      { status: 500 },
+    );
+  }
+
+  const upstreamUrl = new URL(`/uploads/${safePath.join("/")}`, mediaOrigin);
 
   try {
     const requestHeaders = new Headers();

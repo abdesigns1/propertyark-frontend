@@ -449,6 +449,21 @@ export function useSupportActions() {
       mutationFn: chatService.cancelSupport,
       onSuccess: refresh,
     }),
+    approveRoleChange: useMutation({
+      mutationFn: ({
+        userId,
+        role,
+      }: {
+        userId: string;
+        role: "USER" | "VENDOR";
+      }) => adminService.updateUserRole(userId, role),
+      onSuccess: () =>
+        Promise.all([
+          client.invalidateQueries({ queryKey: ["admin", "users"] }),
+          client.invalidateQueries({ queryKey: ["admin", "user"] }),
+          client.invalidateQueries({ queryKey: chatKeys.all }),
+        ]),
+    }),
     setStatus: useMutation({
       mutationFn: chatService.setStaffStatus,
       onSuccess: refresh,

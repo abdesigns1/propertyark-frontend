@@ -1,4 +1,5 @@
-const MEDIA_HOST = "propertyark-backend.onrender.com";
+import { getBackendOrigin } from "@/lib/backend-url";
+
 const PROPERTY_MEDIA_PREFIX = "/api/property-media/";
 const KYC_MEDIA_PREFIX = "/api/kyc-media/";
 
@@ -94,10 +95,19 @@ export function trustedUploadProxyUrl(input: string, purpose: MediaPurpose) {
 
   try {
     const parsed = new URL(value);
+    const mediaOrigin = getBackendOrigin();
+    const configuredMediaUrl = mediaOrigin ? new URL(mediaOrigin) : null;
+    const matchesConfiguredOrigin = Boolean(
+      configuredMediaUrl &&
+      (parsed.origin === configuredMediaUrl.origin ||
+        (configuredMediaUrl.protocol === "https:" &&
+          parsed.protocol === "http:" &&
+          parsed.hostname === configuredMediaUrl.hostname &&
+          !parsed.port)),
+    );
     if (
+      !matchesConfiguredOrigin ||
       !["http:", "https:"].includes(parsed.protocol) ||
-      parsed.hostname !== MEDIA_HOST ||
-      parsed.port ||
       parsed.username ||
       parsed.password ||
       parsed.search ||
@@ -106,9 +116,8 @@ export function trustedUploadProxyUrl(input: string, purpose: MediaPurpose) {
     ) {
       return null;
     }
-    // Legacy API records may contain HTTP upload URLs. They are never fetched
-    // over HTTP: the returned local proxy always connects to the fixed HTTPS
-    // media origin, safely upgrading those records at the trust boundary.
+    // The browser receives a same-origin proxy URL; the server-side proxy uses
+    // the exact backend origin configured for the current environment.
     return proxyUrl(parsed.pathname.slice("/uploads/".length), purpose);
   } catch {
     return null;

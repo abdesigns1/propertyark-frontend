@@ -53,6 +53,7 @@ import {
 import { useAuthStore } from "@/store/auth.store";
 import { useAccountKey } from "@/lib/account-identity";
 import { cn } from "@/lib/utils";
+import { RoleChangeRequestCard } from "@/features/account-role-request/components/role-change-request-card";
 
 type Section = "profile" | "business" | "password" | "notifications";
 const sections: Array<{
@@ -410,6 +411,7 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
           </CardContent>
         </Card>
       </div>
+      {!businessOnly && <RoleChangeRequestCard targetRole="USER" />}
     </div>
   );
 }

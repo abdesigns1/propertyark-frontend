@@ -9,6 +9,7 @@ import { useAuthSessionReady } from "@/hooks/use-auth-session-ready";
 import { useAuthStore } from "@/store/auth.store";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useAccountRoleSync } from "@/features/dashboard/hooks/use-account-role-sync";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -16,6 +17,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const ready = useAuthSessionReady();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const role = useAuthStore((state) => state.role);
+  useAccountRoleSync(
+    ready && (role === "buyer" || role === "user" || role === "vendor"),
+  );
   const expectedRole = pathname.startsWith("/vendor") ? "vendor" : "buyer";
   const hasAccess =
     isAuthenticated &&
@@ -27,11 +31,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
-    if (ready && !hasAccess) {
+    if (!ready || hasAccess) return;
+    if (isAuthenticated && role) {
+      router.replace(
+        role === "vendor" ? "/vendor/dashboard" : "/buyer/dashboard",
+      );
+    } else {
       const redirect = `${pathname}${window.location.search}`;
       router.replace(`/login?redirect=${encodeURIComponent(redirect)}`);
     }
-  }, [hasAccess, pathname, ready, router]);
+  }, [hasAccess, isAuthenticated, pathname, ready, role, router]);
 
   if (!ready || !hasAccess) {
     return (

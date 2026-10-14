@@ -8,8 +8,8 @@ import type {
   PropertyApiItem,
   PropertyMediaResponse,
 } from "@/features/properties/types/api";
+import { getBackendOrigin } from "@/lib/backend-url";
 
-const PROPERTY_MEDIA_HOST = "propertyark-backend.onrender.com";
 export const PROPERTY_IMAGE_FALLBACK = "/assets/images/hero-property.jpeg";
 
 const TYPE_MAP: Record<string, PropertyType> = {
@@ -76,6 +76,7 @@ function normalizeHouseRules(value: unknown) {
 export function normalizePropertyMediaUrl(url: string) {
   const value = url.trim();
   if (!value) return value;
+  const backendOrigin = getBackendOrigin();
 
   try {
     const parsed = new URL(value);
@@ -83,17 +84,20 @@ export function normalizePropertyMediaUrl(url: string) {
     // upgrade legacy HTTP records so deployed HTTPS pages do not hit mixed
     // content blocking in the browser.
     if (
-      parsed.hostname === PROPERTY_MEDIA_HOST &&
+      backendOrigin &&
+      parsed.hostname === new URL(backendOrigin).hostname &&
       parsed.protocol === "http:"
     ) {
-      parsed.protocol = "https:";
+      const configuredOrigin = new URL(backendOrigin);
+      parsed.protocol = configuredOrigin.protocol;
+      parsed.port = configuredOrigin.port;
     }
     return parsed.toString();
   } catch {
     // Older records may contain only an upload path. Resolve those against the
     // backend—not the frontend origin—without changing current absolute URLs.
-    if (/^\/?uploads\//i.test(value)) {
-      return `https://${PROPERTY_MEDIA_HOST}/${value.replace(/^\/+/, "")}`;
+    if (backendOrigin && /^\/?uploads\//i.test(value)) {
+      return `${backendOrigin}/${value.replace(/^\/+/, "")}`;
     }
     return value;
   }

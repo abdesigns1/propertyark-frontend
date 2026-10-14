@@ -1,4 +1,5 @@
 import { AddPropertyWizard } from "@/features/vendor/components/add-property-wizard";
+import { VendorPropertyAccessGuard } from "@/features/vendor/components/vendor-property-access-guard";
 
 export default async function AddPropertyPage({
   searchParams,
@@ -7,9 +8,11 @@ export default async function AddPropertyPage({
 }) {
   const { draft, edit } = await searchParams;
   return (
-    <AddPropertyWizard
-      initialDraftId={draft ?? null}
-      initialPropertyId={edit ?? null}
-    />
+    <VendorPropertyAccessGuard>
+      <AddPropertyWizard
+        initialDraftId={draft ?? null}
+        initialPropertyId={edit ?? null}
+      />
+    </VendorPropertyAccessGuard>
   );
 }

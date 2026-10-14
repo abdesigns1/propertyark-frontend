@@ -53,6 +53,7 @@ import {
 } from "@/services/settings.service";
 import { useAuthStore } from "@/store/auth.store";
 import { useAccountKey } from "@/lib/account-identity";
+import { RoleChangeRequestCard } from "@/features/account-role-request/components/role-change-request-card";
 
 const accountSettingsTabTriggerClassName =
   "h-12 flex-none rounded-none px-0 text-base after:bottom-0 after:bg-primary data-active:font-semibold data-active:text-primary data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:after:opacity-100";
@@ -261,6 +262,7 @@ export function BuyerAccountSettings() {
     profile.data ??
     ({
       id: storedUser?.id ?? null,
+      role: "USER",
       fullName: storedUser?.fullName ?? "",
       email: storedUser?.email ?? "",
       phone: storedUser?.phone ?? "",
@@ -609,6 +611,10 @@ function BuyerAccountSettingsContent({
                   </FieldGroup>
                 </CardContent>
               </Card>
+            </FadeIn>
+
+            <FadeIn>
+              <RoleChangeRequestCard targetRole="VENDOR" />
             </FadeIn>
 
             <div className="flex justify-end gap-4">

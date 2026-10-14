@@ -14,6 +14,7 @@ import {
   LogOut,
   Search,
   Settings,
+  Store,
   UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -220,6 +221,21 @@ export function DashboardTopbar({
                     Settings
                   </Link>
                 </DropdownMenuItem>
+                {role === "vendor" ? (
+                  <DropdownMenuItem asChild className="py-2">
+                    <Link href="/vendor/settings#switch-to-user">
+                      <UserRound />
+                      Switch back to User
+                    </Link>
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem asChild className="py-2">
+                    <Link href="/buyer/settings#become-vendor">
+                      <Store />
+                      Become a Vendor
+                    </Link>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>

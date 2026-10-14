@@ -8,6 +8,7 @@ import {
   Headphones,
   RefreshCw,
   SendHorizontal,
+  Store,
   UserRound,
   Users,
 } from "lucide-react";
@@ -66,6 +67,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { getApiErrorMessage } from "@/services/api-error";
 import { useAuthStore } from "@/store/auth.store";
+import {
+  getRoleChangeRequestTarget,
+  type RoleChangeTarget,
+} from "@/features/account-role-request/lib/role-change-request";
 
 const statusOptions: ChatSessionStatus[] = ["PENDING", "ACTIVE", "RESOLVED"];
 
@@ -82,6 +87,7 @@ export function AdminSupportPage() {
     (state) => state.userId ?? state.user?.id ?? "",
   );
   const currentUser = useAuthStore((state) => state.user);
+  const currentRole = useAuthStore((state) => state.role);
   const [readRequestIds, setReadRequestIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -118,6 +124,39 @@ export function AdminSupportPage() {
           getApiErrorMessage(error, "The request could not be accepted."),
         ),
     });
+  }
+
+  function approveRoleChange(
+    request: SupportRequest,
+    userId: string,
+    targetRole: RoleChangeTarget,
+  ) {
+    actions.approveRoleChange.mutate(
+      { userId, role: targetRole },
+      {
+        onSuccess: () => {
+          setMobileProfileOpen(false);
+          setSelectedRequest({
+            ...request,
+            requester: request.requester
+              ? { ...request.requester, role: targetRole }
+              : null,
+            participant: request.participant
+              ? { ...request.participant, role: targetRole }
+              : null,
+          });
+          toast.success(
+            targetRole === "VENDOR"
+              ? "Vendor access approved. The user must now complete identity verification."
+              : "The account was switched back to User. Existing vendor records remain preserved.",
+          );
+        },
+        onError: (error) =>
+          toast.error(
+            getApiErrorMessage(error, "The role change could not be approved."),
+          ),
+      },
+    );
   }
 
   return (
@@ -298,6 +337,9 @@ export function AdminSupportPage() {
             <CustomerProfilePanel
               request={selectedRequest}
               currentUserId={currentUserId}
+              canManageVendorRoles={currentRole === "admin"}
+              approvingRoleChange={actions.approveRoleChange.isPending}
+              onApproveRoleChange={approveRoleChange}
               onTransfer={(request) => setDialog({ type: "transfer", request })}
               onResolve={(request) => setDialog({ type: "resolve", request })}
             />
@@ -313,6 +355,9 @@ export function AdminSupportPage() {
           <CustomerProfilePanel
             request={selectedRequest}
             currentUserId={currentUserId}
+            canManageVendorRoles={currentRole === "admin"}
+            approvingRoleChange={actions.approveRoleChange.isPending}
+            onApproveRoleChange={approveRoleChange}
             onTransfer={(request) => {
               setMobileProfileOpen(false);
               setDialog({ type: "transfer", request });
@@ -654,11 +699,21 @@ function PendingConversation({
 function CustomerProfilePanel({
   request,
   currentUserId,
+  canManageVendorRoles,
+  approvingRoleChange,
+  onApproveRoleChange,
   onTransfer,
   onResolve,
 }: {
   request: SupportRequest | null;
   currentUserId: string;
+  canManageVendorRoles: boolean;
+  approvingRoleChange: boolean;
+  onApproveRoleChange: (
+    request: SupportRequest,
+    userId: string,
+    targetRole: RoleChangeTarget,
+  ) => void;
   onTransfer: (request: SupportRequest) => void;
   onResolve: (request: SupportRequest) => void;
 }) {
@@ -682,6 +737,13 @@ function CustomerProfilePanel({
   const customerName = customer?.name ?? "PropertyArk user";
   const assignedToCurrentUser = Boolean(
     currentUserId && request.assignedStaff?.id === currentUserId,
+  );
+  const roleChangeTarget = getRoleChangeRequestTarget(request);
+  const canApproveRoleChange = Boolean(
+    canManageVendorRoles &&
+    customer?.id &&
+    roleChangeTarget &&
+    customer.role.toUpperCase() !== roleChangeTarget,
   );
 
   return (
@@ -739,6 +801,32 @@ function CustomerProfilePanel({
               Only the staff member who accepted this request can reply,
               transfer, or resolve it.
             </p>
+          )}
+          {canApproveRoleChange && roleChangeTarget && (
+            <Button
+              onClick={() =>
+                onApproveRoleChange(request, customer!.id, roleChangeTarget)
+              }
+              disabled={!assignedToCurrentUser || approvingRoleChange}
+              title={
+                assignedToCurrentUser
+                  ? `Approve switch to ${titleCase(roleChangeTarget)}`
+                  : "Accept this request before approving the role change"
+              }
+            >
+              {approvingRoleChange ? (
+                <Spinner data-icon="inline-start" />
+              ) : roleChangeTarget === "VENDOR" ? (
+                <Store data-icon="inline-start" />
+              ) : (
+                <UserRound data-icon="inline-start" />
+              )}
+              {approvingRoleChange
+                ? "Approving…"
+                : roleChangeTarget === "VENDOR"
+                  ? "Approve vendor access"
+                  : "Approve switch to User"}
+            </Button>
           )}
           <Button
             variant="outline"

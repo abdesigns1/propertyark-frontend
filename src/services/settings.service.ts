@@ -3,6 +3,7 @@ import { api } from "@/services/axios";
 
 export interface VendorSettingsProfile {
   id: string | null;
+  role: string;
   fullName: string;
   email: string;
   phone: string;
@@ -57,6 +58,7 @@ function normalizeProfile(value: unknown): VendorSettingsProfile {
   };
   return {
     id: text("id", "_id", "userId") ?? null,
+    role: text("role", "userType") ?? "USER",
     fullName: text("fullName", "name") ?? "",
     email: text("email") ?? "",
     phone: text("phone") ?? "",

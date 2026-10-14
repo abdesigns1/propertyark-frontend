@@ -436,6 +436,11 @@ export const adminService = {
   deleteUser: (userId: string) =>
     api.delete(`/users/${encodeURIComponent(userId)}`),
 
+  updateUserRole: (userId: string, role: "USER" | "VENDOR") =>
+    api
+      .patch(`/users/${encodeURIComponent(userId)}`, { role })
+      .then(({ data }) => data),
+
   getUserStats: () =>
     api
       .get<

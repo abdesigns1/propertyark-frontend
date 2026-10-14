@@ -21,6 +21,7 @@ export function DashboardMobileNavigation() {
           size="icon"
           className="lg:hidden"
           aria-label="Open navigation"
+          data-onboarding="mobile-navigation"
         >
           <Menu />
         </Button>

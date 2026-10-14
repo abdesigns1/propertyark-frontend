@@ -37,6 +37,7 @@ import { DashboardBrand } from "./dashboard-brand";
 import { DashboardUserAvatar } from "./dashboard-user-avatar";
 import { DashboardMobileNavigation } from "./dashboard-mobile-navigation";
 import { useDashboardNotificationIndicators } from "@/features/dashboard/hooks/use-vendor-notification-indicators";
+import { useDashboardOnboarding } from "@/features/dashboard-onboarding/components/dashboard-onboarding-provider";
 import { useCreditInfo } from "@/features/vendor/hooks/use-credit-payment";
 import { authService } from "@/services/auth.service";
 import { useAuthStore } from "@/store/auth.store";
@@ -50,6 +51,7 @@ export function DashboardTopbar({
   const router = useRouter();
   const queryClient = useQueryClient();
   const [propertySearch, setPropertySearch] = useState("");
+  const { openTour } = useDashboardOnboarding();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const role = useAuthStore((state) => state.role);
   const { hasUnread } = useDashboardNotificationIndicators();
@@ -171,8 +173,10 @@ export function DashboardTopbar({
           <Button
             variant="ghost"
             size="icon"
-            className="hidden sm:inline-flex"
-            aria-label="Help"
+            aria-label="Open dashboard walkthrough"
+            title="Dashboard walkthrough"
+            onClick={openTour}
+            data-onboarding="walkthrough-help"
           >
             <CircleHelp />
           </Button>

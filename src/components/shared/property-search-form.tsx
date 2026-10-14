@@ -93,7 +93,17 @@ export function PropertySearchForm() {
 
     const params = new URLSearchParams();
     const search = query.trim();
-    if (search) params.set("search", search);
+    const searchedCity =
+      location === "all"
+        ? LOCATIONS.find(
+            (city) => city.toLocaleLowerCase() === search.toLocaleLowerCase(),
+          )
+        : undefined;
+    if (searchedCity) {
+      params.set("location", searchedCity);
+    } else if (search) {
+      params.set("search", search);
+    }
     if (purpose) params.set("purpose", purpose);
 
     if (purpose === "shortlet") {

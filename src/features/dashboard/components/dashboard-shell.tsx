@@ -10,6 +10,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useAccountRoleSync } from "@/features/dashboard/hooks/use-account-role-sync";
+import { DashboardOnboardingProvider } from "@/features/dashboard-onboarding/components/dashboard-onboarding-provider";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -52,20 +53,22 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <DashboardSidebar
-        collapsed={collapsed}
-        onCollapsedChange={setCollapsed}
-      />
-      <DashboardTopbar collapsed={collapsed} />
-      <main
-        className={cn(
-          "px-4 py-6 transition-[margin] duration-200 md:px-6 lg:px-7",
-          collapsed ? "lg:ml-20" : "lg:ml-64",
-        )}
-      >
-        {children}
-      </main>
-    </div>
+    <DashboardOnboardingProvider>
+      <div className="min-h-screen bg-background" data-dashboard-shell="true">
+        <DashboardSidebar
+          collapsed={collapsed}
+          onCollapsedChange={setCollapsed}
+        />
+        <DashboardTopbar collapsed={collapsed} />
+        <main
+          className={cn(
+            "px-4 py-6 transition-[margin] duration-200 md:px-6 lg:px-7",
+            collapsed ? "lg:ml-20" : "lg:ml-64",
+          )}
+        >
+          {children}
+        </main>
+      </div>
+    </DashboardOnboardingProvider>
   );
 }

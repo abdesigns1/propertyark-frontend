@@ -21,6 +21,7 @@ import {
   Settings,
   ShieldCheck,
   WalletCards,
+  type LucideIcon,
 } from "lucide-react";
 import { DashboardBrand } from "./dashboard-brand";
 import { DashboardUserAvatar } from "./dashboard-user-avatar";
@@ -36,11 +37,38 @@ import { SheetClose } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth.store";
 
-const buyerNavigation = [
-  { label: "Dashboard", icon: Gauge, href: "/buyer/dashboard" },
-  { label: "Properties", icon: House, href: "/buyer/properties" },
-  { label: "Saved Properties", icon: Heart, href: "/buyer/saved-properties" },
-  { label: "Inspection", icon: FileText, href: "/buyer/inspections" },
+interface DashboardNavigationItem {
+  label: string;
+  icon: LucideIcon;
+  href: string;
+  tourTarget?: string;
+}
+
+const buyerNavigation: DashboardNavigationItem[] = [
+  {
+    label: "Dashboard",
+    icon: Gauge,
+    href: "/buyer/dashboard",
+    tourTarget: "nav-dashboard",
+  },
+  {
+    label: "Properties",
+    icon: House,
+    href: "/buyer/properties",
+    tourTarget: "nav-properties",
+  },
+  {
+    label: "Saved Properties",
+    icon: Heart,
+    href: "/buyer/saved-properties",
+    tourTarget: "nav-saved-properties",
+  },
+  {
+    label: "Inspection",
+    icon: FileText,
+    href: "/buyer/inspections",
+    tourTarget: "nav-inspections",
+  },
   { label: "Mortgage", icon: FileText, href: "/buyer/mortgage" },
   { label: "Investments", icon: WalletCards, href: "/buyer/investments" },
   { label: "Messages", icon: Mail, href: "/buyer/messages" },
@@ -48,15 +76,26 @@ const buyerNavigation = [
   { label: "Settings", icon: Settings, href: "/buyer/settings" },
 ];
 
-const vendorNavigation = [
-  { label: "Dashboard", icon: Gauge, href: "/vendor/dashboard" },
+const vendorNavigation: DashboardNavigationItem[] = [
+  {
+    label: "Dashboard",
+    icon: Gauge,
+    href: "/vendor/dashboard",
+    tourTarget: "nav-dashboard",
+  },
   { label: "My Properties", icon: Building2, href: "/vendor/properties" },
   { label: "Saved Properties", icon: Heart, href: "/vendor/saved-properties" },
-  { label: "Add Property", icon: FilePlus2, href: "/vendor/properties/new" },
+  {
+    label: "Add Property",
+    icon: FilePlus2,
+    href: "/vendor/properties/new",
+    tourTarget: "nav-add-property",
+  },
   {
     label: "Short let Bookings",
     icon: CalendarCheck2,
     href: "/vendor/shortlet-bookings",
+    tourTarget: "nav-shortlet-bookings",
   },
   { label: "Inspections", icon: FileText, href: "/vendor/inspections" },
   { label: "Mortgage", icon: Landmark, href: "/vendor/mortgage" },
@@ -70,11 +109,13 @@ const vendorNavigation = [
     label: "Credit Points & Payments",
     icon: BadgePercent,
     href: "/vendor/subscription-rewards",
+    tourTarget: "nav-credit-points",
   },
   {
     label: "Identity Verification",
     icon: ShieldCheck,
     href: "/vendor/kyc-onboarding",
+    tourTarget: "nav-verification",
   },
   {
     label: "Messages",
@@ -122,7 +163,7 @@ export function DashboardNavigation({
         compactDesktopNavigation && "gap-0.5",
       )}
     >
-      {navigation.map(({ label, icon: Icon, href }) => {
+      {navigation.map(({ label, icon: Icon, href, tourTarget }) => {
         const [itemPathname, itemHash = ""] = href.split("#");
         const active =
           pathname === itemPathname &&
@@ -142,6 +183,7 @@ export function DashboardNavigation({
           <Link
             key={label}
             href={href}
+            data-onboarding={tourTarget}
             aria-current={active ? "page" : undefined}
             title={collapsed ? label : undefined}
             className={cn(

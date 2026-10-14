@@ -89,30 +89,52 @@ function editDistance(first: string, second: string) {
   return previous[second.length];
 }
 
-function matchesLocationKeyword(property: Property, keyword: string) {
+function matchesNormalizedWords(value: string, keyword: string) {
   const query = normalizedLocation(keyword);
   if (!query) return true;
-  const location = normalizedLocation(
+  const normalizedValue = normalizedLocation(value);
+  if (normalizedValue.includes(query)) return true;
+
+  const valueWords = normalizedValue.split(" ").filter(Boolean);
+  return query.split(" ").every((queryWord) =>
+    valueWords.some((valueWord) => {
+      if (valueWord.includes(queryWord) || queryWord.includes(valueWord)) {
+        return true;
+      }
+      const allowedDistance =
+        queryWord.length >= 7 ? 2 : queryWord.length >= 4 ? 1 : 0;
+      return editDistance(queryWord, valueWord) <= allowedDistance;
+    }),
+  );
+}
+
+function propertyLocationText(property: Property) {
+  return [
+    property.location.address,
+    property.location.city,
+    property.location.state,
+    property.location.country,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function matchesLocationKeyword(property: Property, keyword: string) {
+  return matchesNormalizedWords(propertyLocationText(property), keyword);
+}
+
+function matchesSearchKeyword(property: Property, keyword: string) {
+  return matchesNormalizedWords(
     [
-      property.location.address,
-      property.location.city,
-      property.location.state,
-      property.location.country,
+      property.title,
+      property.description,
+      property.type,
+      property.purpose,
+      propertyLocationText(property),
     ]
       .filter(Boolean)
       .join(" "),
-  );
-  if (location.includes(query)) return true;
-
-  const locationWords = location.split(" ").filter(Boolean);
-  return query.split(" ").every((queryWord) =>
-    locationWords.some((locationWord) => {
-      if (locationWord.includes(queryWord) || queryWord.includes(locationWord))
-        return true;
-      const allowedDistance =
-        queryWord.length >= 7 ? 2 : queryWord.length >= 4 ? 1 : 0;
-      return editDistance(queryWord, locationWord) <= allowedDistance;
-    }),
+    keyword,
   );
 }
 
@@ -196,6 +218,7 @@ function PropertiesContent() {
         .filter((property) =>
           matchesLocationKeyword(property, deferredFilters.location),
         )
+        .filter((property) => matchesSearchKeyword(property, searchQuery))
         .sort((first, second) => {
           const featuredDifference =
             Number(second.isFeatured === true) -
@@ -207,7 +230,7 @@ function PropertiesContent() {
             new Date(first.createdAt).getTime()
           );
         }),
-    [availableProperties.data, deferredFilters.location],
+    [availableProperties.data, deferredFilters.location, searchQuery],
   );
   const totalPages = Math.max(
     1,

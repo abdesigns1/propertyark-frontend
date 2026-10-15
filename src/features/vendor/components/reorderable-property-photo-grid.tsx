@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +55,9 @@ export interface ReorderablePropertyPhoto {
 interface ReorderablePropertyPhotoGridProps {
   photos: ReorderablePropertyPhoto[];
   coverLabel?: string;
+  selectionMode?: boolean;
+  selectedPhotoIds?: Set<string>;
+  onToggleSelect?: (photoId: string) => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
   onRemove: (photo: ReorderablePropertyPhoto, index: number) => void;
   onRename?: (
@@ -66,6 +70,9 @@ interface ReorderablePropertyPhotoGridProps {
 export function ReorderablePropertyPhotoGrid({
   photos,
   coverLabel,
+  selectionMode = false,
+  selectedPhotoIds,
+  onToggleSelect,
   onReorder,
   onRemove,
   onRename,
@@ -125,7 +132,7 @@ export function ReorderablePropertyPhotoGrid({
       {photos.map((photo, index) => (
         <figure
           key={photo.id}
-          draggable={!photo.isBusy}
+          draggable={!photo.isBusy && !selectionMode}
           onDragStart={(event) => {
             event.dataTransfer.effectAllowed = "move";
             setDraggedPhotoId(photo.id);
@@ -142,6 +149,9 @@ export function ReorderablePropertyPhotoGrid({
           className={cn(
             "group relative aspect-square cursor-grab overflow-hidden rounded-lg border bg-muted active:cursor-grabbing",
             index === 0 && "col-span-2 aspect-video ring-2 ring-primary",
+            selectionMode && "cursor-default active:cursor-default",
+            selectedPhotoIds?.has(photo.id) &&
+              "ring-2 ring-destructive ring-offset-2 ring-offset-background",
             draggedPhotoId === photo.id && "opacity-50",
           )}
         >
@@ -171,59 +181,72 @@ export function ReorderablePropertyPhotoGrid({
             </span>
           </div>
 
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="destructive"
-            className="absolute right-2 top-2"
-            disabled={photo.isBusy}
-            aria-label={`Remove ${photo.alt}`}
-            onClick={() => onRemove(photo, index)}
-          >
-            {photo.isBusy ? (
-              <LoaderCircle className="animate-spin" />
-            ) : (
-              <Trash2 />
-            )}
-          </Button>
+          {selectionMode ? (
+            <span className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-md border border-white/40 bg-background/85 shadow-sm backdrop-blur-md">
+              <Checkbox
+                checked={selectedPhotoIds?.has(photo.id) ?? false}
+                disabled={photo.isBusy}
+                aria-label={`Select ${photo.alt}`}
+                onCheckedChange={() => onToggleSelect?.(photo.id)}
+              />
+            </span>
+          ) : (
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="destructive"
+              className="absolute right-2 top-2"
+              disabled={photo.isBusy}
+              aria-label={`Remove ${photo.alt}`}
+              onClick={() => onRemove(photo, index)}
+            >
+              {photo.isBusy ? (
+                <LoaderCircle className="animate-spin" />
+              ) : (
+                <Trash2 />
+              )}
+            </Button>
+          )}
 
-          <div className="absolute bottom-2 right-2 flex gap-1">
-            {onRename && (
+          {!selectionMode && (
+            <div className="absolute bottom-2 right-2 flex gap-1">
+              {onRename && (
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="outline"
+                  className={GLASS_OVERLAY_CLASS}
+                  disabled={photo.isBusy}
+                  aria-label={`Categorize ${photo.alt}`}
+                  onClick={() => openRename(photo)}
+                >
+                  <Pencil data-icon="inline-start" />
+                </Button>
+              )}
               <Button
                 type="button"
                 size="icon-sm"
                 variant="outline"
                 className={GLASS_OVERLAY_CLASS}
-                disabled={photo.isBusy}
-                aria-label={`Categorize ${photo.alt}`}
-                onClick={() => openRename(photo)}
+                disabled={index === 0 || photo.isBusy}
+                aria-label={`Move ${photo.alt} earlier`}
+                onClick={() => onReorder(index, index - 1)}
               >
-                <Pencil data-icon="inline-start" />
+                <ArrowUp />
               </Button>
-            )}
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="outline"
-              className={GLASS_OVERLAY_CLASS}
-              disabled={index === 0 || photo.isBusy}
-              aria-label={`Move ${photo.alt} earlier`}
-              onClick={() => onReorder(index, index - 1)}
-            >
-              <ArrowUp />
-            </Button>
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="outline"
-              className={GLASS_OVERLAY_CLASS}
-              disabled={index === photos.length - 1 || photo.isBusy}
-              aria-label={`Move ${photo.alt} later`}
-              onClick={() => onReorder(index, index + 1)}
-            >
-              <ArrowDown />
-            </Button>
-          </div>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="outline"
+                className={GLASS_OVERLAY_CLASS}
+                disabled={index === photos.length - 1 || photo.isBusy}
+                aria-label={`Move ${photo.alt} later`}
+                onClick={() => onReorder(index, index + 1)}
+              >
+                <ArrowDown />
+              </Button>
+            </div>
+          )}
 
           <Badge
             className="absolute bottom-2 left-2 border-white/40 bg-background/70 text-foreground shadow-sm backdrop-blur-md"

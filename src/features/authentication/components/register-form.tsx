@@ -38,6 +38,8 @@ import { getApiErrorMessage } from "@/services/api-error";
 import { toast } from "sonner";
 import { saveLocalRegistrationProfile } from "@/features/authentication/utils/local-registration-profile";
 import { startGoogleAuth } from "@/features/authentication/utils/google-auth";
+import { AuthAnnouncementBanner } from "@/components/shared/site-announcement";
+import { markVendorWelcomeBonusPending } from "@/features/authentication/utils/vendor-welcome-bonus";
 
 const BASE_DEFAULTS = {
   firstName: "",
@@ -150,6 +152,8 @@ export function RegisterForm({
         chat, document, and alert in sync.
       </p>
 
+      <AuthAnnouncementBanner className="mt-6" />
+
       {/* Manual role toggle — deliberately not using the Tabs primitive */}
       <div className="mt-6 flex w-full items-center gap-6 border-b border-border">
         <button
@@ -244,7 +248,10 @@ export function RegisterForm({
           key="vendor-registration-form"
           onSubmit={vendorForm.handleSubmit((values) =>
             registerVendor.mutate(values, {
-              onSuccess: () => handleRegistrationSuccess(values),
+              onSuccess: () => {
+                markVendorWelcomeBonusPending(values.email);
+                handleRegistrationSuccess(values);
+              },
               onError: (error) => handleRegistrationError(error, values),
             }),
           )}

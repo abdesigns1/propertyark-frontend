@@ -15,6 +15,7 @@ import {
 import { normalizeLoginResponse } from "@/features/authentication/utils/normalize-login-response";
 import type { LoginResponse } from "@/services/auth.service";
 import { useAuthStore } from "@/store/auth.store";
+import { markVendorWelcomeBonusPending } from "@/features/authentication/utils/vendor-welcome-bonus";
 
 function parseGoogleUser(value: string) {
   try {
@@ -83,6 +84,14 @@ export function GoogleAuthCallback() {
               !requestedRedirect.startsWith("//")
             ? requestedRedirect
             : getDashboardPath(auth.role);
+
+      if (
+        requestedRole === "VENDOR" &&
+        auth.role === "vendor" &&
+        auth.user.email
+      ) {
+        markVendorWelcomeBonusPending(auth.user.email);
+      }
 
       if (!roleMismatch) {
         toast.success("Signed in with Google successfully.");

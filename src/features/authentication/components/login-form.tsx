@@ -22,6 +22,7 @@ import { normalizeLoginResponse } from "@/features/authentication/utils/normaliz
 import { toast } from "sonner";
 import { getLocalRegistrationProfile } from "@/features/authentication/utils/local-registration-profile";
 import { startGoogleAuth } from "@/features/authentication/utils/google-auth";
+import { AuthAnnouncementBanner } from "@/components/shared/site-announcement";
 
 export function LoginForm() {
   const login = useLogin();
@@ -53,6 +54,8 @@ export function LoginForm() {
           password.
         </p>
       </div>
+
+      <AuthAnnouncementBanner className="mt-6" />
 
       <div className="mt-6 border-t border-border" />
 

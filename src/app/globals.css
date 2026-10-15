@@ -194,7 +194,25 @@
     animation-play-state: paused;
   }
 
+  .site-announcement-marquee {
+    animation: site-announcement-marquee 36s linear infinite;
+    will-change: transform;
+  }
+
+  .site-announcement-marquee:hover {
+    animation-play-state: paused;
+  }
+
   @keyframes testimonial-marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @keyframes site-announcement-marquee {
     from {
       transform: translateX(0);
     }

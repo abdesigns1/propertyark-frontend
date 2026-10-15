@@ -6,9 +6,11 @@ import type {
   PropertyMediaResponse,
 } from "@/features/properties/types/api";
 import {
+  normalizePropertyListingType,
   normalizePropertyMediaUrl,
   normalizePropertyResponse,
 } from "@/features/properties/utils/normalize-property-response";
+import { getPropertyListedAt } from "@/features/properties/utils/property-listing-date";
 
 export interface AvailablePropertyFilters {
   listingTypes?: string[];
@@ -240,18 +242,33 @@ function normalizeVendorProperty(value: unknown): PropertyApiItem {
     }
     return null;
   };
-  const rawListingType = String(
-    source.listingType ?? source.purpose ?? source.listingPurpose ?? "FOR_SALE",
-  ).toUpperCase();
-  const listingType = rawListingType.startsWith("FOR_")
-    ? rawListingType
-    : rawListingType.includes("SHORT")
-      ? "FOR_SHORTLET"
-      : rawListingType.includes("RENT")
-        ? "FOR_RENT"
-        : rawListingType.includes("LAND")
-          ? "FOR_LAND"
-          : "FOR_SALE";
+  const booleanFrom = (...values: unknown[]) => {
+    for (const candidate of values) {
+      if (typeof candidate === "boolean") return candidate;
+      if (typeof candidate === "number") return candidate === 1;
+      if (typeof candidate === "string") {
+        const normalized = candidate.trim().toLowerCase();
+        if (["true", "yes", "1"].includes(normalized)) return true;
+        if (["false", "no", "0"].includes(normalized)) return false;
+      }
+    }
+    return null;
+  };
+  const listingType = normalizePropertyListingType({
+    type: String(source.type ?? property.type ?? ""),
+    listingType: String(
+      source.listingType ??
+        source.purpose ??
+        source.listingPurpose ??
+        property.listingType ??
+        "FOR_SALE",
+    ),
+  });
+  const listingStatus = optionalText(
+    source.listingStatus,
+    source.approvalStatus,
+    source.reviewStatus,
+  );
   const commonPrice = amountFrom(
     source.price,
     source.amount,
@@ -282,6 +299,7 @@ function normalizeVendorProperty(value: unknown): PropertyApiItem {
       source.landFee,
       source.landPrice,
       pricing.landFee,
+      listingType === "FOR_LAND" ? source.salePrice : null,
       listingType === "FOR_LAND" ? commonPrice : null,
     ),
     shortletAmount: amountFrom(
@@ -292,6 +310,36 @@ function normalizeVendorProperty(value: unknown): PropertyApiItem {
       pricing.nightlyRate,
       listingType === "FOR_SHORTLET" ? commonPrice : null,
     ),
+    yearBuilt: amountFrom(source.yearBuilt, source.year_built),
+    furnished: booleanFrom(
+      source.furnished,
+      source.isFurnished,
+      source.is_furnished,
+    ),
+    propertyLandMark: optionalText(
+      source.propertyLandMark,
+      source.propertyLandmark,
+      source.property_landmark,
+    ),
+    distance: optionalText(
+      source.distance,
+      source.landmarkDistance,
+      source.landmark_distance,
+    ),
+    rentDuration:
+      optionalText(
+        source.rentDuration,
+        source.rent_duration,
+        pricing.rentDuration,
+      )?.toUpperCase() ?? null,
+    listedAt: getPropertyListedAt({
+      listingStatus,
+      listedAt: optionalText(source.listedAt, source.listingDate),
+      publishedAt: optionalText(source.publishedAt, source.publishedOn),
+      approvedAt: optionalText(source.approvedAt, source.reviewedAt),
+      updatedAt: optionalText(source.updatedAt),
+      createdAt: optionalText(source.createdAt),
+    }),
     shortletCheckInTime: optionalText(
       source.shortletCheckInTime,
       source.checkInTime,

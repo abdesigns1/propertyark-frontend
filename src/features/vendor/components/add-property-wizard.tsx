@@ -4,7 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -14,8 +21,10 @@ import {
   FileText,
   ImagePlus,
   Info,
+  ListChecks,
   LoaderCircle,
   MapPin,
+  Plus,
   ShieldCheck,
   Trash2,
   Video,
@@ -80,6 +89,10 @@ import { propertyImageUploadName } from "@/features/properties/lib/property-imag
 import { getAmenityIcon } from "@/features/properties/utils/amenity-icons";
 import { sortPropertyMediaPrimaryFirst } from "@/features/properties/utils/normalize-property-response";
 import {
+  parsePropertyLandmarks,
+  serializePropertyLandmarks,
+} from "@/features/properties/utils/property-landmarks";
+import {
   PropertyFileList,
   PropertyStepper,
   PropertyTipCard,
@@ -131,6 +144,18 @@ function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
   return next;
 }
 
+function savedMediaSelectionKey(mediaId: string) {
+  return `saved:${mediaId}`;
+}
+
+function localMediaSelectionKey(
+  kind: "photo" | "video",
+  file: File,
+  index: number,
+) {
+  return `${kind}:${file.name}:${file.size}:${file.lastModified}:${index}`;
+}
+
 export function AddPropertyWizard({
   initialDraftId,
   initialPropertyId,
@@ -170,6 +195,13 @@ export function AddPropertyWizard({
   const [deletingMediaIds, setDeletingMediaIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [mediaSelectionMode, setMediaSelectionMode] = useState(false);
+  const [selectedMediaKeys, setSelectedMediaKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [bulkDeleteConfirmationOpen, setBulkDeleteConfirmationOpen] =
+    useState(false);
+  const [bulkDeletingMedia, setBulkDeletingMedia] = useState(false);
   const [renamingMediaIds, setRenamingMediaIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -205,6 +237,32 @@ export function AddPropertyWizard({
     () => photos.map((file) => ({ file, url: URL.createObjectURL(file) })),
     [photos],
   );
+  const selectableMediaKeys = useMemo(
+    () => [
+      ...existingMedia.map((item) => savedMediaSelectionKey(item.id)),
+      ...photos.map((file, index) =>
+        localMediaSelectionKey("photo", file, index),
+      ),
+      ...videos.map((file, index) =>
+        localMediaSelectionKey("video", file, index),
+      ),
+    ],
+    [existingMedia, photos, videos],
+  );
+  const selectedExistingMediaIds = useMemo(
+    () =>
+      new Set(
+        existingMedia
+          .filter((item) =>
+            selectedMediaKeys.has(savedMediaSelectionKey(item.id)),
+          )
+          .map((item) => item.id),
+      ),
+    [existingMedia, selectedMediaKeys],
+  );
+  const allMediaSelected =
+    selectableMediaKeys.length > 0 &&
+    selectableMediaKeys.every((key) => selectedMediaKeys.has(key));
   useEffect(
     // Object URLs retain browser memory until explicitly revoked.
     () => () => photoUrls.forEach(({ url }) => URL.revokeObjectURL(url)),
@@ -224,7 +282,27 @@ export function AddPropertyWizard({
       }
       const media = await getDraftMedia(initialDraftId);
       queueMicrotask(() => {
-        setValues({ ...INITIAL_PROPERTY_VALUES, ...draft.values });
+        const legacyLandmarks = parsePropertyLandmarks(
+          draft.values.propertyLandMark,
+          draft.values.distance,
+        );
+        const hasLandmarkList = Array.isArray(draft.values.landmarks);
+        const restoredValues = {
+          ...INITIAL_PROPERTY_VALUES,
+          ...draft.values,
+          landmarks: hasLandmarkList ? draft.values.landmarks : legacyLandmarks,
+          propertyLandMark: hasLandmarkList
+            ? draft.values.propertyLandMark
+            : "",
+          distance: hasLandmarkList ? draft.values.distance : "",
+        };
+        setValues({
+          ...restoredValues,
+          listingType:
+            restoredValues.type === "LAND"
+              ? "FOR_LAND"
+              : restoredValues.listingType,
+        });
         setStep(draft.step);
         setPhotos((media?.photos ?? []).slice(0, MAX_PROPERTY_PHOTOS));
         setVideos(media?.videos ?? []);
@@ -284,6 +362,23 @@ export function AddPropertyWizard({
         sizeUnit: property.sizeUnit ?? "sqm",
         bedrooms: property.bedrooms == null ? "" : String(property.bedrooms),
         bathrooms: property.bathrooms == null ? "" : String(property.bathrooms),
+        yearBuilt: property.yearBuilt == null ? "" : String(property.yearBuilt),
+        furnished:
+          property.furnished == null
+            ? ""
+            : property.furnished
+              ? "true"
+              : "false",
+        propertyLandMark: "",
+        distance: "",
+        landmarks: parsePropertyLandmarks(
+          property.propertyLandMark,
+          property.distance,
+        ),
+        rentDuration:
+          property.rentDuration?.toUpperCase() === "MONTHLY"
+            ? "MONTHLY"
+            : "YEARLY",
         amenities: property.amenities ?? [],
         shortletCheckInTime: property.shortletCheckInTime ?? "",
         shortletCheckOutTime: property.shortletCheckOutTime ?? "",
@@ -340,7 +435,78 @@ export function AddPropertyWizard({
     value: string | string[],
   ) => {
     setValues((current) => ({ ...current, [key]: value }));
-    setErrors((current) => ({ ...current, [key]: "" }));
+    setErrors((current) => ({
+      ...current,
+      [key]: "",
+      ...(["propertyLandMark", "distance"].includes(key)
+        ? { landmarks: "" }
+        : {}),
+    }));
+  };
+  const updatePropertyType = (value: string) => {
+    setValues((current) => ({
+      ...current,
+      type: value as AddPropertyFormValues["type"],
+      listingType:
+        value === "LAND"
+          ? "FOR_LAND"
+          : current.listingType === "FOR_LAND"
+            ? "FOR_SALE"
+            : current.listingType,
+    }));
+    setErrors((current) => ({ ...current, type: "", listingType: "" }));
+  };
+  const addLandmark = () => {
+    const name = values.propertyLandMark.trim();
+    const distance = values.distance.trim();
+    if (!name || !distance) {
+      setErrors((current) => ({
+        ...current,
+        propertyLandMark: name ? "" : "Enter a nearby landmark.",
+        distance: distance ? "" : "Enter its approximate distance.",
+      }));
+      return;
+    }
+
+    const duplicate = values.landmarks.some(
+      (item) =>
+        item.name.toLocaleLowerCase() === name.toLocaleLowerCase() &&
+        item.distance.toLocaleLowerCase() === distance.toLocaleLowerCase(),
+    );
+    if (duplicate) {
+      setErrors((current) => ({
+        ...current,
+        landmarks: "This landmark has already been added.",
+      }));
+      return;
+    }
+
+    setValues((current) => ({
+      ...current,
+      propertyLandMark: "",
+      distance: "",
+      landmarks: [...current.landmarks, { name, distance }],
+    }));
+    setErrors((current) => ({
+      ...current,
+      propertyLandMark: "",
+      distance: "",
+      landmarks: "",
+    }));
+  };
+  const removeLandmark = (index: number) => {
+    setValues((current) => ({
+      ...current,
+      landmarks: current.landmarks.filter(
+        (_, currentIndex) => currentIndex !== index,
+      ),
+    }));
+    setErrors((current) => ({ ...current, landmarks: "" }));
+  };
+  const addLandmarkOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    addLandmark();
   };
   const applyGoogleAddress = useCallback((address: SelectedGoogleAddress) => {
     setValues((current) => ({
@@ -397,6 +563,26 @@ export function AddPropertyWizard({
       if (!values.city.trim()) next.city = "Enter a city.";
       if (!values.state.trim()) next.state = "Enter a state.";
       if (!values.country.trim()) next.country = "Enter a country.";
+      if (values.propertyLandMark.trim() || values.distance.trim()) {
+        if (!values.propertyLandMark.trim())
+          next.propertyLandMark = "Enter a nearby landmark.";
+        if (!values.distance.trim())
+          next.distance = "Enter its approximate distance.";
+        if (values.propertyLandMark.trim() && values.distance.trim())
+          next.landmarks =
+            "Click Add landmark or press Enter to add this item.";
+      }
+      if (values.yearBuilt) {
+        const yearBuilt = Number(values.yearBuilt);
+        const latestReasonableYear = new Date().getFullYear() + 10;
+        if (
+          !Number.isInteger(yearBuilt) ||
+          yearBuilt < 1000 ||
+          yearBuilt > latestReasonableYear
+        ) {
+          next.yearBuilt = `Enter a valid year between 1000 and ${latestReasonableYear}.`;
+        }
+      }
       if (values.description.trim().length < 20)
         next.description =
           "Add at least 20 characters describing the property.";
@@ -517,6 +703,125 @@ export function AddPropertyWizard({
       setDeletingMediaIds((current) => {
         const next = new Set(current);
         next.delete(media.id);
+        return next;
+      });
+    }
+  };
+  const toggleMediaSelection = (mediaKey: string) => {
+    setSelectedMediaKeys((current) => {
+      const next = new Set(current);
+      if (next.has(mediaKey)) next.delete(mediaKey);
+      else next.add(mediaKey);
+      return next;
+    });
+  };
+  const stopMediaSelection = () => {
+    setMediaSelectionMode(false);
+    setSelectedMediaKeys(new Set());
+    setBulkDeleteConfirmationOpen(false);
+  };
+  const toggleSelectAllMedia = () => {
+    setSelectedMediaKeys(
+      allMediaSelected ? new Set() : new Set(selectableMediaKeys),
+    );
+  };
+  const deleteSelectedMedia = async () => {
+    if (!selectedMediaKeys.size || bulkDeletingMedia) return;
+
+    const savedMediaIds = existingMedia
+      .filter((item) => selectedMediaKeys.has(savedMediaSelectionKey(item.id)))
+      .map((item) => item.id);
+    const selectedPhotoKeys = new Set(
+      photos
+        .map((file, index) => localMediaSelectionKey("photo", file, index))
+        .filter((key) => selectedMediaKeys.has(key)),
+    );
+    const selectedVideoKeys = new Set(
+      videos
+        .map((file, index) => localMediaSelectionKey("video", file, index))
+        .filter((key) => selectedMediaKeys.has(key)),
+    );
+    const deletedCount =
+      savedMediaIds.length + selectedPhotoKeys.size + selectedVideoKeys.size;
+
+    setBulkDeletingMedia(true);
+    setDeletingMediaIds((current) => {
+      const next = new Set(current);
+      savedMediaIds.forEach((id) => next.add(id));
+      return next;
+    });
+
+    try {
+      if (savedMediaIds.length) {
+        if (!initialPropertyId) {
+          throw new Error("The saved property could not be identified.");
+        }
+        await propertyService.bulkDeleteMedia(initialPropertyId, savedMediaIds);
+      }
+
+      setExistingMedia((current) =>
+        current.filter((item) => !savedMediaIds.includes(item.id)),
+      );
+      setPhotos((current) =>
+        current.filter(
+          (file, index) =>
+            !selectedPhotoKeys.has(
+              localMediaSelectionKey("photo", file, index),
+            ),
+        ),
+      );
+      setVideos((current) =>
+        current.filter(
+          (file, index) =>
+            !selectedVideoKeys.has(
+              localMediaSelectionKey("video", file, index),
+            ),
+        ),
+      );
+
+      if (savedMediaIds.length) {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: ["properties", "available"],
+          }),
+          queryClient.invalidateQueries({
+            queryKey: ["properties", "featured"],
+          }),
+          queryClient.invalidateQueries({
+            queryKey: ["admin", "properties"],
+          }),
+          queryClient.invalidateQueries({
+            queryKey: ["admin", "property", initialPropertyId],
+          }),
+          queryClient.invalidateQueries({
+            queryKey: ["vendor", "property-preview", initialPropertyId],
+          }),
+          ...(accountKey
+            ? [
+                queryClient.invalidateQueries({
+                  queryKey: vendorPropertiesQueryKey(accountKey),
+                }),
+                queryClient.invalidateQueries({
+                  queryKey: vendorDashboardQueryKey(accountKey),
+                }),
+              ]
+            : []),
+        ]);
+      }
+
+      stopMediaSelection();
+      toast.success(
+        `${deletedCount} ${deletedCount === 1 ? "media item" : "media items"} deleted.`,
+      );
+    } catch (error) {
+      toast.error(
+        getApiErrorMessage(error, "The selected media could not be deleted."),
+      );
+    } finally {
+      setBulkDeletingMedia(false);
+      setDeletingMediaIds((current) => {
+        const next = new Set(current);
+        savedMediaIds.forEach((id) => next.delete(id));
         return next;
       });
     }
@@ -662,11 +967,16 @@ export function AddPropertyWizard({
     // The property endpoint accepts one multipart request containing fields,
     // property media, and legal documents.
     const form = new FormData();
+    // LAND must never fall through to the form's default FOR_SALE value. Keep
+    // this submission guard even though the two selects are synchronized.
+    const listingType =
+      values.type === "LAND" ? "FOR_LAND" : values.listingType;
+    const landmarkFields = serializePropertyLandmarks(values.landmarks);
     const propertyFields = {
       name: values.name.trim(),
       description: values.description.trim(),
       type: values.type,
-      listingType: values.listingType,
+      listingType,
       // `status` is the property's availability state. The backend separately
       // resets the admin-controlled `listingStatus` to PENDING on resubmission.
       status: values.status,
@@ -678,9 +988,20 @@ export function AddPropertyWizard({
       size: values.size,
       bedrooms: values.bedrooms || "0",
       bathrooms: values.bathrooms || "0",
-      [PRICE_FIELDS[values.listingType]]: values.price,
+      ...(values.yearBuilt ? { yearBuilt: values.yearBuilt } : {}),
+      ...(values.furnished ? { furnished: values.furnished } : {}),
+      ...(isEditing || landmarkFields.propertyLandMark
+        ? { propertyLandMark: landmarkFields.propertyLandMark }
+        : {}),
+      ...(isEditing || landmarkFields.distance
+        ? { distance: landmarkFields.distance }
+        : {}),
+      ...(listingType === "FOR_RENT"
+        ? { rentDuration: values.rentDuration }
+        : {}),
+      [PRICE_FIELDS[listingType]]: values.price,
       amenities: JSON.stringify(values.amenities),
-      ...(values.listingType === "FOR_SHORTLET"
+      ...(listingType === "FOR_SHORTLET"
         ? {
             checkInTime: values.shortletCheckInTime,
             checkOutTime: values.shortletCheckOutTime,
@@ -857,7 +1178,7 @@ export function AddPropertyWizard({
                     <FieldLabel>Property Type</FieldLabel>
                     <Select
                       value={values.type}
-                      onValueChange={(value) => update("type", value)}
+                      onValueChange={updatePropertyType}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue />
@@ -890,12 +1211,10 @@ export function AddPropertyWizard({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectGroup>
-                          {[
-                            "FOR_SALE",
-                            "FOR_RENT",
-                            "FOR_LAND",
-                            "FOR_SHORTLET",
-                          ].map((item) => (
+                          {(values.type === "LAND"
+                            ? ["FOR_LAND"]
+                            : ["FOR_SALE", "FOR_RENT", "FOR_SHORTLET"]
+                          ).map((item) => (
                             <SelectItem key={item} value={item}>
                               {readablePropertyValue(item)}
                             </SelectItem>
@@ -904,6 +1223,25 @@ export function AddPropertyWizard({
                       </SelectContent>
                     </Select>
                   </Field>
+                  {values.listingType === "FOR_RENT" && (
+                    <Field>
+                      <FieldLabel>Rent Duration</FieldLabel>
+                      <Select
+                        value={values.rentDuration}
+                        onValueChange={(value) => update("rentDuration", value)}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectItem value="MONTHLY">Monthly</SelectItem>
+                            <SelectItem value="YEARLY">Yearly</SelectItem>
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  )}
                   <Field>
                     <FieldLabel>Property Status</FieldLabel>
                     <Select
@@ -935,9 +1273,51 @@ export function AddPropertyWizard({
                     </FieldDescription>
                   </Field>
                 </div>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field data-invalid={Boolean(errors.yearBuilt)}>
+                    <FieldLabel htmlFor="property-year-built">
+                      Year Built
+                    </FieldLabel>
+                    <Input
+                      id="property-year-built"
+                      type="number"
+                      min="1000"
+                      max={new Date().getFullYear() + 10}
+                      inputMode="numeric"
+                      value={values.yearBuilt}
+                      onChange={(event) =>
+                        update("yearBuilt", event.target.value)
+                      }
+                      placeholder="e.g. 2015"
+                      aria-invalid={Boolean(errors.yearBuilt)}
+                    />
+                    <FieldError>{errors.yearBuilt}</FieldError>
+                  </Field>
+                  <Field>
+                    <FieldLabel>Furnished</FieldLabel>
+                    <Select
+                      value={values.furnished}
+                      onValueChange={(value) => update("furnished", value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select furnished status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="true">Yes</SelectItem>
+                          <SelectItem value="false">No</SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
                 <Field data-invalid={Boolean(errors.price)}>
                   <FieldLabel htmlFor="property-price">
-                    {PRICE_LABELS[values.listingType]}
+                    {values.listingType === "FOR_RENT"
+                      ? values.rentDuration === "MONTHLY"
+                        ? "Monthly Rent"
+                        : "Yearly Rent"
+                      : PRICE_LABELS[values.listingType]}
                   </FieldLabel>
                   <Input
                     id="property-price"
@@ -965,6 +1345,85 @@ export function AddPropertyWizard({
                   />
                   <FieldError>{errors.address}</FieldError>
                 </Field>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field data-invalid={Boolean(errors.propertyLandMark)}>
+                    <FieldLabel htmlFor="property-landmark">
+                      Nearby Property Landmark
+                    </FieldLabel>
+                    <Input
+                      id="property-landmark"
+                      value={values.propertyLandMark}
+                      onChange={(event) =>
+                        update("propertyLandMark", event.target.value)
+                      }
+                      onKeyDown={addLandmarkOnEnter}
+                      placeholder="e.g. Shoprite Mall"
+                      aria-invalid={Boolean(errors.propertyLandMark)}
+                    />
+                    <FieldDescription>
+                      Add a recognizable place close to the property.
+                    </FieldDescription>
+                    <FieldError>{errors.propertyLandMark}</FieldError>
+                  </Field>
+                  <Field data-invalid={Boolean(errors.distance)}>
+                    <FieldLabel htmlFor="property-landmark-distance">
+                      Distance
+                    </FieldLabel>
+                    <Input
+                      id="property-landmark-distance"
+                      value={values.distance}
+                      onChange={(event) =>
+                        update("distance", event.target.value)
+                      }
+                      onKeyDown={addLandmarkOnEnter}
+                      placeholder="e.g. 500 m or 2 km"
+                      aria-invalid={Boolean(errors.distance)}
+                    />
+                    <FieldDescription>
+                      Approximate distance from the landmark.
+                    </FieldDescription>
+                    <FieldError>{errors.distance}</FieldError>
+                  </Field>
+                  <div className="flex flex-col items-start gap-3 sm:col-span-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={addLandmark}
+                    >
+                      <Plus data-icon="inline-start" />
+                      Add landmark
+                    </Button>
+                    <FieldError>{errors.landmarks}</FieldError>
+                    {values.landmarks.length > 0 && (
+                      <div
+                        className="flex flex-wrap gap-2"
+                        aria-label="Added nearby landmarks"
+                      >
+                        {values.landmarks.map((landmark, index) => (
+                          <Badge
+                            key={`${landmark.name}-${landmark.distance}-${index}`}
+                            variant="outline"
+                            className="gap-2 px-3 py-1.5 text-sm"
+                          >
+                            <MapPin className="size-4 text-primary" />
+                            <span>
+                              {landmark.name} · {landmark.distance}
+                            </span>
+                            <button
+                              type="button"
+                              className="rounded-full text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              aria-label={`Remove ${landmark.name}`}
+                              onClick={() => removeLandmark(index)}
+                            >
+                              <X className="size-3.5" aria-hidden="true" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <div className="grid gap-5 sm:grid-cols-2">
                   <Field data-invalid={Boolean(errors.city)}>
                     <FieldLabel htmlFor="property-city">City</FieldLabel>
@@ -1426,6 +1885,71 @@ export function AddPropertyWizard({
               </CardAction>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
+              {selectableMediaKeys.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 p-3">
+                  <p className="text-sm text-muted-foreground">
+                    {mediaSelectionMode
+                      ? `${selectedMediaKeys.size} of ${selectableMediaKeys.length} selected`
+                      : "Select multiple photos or videos to remove them together."}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {mediaSelectionMode ? (
+                      <>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={bulkDeletingMedia}
+                          onClick={toggleSelectAllMedia}
+                        >
+                          <Check data-icon="inline-start" />
+                          {allMediaSelected ? "Clear all" : "Select all"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={bulkDeletingMedia}
+                          onClick={stopMediaSelection}
+                        >
+                          <X data-icon="inline-start" />
+                          Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          disabled={
+                            selectedMediaKeys.size === 0 || bulkDeletingMedia
+                          }
+                          onClick={() => setBulkDeleteConfirmationOpen(true)}
+                        >
+                          <Trash2 data-icon="inline-start" />
+                          Delete selected ({selectedMediaKeys.size})
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={
+                          deletingMediaIds.size > 0 ||
+                          renamingMediaIds.size > 0 ||
+                          settingPrimaryMediaId !== null
+                        }
+                        onClick={() => {
+                          setSelectedMediaKeys(new Set());
+                          setMediaSelectionMode(true);
+                        }}
+                      >
+                        <ListChecks data-icon="inline-start" />
+                        Select media
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
               {existingMedia.some((item) => item.type === "IMAGE") && (
                 <div className="flex flex-col gap-2">
                   <p className="text-xs text-muted-foreground">
@@ -1460,6 +1984,11 @@ export function AddPropertyWizard({
                     onRename={(photo, _index, name) =>
                       renameExistingImage(photo.id, name)
                     }
+                    selectionMode={mediaSelectionMode}
+                    selectedPhotoIds={selectedExistingMediaIds}
+                    onToggleSelect={(mediaId) =>
+                      toggleMediaSelection(savedMediaSelectionKey(mediaId))
+                    }
                   />
                 </div>
               )}
@@ -1472,8 +2001,8 @@ export function AddPropertyWizard({
                   </p>
                   <ReorderablePropertyPhotoGrid
                     photos={photoUrls.map(
-                      ({ file, url }): ReorderablePropertyPhoto => ({
-                        id: url,
+                      ({ file, url }, index): ReorderablePropertyPhoto => ({
+                        id: localMediaSelectionKey("photo", file, index),
                         src: url,
                         name: file.name,
                         alt: file.name,
@@ -1492,6 +2021,9 @@ export function AddPropertyWizard({
                       )
                     }
                     onRename={(_photo, index, name) => renamePhoto(index, name)}
+                    selectionMode={mediaSelectionMode}
+                    selectedPhotoIds={selectedMediaKeys}
+                    onToggleSelect={toggleMediaSelection}
                   />
                 </div>
               ) : existingMedia.some((item) => item.type === "IMAGE") ? null : (
@@ -1504,6 +2036,12 @@ export function AddPropertyWizard({
                   <Separator />
                   <PropertyFileList
                     files={videos}
+                    selectionMode={mediaSelectionMode}
+                    selectedFileKeys={selectedMediaKeys}
+                    getFileKey={(file, index) =>
+                      localMediaSelectionKey("video", file, index)
+                    }
+                    onToggleSelect={toggleMediaSelection}
                     onRemove={(index) =>
                       setVideos((current) =>
                         current.filter(
@@ -1528,32 +2066,95 @@ export function AddPropertyWizard({
                           key={item.id}
                           className="flex items-center gap-3 rounded-lg border p-3"
                         >
+                          {mediaSelectionMode && (
+                            <Checkbox
+                              checked={selectedMediaKeys.has(
+                                savedMediaSelectionKey(item.id),
+                              )}
+                              disabled={deletingMediaIds.has(item.id)}
+                              aria-label={`Select property video ${index + 1}`}
+                              onCheckedChange={() =>
+                                toggleMediaSelection(
+                                  savedMediaSelectionKey(item.id),
+                                )
+                              }
+                            />
+                          )}
                           <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
                             <Video className="size-4" />
                           </span>
                           <span className="min-w-0 flex-1 truncate text-sm">
                             Property video {index + 1}
                           </span>
-                          <Button
-                            type="button"
-                            size="icon-sm"
-                            variant="destructive"
-                            disabled={deletingMediaIds.has(item.id)}
-                            aria-label={`Delete property video ${index + 1}`}
-                            onClick={() => void deleteExistingMedia(item)}
-                          >
-                            {deletingMediaIds.has(item.id) ? (
-                              <LoaderCircle className="animate-spin" />
-                            ) : (
-                              <Trash2 />
-                            )}
-                          </Button>
+                          {!mediaSelectionMode && (
+                            <Button
+                              type="button"
+                              size="icon-sm"
+                              variant="destructive"
+                              disabled={deletingMediaIds.has(item.id)}
+                              aria-label={`Delete property video ${index + 1}`}
+                              onClick={() => void deleteExistingMedia(item)}
+                            >
+                              {deletingMediaIds.has(item.id) ? (
+                                <LoaderCircle className="animate-spin" />
+                              ) : (
+                                <Trash2 />
+                              )}
+                            </Button>
+                          )}
                         </div>
                       ))}
                   </div>
                 </>
               )}
             </CardContent>
+            <Dialog
+              open={bulkDeleteConfirmationOpen}
+              onOpenChange={(open) => {
+                if (!bulkDeletingMedia) setBulkDeleteConfirmationOpen(open);
+              }}
+            >
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete selected media?</DialogTitle>
+                  <DialogDescription>
+                    {selectedMediaKeys.size}{" "}
+                    {selectedMediaKeys.size === 1
+                      ? "media item"
+                      : "media items"}{" "}
+                    will be removed. Media already saved to this property will
+                    be deleted immediately.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={bulkDeletingMedia}
+                    >
+                      Cancel
+                    </Button>
+                  </DialogClose>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={selectedMediaKeys.size === 0 || bulkDeletingMedia}
+                    onClick={() => void deleteSelectedMedia()}
+                  >
+                    {bulkDeletingMedia ? (
+                      <LoaderCircle
+                        data-icon="inline-start"
+                        className="animate-spin"
+                      />
+                    ) : (
+                      <Trash2 data-icon="inline-start" />
+                    )}
+                    {bulkDeletingMedia ? "Deleting..." : "Delete selected"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </Card>
         </div>
       )}
@@ -1701,6 +2302,28 @@ export function AddPropertyWizard({
                       : readablePropertyValue(values.status)}
                   </p>
                 </div>
+                {values.listingType === "FOR_RENT" && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-muted-foreground">
+                      Rent duration
+                    </p>
+                    <p className="mt-1">
+                      {readablePropertyValue(values.rentDuration)}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">
+                    Furnished
+                  </p>
+                  <p className="mt-1">
+                    {values.furnished === "true"
+                      ? "Yes"
+                      : values.furnished === "false"
+                        ? "No"
+                        : "Not specified"}
+                  </p>
+                </div>
                 <div className="sm:col-span-2">
                   <p className="text-xs font-semibold uppercase text-muted-foreground">
                     Description
@@ -1734,6 +2357,32 @@ export function AddPropertyWizard({
                   <p className="mt-1 font-semibold">
                     {values.bedrooms || 0} bed · {values.bathrooms || 0} bath
                   </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Year built</p>
+                  <p className="mt-1 font-semibold">
+                    {values.yearBuilt || "Not specified"}
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-muted-foreground">
+                    Nearby landmarks
+                  </p>
+                  {values.landmarks.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {values.landmarks.map((landmark, index) => (
+                        <Badge
+                          key={`${landmark.name}-${landmark.distance}-${index}`}
+                          variant="outline"
+                        >
+                          <MapPin />
+                          {landmark.name} · {landmark.distance}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-1 font-semibold">Not specified</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

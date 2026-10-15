@@ -6,6 +6,10 @@ import { RecentlyViewedProperties } from "@/features/properties/components/recen
 import { BecomeVendorBanner } from "@/components/contact/become-vendor-banner";
 import { Footer } from "@/components/shared/footer";
 import { Button } from "@/components/ui/button";
+import {
+  PROFESSIONAL_SERVICE_OPTIONS,
+  type ProfessionalServiceValue,
+} from "@/features/professional-services/lib/professional-service-options";
 import { CONTAINER, cn } from "@/lib/utils";
 import { createPageMetadata } from "@/lib/seo";
 
@@ -15,15 +19,6 @@ export const metadata: Metadata = createPageMetadata({
     "Request trusted accounting, mortgage, legal, or insurance support through PropertyArk.",
   path: "/professional-services",
 });
-
-const SERVICE_VALUES = [
-  "accountant",
-  "mortgage-broker",
-  "legal",
-  "insurance",
-] as const;
-
-type ServiceValue = (typeof SERVICE_VALUES)[number];
 
 interface ProfessionalServicesPageProps {
   searchParams: Promise<{ service?: string | string[] }>;
@@ -36,10 +31,13 @@ export default async function ProfessionalServicesPage({
   const requestedService = Array.isArray(params.service)
     ? params.service[0]
     : params.service;
-  const initialService: ServiceValue = SERVICE_VALUES.includes(
-    requestedService as ServiceValue,
+  const serviceValues = PROFESSIONAL_SERVICE_OPTIONS.map(
+    (option) => option.value,
+  );
+  const initialService: ProfessionalServiceValue = serviceValues.includes(
+    requestedService as ProfessionalServiceValue,
   )
-    ? (requestedService as ServiceValue)
+    ? (requestedService as ProfessionalServiceValue)
     : "accountant";
   return (
     <>

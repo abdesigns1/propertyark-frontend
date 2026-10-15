@@ -10,6 +10,7 @@ import {
   Bath,
   BedDouble,
   Building2,
+  CalendarClock,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -73,6 +74,9 @@ import { useAuthStore } from "@/store/auth.store";
 import { useAdminCreditSettings } from "@/features/admin/hooks/use-admin-credit";
 import { DEFAULT_CREDIT_SETTINGS } from "@/services/admin-credit.service";
 import { propertyService } from "@/services/property.service";
+import { parsePropertyLandmarks } from "@/features/properties/utils/property-landmarks";
+import { PropertyListingDate } from "@/features/properties/components/property-listing-date";
+import { getPropertyListedAt } from "@/features/properties/utils/property-listing-date";
 
 export function AdminPropertyDetailsPage({
   propertyId,
@@ -1012,6 +1016,11 @@ function AdminNotes({ propertyId }: { propertyId: string }) {
 }
 
 function PropertyFacts({ property }: { property: PropertyApiItem }) {
+  const landmarks = parsePropertyLandmarks(
+    property.propertyLandMark,
+    property.distance,
+  );
+  const listedAt = getPropertyListedAt(property);
   const facts = [
     { label: "Property type", value: property.type, icon: Building2 },
     {
@@ -1043,6 +1052,44 @@ function PropertyFacts({ property }: { property: PropertyApiItem }) {
         : "—",
       icon: LandPlot,
     },
+    {
+      label: "Furnished",
+      value:
+        property.furnished === null || property.furnished === undefined
+          ? "Not specified"
+          : property.furnished
+            ? "Yes"
+            : "No",
+      icon: CheckCircle2,
+    },
+    ...(property.listingType === "FOR_RENT"
+      ? [
+          {
+            label: "Rent duration",
+            value: property.rentDuration
+              ? property.rentDuration.charAt(0).toUpperCase() +
+                property.rentDuration.slice(1).toLowerCase()
+              : "Not specified",
+            icon: Building2,
+          },
+        ]
+      : []),
+    {
+      label: landmarks.length > 1 ? "Nearby landmarks" : "Nearby landmark",
+      value: landmarks.length
+        ? landmarks.map((item) => `${item.name} · ${item.distance}`).join(", ")
+        : "Not specified",
+      icon: MapPin,
+    },
+    ...(listedAt
+      ? [
+          {
+            label: "Listed",
+            value: <PropertyListingDate date={listedAt} />,
+            icon: CalendarClock,
+          },
+        ]
+      : []),
   ];
   return (
     <Card>

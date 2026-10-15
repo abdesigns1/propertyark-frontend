@@ -54,6 +54,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { useAccountKey } from "@/lib/account-identity";
 import { cn } from "@/lib/utils";
 import { RoleChangeRequestCard } from "@/features/account-role-request/components/role-change-request-card";
+import { SelfDeleteAccountCard } from "@/features/account/components/self-delete-account-card";
 
 type Section = "profile" | "business" | "password" | "notifications";
 const sections: Array<{
@@ -543,6 +544,7 @@ function PasswordSettings() {
           </div>
         </CardContent>
       </Card>
+      <SelfDeleteAccountCard accountType="vendor" />
     </div>
   );
 }

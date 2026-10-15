@@ -27,10 +27,21 @@ export function DeleteAccountButton({
   const deletion = useMutation({
     mutationFn: () => adminService.deleteUser(userId),
     onSuccess: async () => {
+      queryClient.removeQueries({ queryKey: ["admin", "user", userId] });
+      queryClient.removeQueries({ queryKey: ["admin", "vendor", userId] });
+
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
         queryClient.invalidateQueries({ queryKey: ["admin", "dashboard"] }),
         queryClient.invalidateQueries({ queryKey: ["admin", "kyc"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "properties"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["admin", "navigation-indicators"],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["properties"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["chat", "property-directory"],
+        }),
       ]);
       toast.success(
         `${isVendor ? "Vendor" : "User"} account deleted successfully.`,
@@ -69,8 +80,11 @@ export function DeleteAccountButton({
         description={
           <>
             This will permanently delete <strong>{fullName}</strong>&apos;s
-            account and remove their access to PropertyArk. This action cannot
-            be undone.
+            account
+            {isVendor
+              ? " and all properties and records associated with this vendor"
+              : " and all records associated with this user"}
+            . This action cannot be undone.
           </>
         }
         footer={

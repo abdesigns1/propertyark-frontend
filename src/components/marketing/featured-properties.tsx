@@ -12,7 +12,7 @@ export function FeaturedProperties() {
   const featured = availableProperties.data?.properties.slice(0, 4) ?? [];
 
   return (
-    <section className="mx-auto w-full max-w-7xl px-6 py-20 lg:px-8">
+    <section className="mx-auto w-full max-w-7xl px-6 pt-10 pb-20 sm:pt-12 lg:px-8">
       <SlideInTop className="flex items-end justify-between">
         <div>
           <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">

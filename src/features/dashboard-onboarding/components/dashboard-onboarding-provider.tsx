@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 import { useAccountKey } from "@/lib/account-identity";
 import { useAuthStore } from "@/store/auth.store";
 import { DashboardSpotlightTour } from "./dashboard-spotlight-tour";
@@ -15,6 +16,11 @@ import {
   getDashboardOnboardingSteps,
   type DashboardAudience,
 } from "../lib/onboarding-steps";
+import {
+  consumeVendorWelcomeBonus,
+  hasPendingVendorWelcomeBonus,
+} from "@/features/authentication/utils/vendor-welcome-bonus";
+import { VendorWelcomeBonusDialog } from "@/features/vendor/components/vendor-welcome-bonus-dialog";
 
 const TOUR_STORAGE_PREFIX = "propertyark:dashboard-onboarding:v1";
 
@@ -53,7 +59,9 @@ export function DashboardOnboardingProvider({
   children: React.ReactNode;
 }) {
   const accountKey = useAccountKey();
+  const pathname = usePathname();
   const role = useAuthStore((state) => state.role);
+  const email = useAuthStore((state) => state.user?.email ?? null);
   const audience: DashboardAudience = role === "vendor" ? "vendor" : "user";
   const steps = useMemo(
     () => getDashboardOnboardingSteps(audience),
@@ -61,6 +69,11 @@ export function DashboardOnboardingProvider({
   );
   const [isOpen, setIsOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  const [hasPendingVendorWelcome, setHasPendingVendorWelcome] = useState(
+    () => role === "vendor" && hasPendingVendorWelcomeBonus(email),
+  );
+  const isVendorWelcomeOpen =
+    hasPendingVendorWelcome && pathname === "/vendor/dashboard";
 
   const closeTour = useCallback(() => {
     rememberTour(accountKey);
@@ -72,12 +85,22 @@ export function DashboardOnboardingProvider({
     setIsOpen(true);
   }, []);
 
+  const handleVendorWelcomeOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) consumeVendorWelcomeBonus(email);
+      setHasPendingVendorWelcome(open);
+    },
+    [email],
+  );
+
   useEffect(() => {
-    if (!accountKey || hasSeenTour(accountKey)) return;
+    if (hasPendingVendorWelcome || !accountKey || hasSeenTour(accountKey)) {
+      return;
+    }
 
     const frame = window.requestAnimationFrame(openTour);
     return () => window.cancelAnimationFrame(frame);
-  }, [accountKey, openTour]);
+  }, [accountKey, hasPendingVendorWelcome, openTour]);
 
   function goForward() {
     if (stepIndex === steps.length - 1) {
@@ -102,6 +125,10 @@ export function DashboardOnboardingProvider({
         onBack={() => setStepIndex((current) => Math.max(0, current - 1))}
         onClose={closeTour}
         onNext={goForward}
+      />
+      <VendorWelcomeBonusDialog
+        open={isVendorWelcomeOpen}
+        onOpenChange={handleVendorWelcomeOpenChange}
       />
     </DashboardOnboardingContext.Provider>
   );

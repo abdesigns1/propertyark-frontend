@@ -8,6 +8,7 @@ import { CtaBanner } from "@/components/marketing/cta-banner";
 import { Footer } from "@/components/shared/footer";
 import { PropertySearchForm } from "@/components/shared/property-search-form";
 import { CONTAINER, cn } from "@/lib/utils";
+import { HomepageAnnouncementMarquee } from "@/components/shared/site-announcement";
 
 export default function HomePage() {
   return (
@@ -21,6 +22,7 @@ export default function HomePage() {
       >
         <PropertySearchForm />
       </div>
+      <HomepageAnnouncementMarquee className="mt-8 sm:mt-10" />
       <FeaturedListings />
       <ExploreByCategory />
       <FeaturedProperties />

@@ -5,8 +5,11 @@ import {
   CloudUpload,
   FileText,
   Lightbulb,
+  Mail,
   MapPin,
+  Phone,
   Send,
+  UserRound,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -33,19 +36,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-
-const SERVICE_TYPES = [
-  { label: "Accountant", value: "accountant" },
-  { label: "Mortgage Broker", value: "mortgage-broker" },
-  { label: "Legal", value: "legal" },
-  { label: "Insurance", value: "insurance" },
-] as const;
-
-type ServiceType = (typeof SERVICE_TYPES)[number]["value"];
+import {
+  PROFESSIONAL_SERVICE_OPTIONS,
+  professionalServiceApiValue,
+  type ProfessionalServiceValue,
+} from "@/features/professional-services/lib/professional-service-options";
+import { getApiErrorMessage } from "@/services/api-error";
+import { professionalServiceService } from "@/services/professional-service.service";
+import { useAuthStore } from "@/store/auth.store";
 
 interface ProfessionalServiceFormProps {
-  initialService: ServiceType;
+  initialService: ProfessionalServiceValue;
 }
 
 export function ProfessionalServiceForm({
@@ -53,26 +56,74 @@ export function ProfessionalServiceForm({
 }: ProfessionalServiceFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [service, setService] = useState<ServiceType>(initialService);
+  const user = useAuthStore((state) => state.user);
+  const [service, setService] =
+    useState<ProfessionalServiceValue>(initialService);
   const [files, setFiles] = useState<File[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   function resetForm() {
     formRef.current?.reset();
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setService(initialService);
     setFiles([]);
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    toast.success("Your consultation request has been submitted.", {
-      description: "A PropertyArk professional will contact you shortly.",
-    });
-    resetForm();
+    if (isSubmitting) return;
+
+    const formData = new FormData(event.currentTarget);
+    const submittedFullName = String(formData.get("fullName") ?? "").trim();
+    const submittedEmail = String(formData.get("email") ?? "").trim();
+    const phone = String(formData.get("phone") ?? "").trim();
+    const consultationDate = String(
+      formData.get("consultationDate") ?? "",
+    ).trim();
+    const propertyReference = String(
+      formData.get("propertyReference") ?? "",
+    ).trim();
+    const message = String(formData.get("serviceBrief") ?? "").trim();
+
+    setIsSubmitting(true);
+    try {
+      await professionalServiceService.create({
+        fullName: submittedFullName,
+        email: submittedEmail,
+        phone,
+        serviceType: professionalServiceApiValue(service),
+        consultationDate: new Date(
+          `${consultationDate}T10:00:00.000Z`,
+        ).toISOString(),
+        propertyReference: propertyReference || undefined,
+        message,
+        documents: files,
+      });
+      toast.success("Your consultation request has been submitted.", {
+        description: "A PropertyArk professional will contact you shortly.",
+      });
+      resetForm();
+    } catch (error) {
+      toast.error(
+        getApiErrorMessage(
+          error,
+          "Your professional service request could not be submitted.",
+        ),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function handleFiles(nextFiles: FileList | null) {
     if (!nextFiles) return;
-    setFiles((current) => [...current, ...Array.from(nextFiles)].slice(0, 5));
+    setFiles((current) => {
+      const combined = [...current, ...Array.from(nextFiles)];
+      if (combined.length > 5) {
+        toast.info("You can attach up to five documents.");
+      }
+      return combined.slice(0, 5);
+    });
   }
 
   return (
@@ -92,18 +143,63 @@ export function ProfessionalServiceForm({
         <FieldGroup>
           <div className="grid gap-5 sm:grid-cols-2">
             <Field>
+              <FieldLabel htmlFor="professional-service-full-name">
+                Full Name
+              </FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <UserRound />
+                </InputGroupAddon>
+                <InputGroupInput
+                  key={`professional-service-name-${user?.id ?? "guest"}`}
+                  id="professional-service-full-name"
+                  name="fullName"
+                  defaultValue={user?.fullName ?? ""}
+                  autoComplete="name"
+                  placeholder="Enter your full name"
+                  required
+                />
+              </InputGroup>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="professional-service-email">
+                Email Address
+              </FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <Mail />
+                </InputGroupAddon>
+                <InputGroupInput
+                  key={`professional-service-email-${user?.id ?? "guest"}`}
+                  id="professional-service-email"
+                  name="email"
+                  type="email"
+                  defaultValue={user?.email ?? ""}
+                  autoComplete="email"
+                  placeholder="Enter your email address"
+                  required
+                />
+              </InputGroup>
+            </Field>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field>
               <FieldLabel htmlFor="service-type">Service Type</FieldLabel>
               <Select
                 name="serviceType"
                 value={service}
-                onValueChange={(value) => setService(value as ServiceType)}
+                onValueChange={(value) =>
+                  setService(value as ProfessionalServiceValue)
+                }
               >
                 <SelectTrigger id="service-type" className="w-full">
                   <SelectValue placeholder="Select a service" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    {SERVICE_TYPES.map((type) => (
+                    {PROFESSIONAL_SERVICE_OPTIONS.map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}
                       </SelectItem>
@@ -125,6 +221,26 @@ export function ProfessionalServiceForm({
               />
             </Field>
           </div>
+
+          <Field>
+            <FieldLabel htmlFor="professional-service-phone">
+              Phone Number
+            </FieldLabel>
+            <InputGroup>
+              <InputGroupAddon>
+                <Phone />
+              </InputGroupAddon>
+              <InputGroupInput
+                id="professional-service-phone"
+                name="phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="e.g. +234 801 234 5678"
+                required
+              />
+            </InputGroup>
+          </Field>
 
           <Field>
             <FieldLabel htmlFor="property-reference">
@@ -230,12 +346,21 @@ export function ProfessionalServiceForm({
         <Separator className="my-7" />
 
         <div className="flex justify-end gap-3">
-          <Button type="button" variant="ghost" onClick={resetForm}>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={isSubmitting}
+            onClick={resetForm}
+          >
             Cancel
           </Button>
-          <Button type="submit" className="min-w-44">
-            <Send data-icon="inline-start" />
-            Submit Request
+          <Button type="submit" className="min-w-44" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <Spinner data-icon="inline-start" />
+            ) : (
+              <Send data-icon="inline-start" />
+            )}
+            {isSubmitting ? "Submitting..." : "Submit Request"}
           </Button>
         </div>
       </form>

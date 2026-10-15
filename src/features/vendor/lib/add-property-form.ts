@@ -1,3 +1,5 @@
+import type { PropertyLandmark } from "@/features/properties/utils/property-landmarks";
+
 export type ListingType = "FOR_SALE" | "FOR_RENT" | "FOR_LAND" | "FOR_SHORTLET";
 
 export type PropertyType =
@@ -27,6 +29,12 @@ export interface AddPropertyFormValues {
   sizeUnit: string;
   bedrooms: string;
   bathrooms: string;
+  yearBuilt: string;
+  furnished: "" | "true" | "false";
+  propertyLandMark: string;
+  distance: string;
+  landmarks: PropertyLandmark[];
+  rentDuration: "MONTHLY" | "YEARLY";
   amenities: string[];
   shortletCheckInTime: string;
   shortletCheckOutTime: string;
@@ -57,6 +65,12 @@ export const INITIAL_PROPERTY_VALUES: AddPropertyFormValues = {
   sizeUnit: "sqm",
   bedrooms: "",
   bathrooms: "",
+  yearBuilt: "",
+  furnished: "",
+  propertyLandMark: "",
+  distance: "",
+  landmarks: [],
+  rentDuration: "YEARLY",
   amenities: [],
   shortletCheckInTime: "",
   shortletCheckOutTime: "",

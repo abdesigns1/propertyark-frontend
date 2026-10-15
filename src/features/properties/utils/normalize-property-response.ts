@@ -9,6 +9,8 @@ import type {
   PropertyMediaResponse,
 } from "@/features/properties/types/api";
 import { getBackendOrigin } from "@/lib/backend-url";
+import { parsePropertyLandmarks } from "@/features/properties/utils/property-landmarks";
+import { getPropertyListedAt } from "@/features/properties/utils/property-listing-date";
 
 export const PROPERTY_IMAGE_FALLBACK = "/assets/images/hero-property.jpeg";
 
@@ -27,6 +29,29 @@ const PURPOSE_MAP: Record<string, PropertyListingPurpose> = {
   FOR_SHORTLET: "shortlet",
 };
 
+type PropertyListingSource = Pick<PropertyApiItem, "type" | "listingType">;
+
+/**
+ * Land is a property category and a listing purpose in the backend contract.
+ * Prefer the LAND category when older records were accidentally stored with
+ * the default FOR_SALE purpose so every surface presents them consistently.
+ */
+export function normalizePropertyListingType(property: PropertyListingSource) {
+  const propertyType = String(property.type ?? "")
+    .trim()
+    .toUpperCase();
+  const rawListingType = String(property.listingType ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (propertyType === "LAND" || rawListingType.includes("LAND")) {
+    return "FOR_LAND";
+  }
+  if (rawListingType.includes("SHORT")) return "FOR_SHORTLET";
+  if (rawListingType.includes("RENT")) return "FOR_RENT";
+  return "FOR_SALE";
+}
+
 const STATUS_MAP: Record<string, PropertyStatus> = {
   AVAILABLE: "available",
   SOLD: "sold",
@@ -44,9 +69,12 @@ const BLOCKING_BOOKING_STATUSES = new Set([
 ]);
 
 function getPrice(property: PropertyApiItem) {
-  if (property.listingType === "FOR_RENT") return property.rentAmount ?? 0;
-  if (property.listingType === "FOR_SALE") return property.salePrice ?? 0;
-  if (property.listingType === "FOR_LAND") return property.landFee ?? 0;
+  const listingType = normalizePropertyListingType(property);
+  if (listingType === "FOR_RENT") return property.rentAmount ?? 0;
+  if (listingType === "FOR_SALE") return property.salePrice ?? 0;
+  if (listingType === "FOR_LAND") {
+    return property.landFee ?? property.salePrice ?? 0;
+  }
   return property.shortletAmount ?? 0;
 }
 
@@ -122,6 +150,20 @@ export function sortPropertyMediaPrimaryFirst(
 }
 
 export function normalizePropertyResponse(property: PropertyApiItem): Property {
+  const listingType = normalizePropertyListingType(property);
+  const yearBuilt = Number(property.yearBuilt);
+  const rawFurnished: unknown = property.furnished;
+  const furnishedText =
+    typeof rawFurnished === "string" ? rawFurnished.trim().toLowerCase() : "";
+  const furnished =
+    typeof rawFurnished === "boolean"
+      ? rawFurnished
+      : furnishedText === "true"
+        ? true
+        : furnishedText === "false"
+          ? false
+          : undefined;
+  const rentDuration = property.rentDuration?.toUpperCase();
   const media = sortPropertyMediaPrimaryFirst(property.media);
   const images = media
     .filter((item) => item.type === "IMAGE")
@@ -145,7 +187,7 @@ export function normalizePropertyResponse(property: PropertyApiItem): Property {
     // currency is Naira. Do not infer currency from the legacy priceDisplay text.
     currency: "NGN",
     type: TYPE_MAP[property.type] ?? "commercial",
-    purpose: PURPOSE_MAP[property.listingType] ?? "sale",
+    purpose: PURPOSE_MAP[listingType],
     status: STATUS_MAP[property.status] ?? "pending-approval",
     location: {
       address: property.address,
@@ -157,6 +199,19 @@ export function normalizePropertyResponse(property: PropertyApiItem): Property {
     bathrooms: property.bathrooms,
     sizeSqm: property.size,
     sizeUnit: property.sizeUnit?.toLowerCase() === "sqft" ? "sqft" : "sqm",
+    yearBuilt:
+      Number.isFinite(yearBuilt) && yearBuilt > 0 ? yearBuilt : undefined,
+    furnished,
+    propertyLandMark: property.propertyLandMark ?? undefined,
+    distance: property.distance ?? undefined,
+    landmarks: parsePropertyLandmarks(
+      property.propertyLandMark,
+      property.distance,
+    ),
+    rentDuration:
+      rentDuration === "MONTHLY" || rentDuration === "YEARLY"
+        ? rentDuration
+        : undefined,
     images: images.length ? images : [PROPERTY_IMAGE_FALLBACK],
     imageMedia: imageMedia.length ? imageMedia : undefined,
     videos,
@@ -173,6 +228,7 @@ export function normalizePropertyResponse(property: PropertyApiItem): Property {
     featureExpiresAt: property.featureExpiresAt ?? null,
     createdAt: property.createdAt,
     updatedAt: property.updatedAt,
+    listedAt: getPropertyListedAt(property) ?? undefined,
     unavailableDateRanges: (property.bookedSlots ?? [])
       .filter((slot) =>
         BLOCKING_BOOKING_STATUSES.has(slot.status.toUpperCase()),
@@ -183,7 +239,7 @@ export function normalizePropertyResponse(property: PropertyApiItem): Property {
         end: slot.checkOutDate,
       })),
     shortletDetails:
-      property.listingType === "FOR_SHORTLET"
+      listingType === "FOR_SHORTLET"
         ? {
             checkInTime:
               property.checkInTime ?? property.shortletCheckInTime ?? undefined,

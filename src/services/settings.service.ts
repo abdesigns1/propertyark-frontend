@@ -132,4 +132,9 @@ export const settingsService = {
           payload.confirmPassword ?? payload.confirmNewPassword ?? "",
       })
     ).data,
+  deleteAccount: async (payload: {
+    confirmationPhrase: "DELETE MY ACCOUNT";
+    password?: string;
+    reason?: string;
+  }) => (await api.delete("/users/account", { data: payload })).data,
 };

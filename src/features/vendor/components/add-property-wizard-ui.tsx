@@ -7,6 +7,7 @@ import { Check, FileText, Lightbulb, Trash2, UploadCloud } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PROPERTY_STEPS } from "@/features/vendor/lib/add-property-form";
 import { cn } from "@/lib/utils";
 
@@ -129,9 +130,17 @@ export function PropertyUploadBox({
 export function PropertyFileList({
   files,
   onRemove,
+  selectionMode = false,
+  selectedFileKeys,
+  getFileKey,
+  onToggleSelect,
 }: {
   files: File[];
   onRemove?: (index: number) => void;
+  selectionMode?: boolean;
+  selectedFileKeys?: Set<string>;
+  getFileKey?: (file: File, index: number) => string;
+  onToggleSelect?: (fileKey: string) => void;
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -140,12 +149,19 @@ export function PropertyFileList({
           key={`${file.name}-${file.lastModified}-${file.size}-${index}`}
           className="flex items-center gap-3 rounded-lg border p-3"
         >
+          {selectionMode && getFileKey && (
+            <Checkbox
+              checked={selectedFileKeys?.has(getFileKey(file, index)) ?? false}
+              aria-label={`Select ${file.name}`}
+              onCheckedChange={() => onToggleSelect?.(getFileKey(file, index))}
+            />
+          )}
           <FileText className="size-5 text-primary" />
           <span className="min-w-0 flex-1 truncate text-sm">{file.name}</span>
           <Badge variant="outline">
             {(file.size / 1024 / 1024).toFixed(1)} MB
           </Badge>
-          {onRemove && (
+          {onRemove && !selectionMode && (
             <Button
               type="button"
               variant="ghost"

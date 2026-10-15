@@ -37,7 +37,11 @@ export interface PropertyApiItem {
   bathrooms: number;
   amenities?: string[];
   condition?: string;
-  yearBuilt?: number;
+  yearBuilt?: number | null;
+  furnished?: boolean | null;
+  propertyLandMark?: string | null;
+  distance?: string | null;
+  rentDuration?: "MONTHLY" | "YEARLY" | string | null;
   documents?: Array<{
     id: string;
     name?: string;
@@ -50,6 +54,9 @@ export interface PropertyApiItem {
   vendorId: string;
   createdAt: string;
   updatedAt?: string;
+  listedAt?: string | null;
+  publishedAt?: string | null;
+  approvedAt?: string | null;
   media?: PropertyMediaResponse[];
   bookedSlots?: PropertyBookedSlotResponse[];
   shortletCheckInTime?: string | null;

@@ -1,3 +1,5 @@
+import type { PropertyLandmark } from "@/features/properties/utils/property-landmarks";
+
 export type PropertyType =
   | "duplex"
   | "bungalow"
@@ -70,6 +72,7 @@ export interface Property {
   featureExpiresAt?: string | null;
   createdAt: string;
   updatedAt?: string;
+  listedAt?: string;
   unavailableDateRanges?: Array<{
     start: string;
     end: string;
@@ -120,6 +123,11 @@ export interface Property {
   reviewCount?: number;
   garageSpaces?: number;
   yearBuilt?: number;
+  furnished?: boolean;
+  propertyLandMark?: string;
+  distance?: string;
+  landmarks?: PropertyLandmark[];
+  rentDuration?: "MONTHLY" | "YEARLY";
   landSizeSqm?: number;
   roomsCount?: number;
   amenities?: string[];

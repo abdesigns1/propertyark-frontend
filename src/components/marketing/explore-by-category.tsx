@@ -44,7 +44,7 @@ const CATEGORIES = [
 
 export function ExploreByCategory() {
   return (
-    <section className="mx-auto w-full max-w-7xl px-6 pb-20 lg:px-8">
+    <section className="mx-auto w-full max-w-7xl px-6 pb-10 sm:pb-12 lg:px-8">
       <SlideInTop className="text-center">
         <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
           Explore by Category

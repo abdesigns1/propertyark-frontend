@@ -554,7 +554,11 @@ function PropertyRow({
     <TableRow className="h-[110px]">
       <TableCell className="pl-6">
         <div className="flex min-w-56 items-center gap-3">
-          <div className="relative size-14 shrink-0 overflow-hidden rounded-lg">
+          <Link
+            href={`/admin/properties/${property.id}`}
+            aria-label={`View details for ${property.name}`}
+            className="relative size-14 shrink-0 overflow-hidden rounded-lg outline-none ring-offset-background transition-shadow hover:ring-2 hover:ring-primary/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
             <Image
               src={adminPropertyImage(property)}
               alt={property.name}
@@ -567,7 +571,7 @@ function PropertyRow({
               sizes="56px"
               className="object-cover"
             />
-          </div>
+          </Link>
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-semibold">{property.name}</p>

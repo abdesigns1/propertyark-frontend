@@ -1,8 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SocialLinks } from "@/components/shared/social-links";
+import { NewsletterSignupForm } from "@/features/newsletter/components/newsletter-signup-form";
 
 const FOOTER_COLUMNS = [
   {
@@ -57,16 +56,7 @@ export function Footer() {
               Subscribe to us to get newsletter about property information.
             </p>
           </div>
-          <form className="flex w-full max-w-md gap-3">
-            <Input
-              type="email"
-              placeholder="Insert your email here"
-              className="h-12 border-0 bg-white text-foreground"
-            />
-            <Button className="h-12 shrink-0 rounded-lg bg-secondary px-6 text-secondary-foreground hover:bg-secondary-hover">
-              Subscribe
-            </Button>
-          </form>
+          <NewsletterSignupForm />
         </div>
       </div>
 

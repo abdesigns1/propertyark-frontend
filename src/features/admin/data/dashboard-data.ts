@@ -1,6 +1,7 @@
 import {
   BadgeCheck,
   Bell,
+  BriefcaseBusiness,
   Building2,
   ChartNoAxesCombined,
   ClipboardCheck,
@@ -8,6 +9,8 @@ import {
   Hotel,
   LayoutDashboard,
   MessageSquareText,
+  Mail,
+  Newspaper,
   Settings,
   Users,
   ReceiptText,
@@ -19,6 +22,13 @@ export const adminNavigation = [
   { label: "Properties", href: "/admin/properties", icon: Building2 },
   { label: "Inspections", href: "/admin/inspections", icon: ClipboardCheck },
   { label: "Shortlet Bookings", href: "/admin/shortlet-bookings", icon: Hotel },
+  {
+    label: "Professional Services",
+    href: "/admin/professional-services",
+    icon: BriefcaseBusiness,
+  },
+  { label: "Contact Messages", href: "/admin/contacts", icon: Mail },
+  { label: "Newsletter", href: "/admin/newsletter", icon: Newspaper },
   { label: "KYC Verification", href: "/admin/kyc", icon: BadgeCheck },
   // { label: "Documents Review", href: "#documents", icon: FileCheck2 },
   // Preserved for later implementation:

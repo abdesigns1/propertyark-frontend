@@ -1,4 +1,9 @@
 import type { PropertyApiItem } from "@/features/properties/types/api";
+import {
+  parsePropertyLandmarks,
+  serializePropertyLandmarks,
+  type PropertyLandmark,
+} from "@/features/properties/utils/property-landmarks";
 import type { PropertyDraft } from "@/features/vendor/lib/property-drafts";
 
 export type ListingStatus = "published" | "pending" | "draft" | "rejected";
@@ -17,6 +22,12 @@ export interface PropertyDraftValues {
   sizeUnit?: string;
   bedrooms?: string;
   bathrooms?: string;
+  yearBuilt?: string;
+  furnished?: "" | "true" | "false";
+  propertyLandMark?: string;
+  distance?: string;
+  landmarks?: PropertyLandmark[];
+  rentDuration?: "MONTHLY" | "YEARLY";
   amenities?: string[];
 }
 
@@ -31,6 +42,10 @@ export function draftAsProperty(
   const values = draft.values;
   const amount = Number(values.price) || 0;
   const listingType = values.listingType || "FOR_SALE";
+  const landmarkFields = serializePropertyLandmarks(
+    values.landmarks ??
+      parsePropertyLandmarks(values.propertyLandMark, values.distance),
+  );
 
   return {
     id: `draft:${draft.id}`,
@@ -51,6 +66,11 @@ export function draftAsProperty(
     sizeUnit: values.sizeUnit,
     bedrooms: Number(values.bedrooms) || 0,
     bathrooms: Number(values.bathrooms) || 0,
+    yearBuilt: values.yearBuilt ? Number(values.yearBuilt) : null,
+    furnished: values.furnished ? values.furnished === "true" : null,
+    propertyLandMark: landmarkFields.propertyLandMark || null,
+    distance: landmarkFields.distance || null,
+    rentDuration: values.rentDuration,
     amenities: values.amenities || [],
     vendorId: "local",
     createdAt: draft.updatedAt,

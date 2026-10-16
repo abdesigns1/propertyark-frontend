@@ -31,6 +31,7 @@ const PURPOSES = [
   { value: "land", label: "Land" },
   { value: "rent", label: "Rent" },
   { value: "shortlet", label: "Shortlet" },
+  { value: "joint-venture", label: "Joint Venture" },
 ] as const;
 
 const LOCATIONS = ["Lagos", "Abuja", "Port Harcourt", "Ibadan", "Enugu"];
@@ -89,6 +90,8 @@ export function PropertySearchForm() {
   const [beds, setBeds] = useState("all");
 
   const today = toDateInputValue(new Date());
+  const usesLandSearchFields =
+    purpose === "land" || purpose === "joint-venture";
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -107,7 +110,7 @@ export function PropertySearchForm() {
       if (purpose === "rent" && location !== "all") {
         params.set("location", location);
       }
-      if (purpose !== "land" && category !== "all") {
+      if (!usesLandSearchFields && category !== "all") {
         params.set("category", category);
       }
       if (
@@ -138,13 +141,13 @@ export function PropertySearchForm() {
       <TabsList
         variant="line"
         aria-label="Listing purpose"
-        className="h-14 w-full shrink-0 justify-start gap-0 rounded-none border-b bg-card px-5 sm:px-6"
+        className="h-14 w-full shrink-0 justify-start gap-0 overflow-x-auto rounded-none border-b bg-card px-5 sm:px-6"
       >
         {PURPOSES.map((item) => (
           <TabsTrigger
             key={item.value}
             value={item.value}
-            className="h-full min-w-0 flex-1 px-2 text-sm font-medium text-muted-foreground sm:min-w-20 sm:flex-none sm:px-3"
+            className="h-full min-w-fit flex-none px-3 text-sm font-medium text-muted-foreground sm:min-w-20"
           >
             <span className={cn(purpose === item.value && "text-primary")}>
               {item.label}
@@ -165,7 +168,7 @@ export function PropertySearchForm() {
             "grid gap-0 lg:items-stretch",
             purpose === "rent" || purpose === "shortlet"
               ? "lg:grid-cols-[1.35fr_0.78fr_0.78fr_0.72fr_0.72fr_auto]"
-              : purpose === "land"
+              : usesLandSearchFields
                 ? "lg:grid-cols-[1.7fr_0.8fr_auto]"
                 : "lg:grid-cols-[1.45fr_0.82fr_0.82fr_0.78fr_auto]",
           )}
@@ -335,7 +338,7 @@ export function PropertySearchForm() {
                 </Field>
               )}
 
-              {purpose !== "land" && (
+              {!usesLandSearchFields && (
                 <>
                   <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
                     <FieldLabel

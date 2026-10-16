@@ -44,6 +44,9 @@ const LISTING_TYPE_MAP: Record<string, string[]> = {
   // sale listing from a buyer's perspective and must appear under For Sale.
   Sale: ["FOR_SALE", "FOR_LAND"],
   Land: ["FOR_LAND"],
+  // Joint Venture is a temporary frontend-only classification. Do not send an
+  // unsupported listing type to the API; matching is applied locally below.
+  "Joint Venture": [],
   Shortlet: ["FOR_SHORTLET"],
 };
 
@@ -52,6 +55,7 @@ const QUERY_TYPE_TO_LABEL: Record<string, string> = {
   rent: "Rent",
   sale: "Sale",
   land: "Land",
+  "joint-venture": "Joint Venture",
   shortlet: "Shortlet",
 };
 
@@ -151,6 +155,15 @@ function matchesSearchKeyword(property: Property, keyword: string) {
       .filter(Boolean)
       .join(" "),
     keyword,
+  );
+}
+
+function matchesJointVenture(property: Property) {
+  return matchesNormalizedWords(
+    [property.title, property.description, property.amenities?.join(" ")]
+      .filter(Boolean)
+      .join(" "),
+    "joint venture",
   );
 }
 
@@ -308,6 +321,11 @@ function PropertiesContent() {
       .filter((property) =>
         matchesLocationKeyword(property, deferredFilters.location),
       )
+      .filter(
+        (property) =>
+          !deferredFilters.types.includes("Joint Venture") ||
+          matchesJointVenture(property),
+      )
       .filter((property) => matchesSearchKeyword(property, searchQuery));
 
     return matchingProperties
@@ -331,7 +349,12 @@ function PropertiesContent() {
         );
       })
       .map(({ property }) => property);
-  }, [availableProperties.data, deferredFilters.location, searchQuery]);
+  }, [
+    availableProperties.data,
+    deferredFilters.location,
+    deferredFilters.types,
+    searchQuery,
+  ]);
   const totalPages = Math.max(
     1,
     Math.ceil(rankedProperties.length / PROPERTIES_PER_PAGE),
@@ -384,11 +407,13 @@ function PropertiesContent() {
             ? "Properties For Sale"
             : routePurpose === "land"
               ? "Land For Sale"
-              : routePurpose === "rent"
-                ? "Properties For Rent"
-                : routePurpose === "shortlet"
-                  ? "Shortlet Properties"
-                  : "Properties"
+              : routePurpose === "joint-venture"
+                ? "Joint Venture Properties"
+                : routePurpose === "rent"
+                  ? "Properties For Rent"
+                  : routePurpose === "shortlet"
+                    ? "Shortlet Properties"
+                    : "Properties"
         }
         description={
           routePurpose === "shortlet"

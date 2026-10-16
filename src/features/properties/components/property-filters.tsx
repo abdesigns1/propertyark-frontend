@@ -6,7 +6,13 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-const PROPERTY_TYPES = ["Rent", "Sale", "Land", "Shortlet"] as const;
+const PROPERTY_TYPES = [
+  "Rent",
+  "Sale",
+  "Land",
+  "Shortlet",
+  "Joint Venture",
+] as const;
 const CITY_OPTIONS = [
   "Lagos",
   "Abuja",

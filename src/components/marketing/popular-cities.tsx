@@ -26,10 +26,9 @@ const CITIES = [
       "https://images.unsplash.com/photo-1663888848434-65251c939573?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8SWJhZGFufGVufDB8fDB8fHww",
   },
   {
-    name: "Enugu",
-    tag: "Coal City State",
-    image:
-      "https://images.unsplash.com/photo-1577900190299-7316c32fe85f?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    name: "Port Harcourt",
+    tag: "The Garden City",
+    image: "/assets/images/port-harcourt-city.jpg",
   },
 ];
 
@@ -57,7 +56,7 @@ export function PopularCities() {
             >
               <Image
                 src={city.image}
-                alt={city.name}
+                alt={`${city.name} cityscape`}
                 fill
                 sizes="(max-width: 1023px) 50vw, 25vw"
                 className="object-cover transition-transform duration-300 group-hover:scale-105"

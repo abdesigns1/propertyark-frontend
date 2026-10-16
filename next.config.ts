@@ -22,6 +22,9 @@ function backendImagePattern() {
 
 const nextConfig: NextConfig = {
   images: {
+    // Property uploads use unique, timestamped filenames. Keep their generated
+    // responsive variants cached so repeat visits do not wake the media origin.
+    minimumCacheTTL: 2_678_400,
     remotePatterns: [
       {
         protocol: "https",

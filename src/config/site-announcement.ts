@@ -21,7 +21,7 @@ export const activeSiteAnnouncement: SiteAnnouncement = {
   label: "PropertyArk is live",
   title: "Vendors get 1,000 free points",
   message: "Use your free points to post properties on PropertyArk.",
-  period: "Available from 1 October to 1 December 2026.",
+  period: "Available from 1 October to 31 December 2026.",
   ctaLabel: "Sign up as a vendor",
   ctaHref: "/register?role=vendor",
   // Disable this independently when the new-vendor welcome campaign ends.

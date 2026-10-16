@@ -42,8 +42,6 @@ export function PropertyVideo({ thumbnailSrc, videoUrl }: PropertyVideoProps) {
               alt="Video preview"
               fill
               sizes="(max-width: 1023px) 100vw, 66vw"
-              crossOrigin="anonymous"
-              unoptimized
               onError={(event) =>
                 showPropertyImageFallback(event.currentTarget)
               }

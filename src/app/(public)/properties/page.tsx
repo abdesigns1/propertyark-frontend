@@ -38,11 +38,13 @@ const DEFAULT_FILTERS: PropertyFilterState = {
 };
 const PROPERTIES_PER_PAGE = 9;
 
-const LISTING_TYPE_MAP: Record<string, string> = {
-  Rent: "FOR_RENT",
-  Sale: "FOR_SALE",
-  Land: "FOR_LAND",
-  Shortlet: "FOR_SHORTLET",
+const LISTING_TYPE_MAP: Record<string, string[]> = {
+  Rent: ["FOR_RENT"],
+  // Land is modeled as a separate listing type by the API, but it is still a
+  // sale listing from a buyer's perspective and must appear under For Sale.
+  Sale: ["FOR_SALE", "FOR_LAND"],
+  Land: ["FOR_LAND"],
+  Shortlet: ["FOR_SHORTLET"],
 };
 
 // Reverse mapping: the "type" query param value -> checkbox label used in the sidebar
@@ -59,6 +61,20 @@ const PROPERTY_CATEGORY_MAP: Record<string, string> = {
   industrial: "INDUSTRIAL",
   "mixed-use": "MIXED_USE",
 };
+
+// Higher-value fields have a stronger influence on search ordering. Exact
+// phrases and complete-field matches receive additional bonuses below.
+const SEARCH_FIELD_WEIGHTS = {
+  title: 500,
+  city: 140,
+  state: 120,
+  address: 100,
+  country: 40,
+  type: 35,
+  purpose: 35,
+  description: 20,
+  amenities: 15,
+} as const;
 
 function normalizedLocation(value: string) {
   return value
@@ -138,6 +154,85 @@ function matchesSearchKeyword(property: Property, keyword: string) {
   );
 }
 
+function countPhraseOccurrences(value: string, phrase: string) {
+  let count = 0;
+  let searchFrom = 0;
+
+  while (searchFrom < value.length) {
+    const matchIndex = value.indexOf(phrase, searchFrom);
+    if (matchIndex === -1) break;
+
+    count += 1;
+    searchFrom = matchIndex + phrase.length;
+  }
+
+  return count;
+}
+
+function searchFieldRelevance(
+  value: string | undefined,
+  normalizedQuery: string,
+  weight: number,
+) {
+  if (!value) return 0;
+
+  const normalizedValue = normalizedLocation(value);
+  if (!normalizedValue) return 0;
+
+  const phraseOccurrences = countPhraseOccurrences(
+    normalizedValue,
+    normalizedQuery,
+  );
+  let score = phraseOccurrences * weight;
+
+  if (normalizedValue === normalizedQuery) {
+    score += weight * 4;
+  } else if (normalizedValue.startsWith(normalizedQuery)) {
+    score += weight * 3;
+  } else if (phraseOccurrences > 0) {
+    score += weight * 2;
+  }
+
+  const fieldWords = normalizedValue.split(" ").filter(Boolean);
+  for (const queryWord of normalizedQuery.split(" ").filter(Boolean)) {
+    if (fieldWords.includes(queryWord)) {
+      score += weight;
+    } else if (
+      fieldWords.some(
+        (fieldWord) =>
+          fieldWord.includes(queryWord) || queryWord.includes(fieldWord),
+      )
+    ) {
+      score += Math.round(weight / 2);
+    }
+  }
+
+  return score;
+}
+
+function propertySearchRelevance(property: Property, keyword: string) {
+  const normalizedQuery = normalizedLocation(keyword);
+  if (!normalizedQuery) return 0;
+
+  const weightedFields: Array<[string | undefined, number]> = [
+    [property.title, SEARCH_FIELD_WEIGHTS.title],
+    [property.location.city, SEARCH_FIELD_WEIGHTS.city],
+    [property.location.state, SEARCH_FIELD_WEIGHTS.state],
+    [property.location.address, SEARCH_FIELD_WEIGHTS.address],
+    [property.location.country, SEARCH_FIELD_WEIGHTS.country],
+    [property.type, SEARCH_FIELD_WEIGHTS.type],
+    [property.purpose, SEARCH_FIELD_WEIGHTS.purpose],
+    [property.description, SEARCH_FIELD_WEIGHTS.description],
+    [property.amenities?.join(" "), SEARCH_FIELD_WEIGHTS.amenities],
+  ];
+
+  return weightedFields.reduce(
+    (total, [value, weight]) =>
+      total + searchFieldRelevance(value, normalizedQuery, weight),
+    0,
+  );
+}
+
 function PropertiesContent() {
   const pathname = usePathname();
   const queryClient = useQueryClient();
@@ -157,10 +252,13 @@ function PropertiesContent() {
   const bedrooms = Number(searchParams.get("bedrooms")) || undefined;
   const hasExplicitMaxPrice = searchParams.has("maxPrice");
   const deferredFilters = useDeferredValue(filters);
+  // The production API currently does not apply its `search` parameter
+  // consistently. Fetch the selected inventory and use the field-aware matcher
+  // below so names, descriptions, cities, states, and addresses behave alike.
   const backendFilters = useMemo(
     () => ({
       listingTypes: deferredFilters.types
-        .map((type) => LISTING_TYPE_MAP[type])
+        .flatMap((type) => LISTING_TYPE_MAP[type] ?? [])
         .filter(Boolean),
       propertyTypes: PROPERTY_CATEGORY_MAP[propertyCategory]
         ? [PROPERTY_CATEGORY_MAP[propertyCategory]]
@@ -175,15 +273,8 @@ function PropertiesContent() {
           ? deferredFilters.priceRange[1]
           : undefined,
       bedrooms,
-      search: searchQuery || undefined,
     }),
-    [
-      bedrooms,
-      deferredFilters,
-      hasExplicitMaxPrice,
-      propertyCategory,
-      searchQuery,
-    ],
+    [bedrooms, deferredFilters, hasExplicitMaxPrice, propertyCategory],
   );
   const availableProperties = useAllAvailableProperties(backendFilters);
 
@@ -212,33 +303,42 @@ function PropertiesContent() {
   }, [pathname, searchParams]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const locationMatches = useMemo(
-    () =>
-      (availableProperties.data ?? [])
-        .filter((property) =>
-          matchesLocationKeyword(property, deferredFilters.location),
-        )
-        .filter((property) => matchesSearchKeyword(property, searchQuery))
-        .sort((first, second) => {
-          const featuredDifference =
-            Number(second.isFeatured === true) -
-            Number(first.isFeatured === true);
-          if (featuredDifference !== 0) return featuredDifference;
+  const rankedProperties = useMemo(() => {
+    const matchingProperties = (availableProperties.data ?? [])
+      .filter((property) =>
+        matchesLocationKeyword(property, deferredFilters.location),
+      )
+      .filter((property) => matchesSearchKeyword(property, searchQuery));
 
-          return (
-            new Date(second.createdAt).getTime() -
-            new Date(first.createdAt).getTime()
-          );
-        }),
-    [availableProperties.data, deferredFilters.location, searchQuery],
-  );
+    return matchingProperties
+      .map((property) => ({
+        property,
+        relevance: propertySearchRelevance(property, searchQuery),
+      }))
+      .sort((first, second) => {
+        if (second.relevance !== first.relevance) {
+          return second.relevance - first.relevance;
+        }
+
+        const featuredDifference =
+          Number(second.property.isFeatured === true) -
+          Number(first.property.isFeatured === true);
+        if (featuredDifference !== 0) return featuredDifference;
+
+        return (
+          new Date(second.property.createdAt).getTime() -
+          new Date(first.property.createdAt).getTime()
+        );
+      })
+      .map(({ property }) => property);
+  }, [availableProperties.data, deferredFilters.location, searchQuery]);
   const totalPages = Math.max(
     1,
-    Math.ceil(locationMatches.length / PROPERTIES_PER_PAGE),
+    Math.ceil(rankedProperties.length / PROPERTIES_PER_PAGE),
   );
   const currentPage = Math.min(page, totalPages);
-  const totalProperties = locationMatches.length;
-  const filteredProperties = locationMatches.slice(
+  const totalProperties = rankedProperties.length;
+  const filteredProperties = rankedProperties.slice(
     (currentPage - 1) * PROPERTIES_PER_PAGE,
     currentPage * PROPERTIES_PER_PAGE,
   );
@@ -282,11 +382,13 @@ function PropertiesContent() {
         title={
           routePurpose === "sale"
             ? "Properties For Sale"
-            : routePurpose === "rent"
-              ? "Properties For Rent"
-              : routePurpose === "shortlet"
-                ? "Shortlet Properties"
-                : "Properties"
+            : routePurpose === "land"
+              ? "Land For Sale"
+              : routePurpose === "rent"
+                ? "Properties For Rent"
+                : routePurpose === "shortlet"
+                  ? "Shortlet Properties"
+                  : "Properties"
         }
         description={
           routePurpose === "shortlet"

@@ -26,9 +26,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 const PURPOSES = [
+  { value: "all", label: "All" },
   { value: "sale", label: "Sale" },
-  { value: "shortlet", label: "Shortlet" },
+  { value: "land", label: "Land" },
   { value: "rent", label: "Rent" },
+  { value: "shortlet", label: "Shortlet" },
 ] as const;
 
 const LOCATIONS = ["Lagos", "Abuja", "Port Harcourt", "Ibadan", "Enugu"];
@@ -76,7 +78,7 @@ function dayAfter(value: string) {
 
 export function PropertySearchForm() {
   const router = useRouter();
-  const [purpose, setPurpose] = useState("sale");
+  const [purpose, setPurpose] = useState("all");
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("all");
   const [category, setCategory] = useState("all");
@@ -93,18 +95,8 @@ export function PropertySearchForm() {
 
     const params = new URLSearchParams();
     const search = query.trim();
-    const searchedCity =
-      location === "all"
-        ? LOCATIONS.find(
-            (city) => city.toLocaleLowerCase() === search.toLocaleLowerCase(),
-          )
-        : undefined;
-    if (searchedCity) {
-      params.set("location", searchedCity);
-    } else if (search) {
-      params.set("search", search);
-    }
-    if (purpose) params.set("purpose", purpose);
+    if (search) params.set("search", search);
+    if (purpose !== "all") params.set("purpose", purpose);
 
     if (purpose === "shortlet") {
       if (checkIn) params.set("checkIn", checkIn);
@@ -115,8 +107,13 @@ export function PropertySearchForm() {
       if (purpose === "rent" && location !== "all") {
         params.set("location", location);
       }
-      if (category !== "all") params.set("category", category);
-      if ((purpose === "sale" || purpose === "rent") && beds !== "all") {
+      if (purpose !== "land" && category !== "all") {
+        params.set("category", category);
+      }
+      if (
+        (purpose === "all" || purpose === "sale" || purpose === "rent") &&
+        beds !== "all"
+      ) {
         params.set("bedrooms", beds);
       }
 
@@ -147,7 +144,7 @@ export function PropertySearchForm() {
           <TabsTrigger
             key={item.value}
             value={item.value}
-            className="h-full min-w-16 flex-1 px-3 text-sm font-medium text-muted-foreground sm:min-w-24 sm:flex-none"
+            className="h-full min-w-0 flex-1 px-2 text-sm font-medium text-muted-foreground sm:min-w-20 sm:flex-none sm:px-3"
           >
             <span className={cn(purpose === item.value && "text-primary")}>
               {item.label}
@@ -166,9 +163,11 @@ export function PropertySearchForm() {
         <FieldGroup
           className={cn(
             "grid gap-0 lg:items-stretch",
-            purpose === "sale"
-              ? "lg:grid-cols-[1.45fr_0.82fr_0.82fr_0.78fr_auto]"
-              : "lg:grid-cols-[1.35fr_0.78fr_0.78fr_0.72fr_0.72fr_auto]",
+            purpose === "rent" || purpose === "shortlet"
+              ? "lg:grid-cols-[1.35fr_0.78fr_0.78fr_0.72fr_0.72fr_auto]"
+              : purpose === "land"
+                ? "lg:grid-cols-[1.7fr_0.8fr_auto]"
+                : "lg:grid-cols-[1.45fr_0.82fr_0.82fr_0.78fr_auto]",
           )}
         >
           {purpose === "shortlet" ? (
@@ -336,59 +335,63 @@ export function PropertySearchForm() {
                 </Field>
               )}
 
-              <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
-                <FieldLabel
-                  htmlFor={`home-${purpose}-beds`}
-                  className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-                >
-                  <BedDouble aria-hidden="true" className="size-4" />
-                  Beds
-                </FieldLabel>
-                <Select value={beds} onValueChange={setBeds}>
-                  <SelectTrigger
-                    id={`home-${purpose}-beds`}
-                    className="h-7 w-full border-0 px-0 shadow-none focus-visible:ring-0"
-                  >
-                    <SelectValue placeholder="Any beds" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {BED_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
+              {purpose !== "land" && (
+                <>
+                  <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
+                    <FieldLabel
+                      htmlFor={`home-${purpose}-beds`}
+                      className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+                    >
+                      <BedDouble aria-hidden="true" className="size-4" />
+                      Beds
+                    </FieldLabel>
+                    <Select value={beds} onValueChange={setBeds}>
+                      <SelectTrigger
+                        id={`home-${purpose}-beds`}
+                        className="h-7 w-full border-0 px-0 shadow-none focus-visible:ring-0"
+                      >
+                        <SelectValue placeholder="Any beds" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {BED_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
 
-              <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
-                <FieldLabel
-                  htmlFor="home-property-type"
-                  className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-                >
-                  <Building2 aria-hidden="true" className="size-4" />
-                  Property Type
-                </FieldLabel>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger
-                    id="home-property-type"
-                    className="h-7 w-full border-0 px-0 shadow-none focus-visible:ring-0"
-                  >
-                    <SelectValue placeholder="Select property type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {PROPERTY_CATEGORIES.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
+                  <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
+                    <FieldLabel
+                      htmlFor="home-property-type"
+                      className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+                    >
+                      <Building2 aria-hidden="true" className="size-4" />
+                      Property Type
+                    </FieldLabel>
+                    <Select value={category} onValueChange={setCategory}>
+                      <SelectTrigger
+                        id="home-property-type"
+                        className="h-7 w-full border-0 px-0 shadow-none focus-visible:ring-0"
+                      >
+                        <SelectValue placeholder="Select property type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {PROPERTY_CATEGORIES.map((item) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </>
+              )}
 
               <Field className="min-h-20 justify-center border-t px-5 py-3 lg:border-r lg:border-t-0">
                 <FieldLabel

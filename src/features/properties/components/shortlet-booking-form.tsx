@@ -321,8 +321,6 @@ export function ShortletBookingForm({
                 alt=""
                 fill
                 sizes="96px"
-                crossOrigin="anonymous"
-                unoptimized
                 onError={(event) =>
                   showPropertyImageFallback(event.currentTarget)
                 }

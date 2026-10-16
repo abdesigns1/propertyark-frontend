@@ -263,13 +263,11 @@ function PropertyImageLightboxContent({
               `Property image ${index + 1} of ${filteredImages.length}`
             }
             fill
-            crossOrigin="anonymous"
-            unoptimized
             onError={(event) => showPropertyImageFallback(event.currentTarget)}
             className="object-contain transition-transform duration-200 ease-out"
             style={{ transform: `scale(${zoom})` }}
             sizes="100vw"
-            priority
+            preload
           />
         </div>
 
@@ -311,8 +309,6 @@ function PropertyImageLightboxContent({
                 alt=""
                 fill
                 sizes="80px"
-                crossOrigin="anonymous"
-                unoptimized
                 onError={(event) =>
                   showPropertyImageFallback(event.currentTarget)
                 }

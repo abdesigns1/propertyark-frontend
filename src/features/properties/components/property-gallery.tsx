@@ -82,13 +82,11 @@ export function PropertyGallery({
               alt={main.name || "Property main view"}
               fill
               sizes="(max-width: 1023px) 100vw, 58vw"
-              crossOrigin="anonymous"
-              unoptimized
               onError={(event) =>
                 showPropertyImageFallback(event.currentTarget)
               }
               className="object-cover transition-transform hover:scale-[1.02]"
-              priority
+              preload
             />
           </button>
           {streetViewAddress && (
@@ -118,8 +116,6 @@ export function PropertyGallery({
                     alt={image.name || `Property view ${i + 2}`}
                     fill
                     sizes="(max-width: 1023px) 50vw, 21vw"
-                    crossOrigin="anonymous"
-                    unoptimized
                     onError={(event) =>
                       showPropertyImageFallback(event.currentTarget)
                     }
@@ -205,8 +201,6 @@ function GalleryCategoryButton({
           alt=""
           fill
           sizes="128px"
-          crossOrigin="anonymous"
-          unoptimized
           onError={(event) => showPropertyImageFallback(event.currentTarget)}
           className="object-cover"
         />

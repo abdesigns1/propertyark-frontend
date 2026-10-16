@@ -111,26 +111,23 @@ export function PropertyCard({
       {/* Image */}
       <div className="relative aspect-[4/3] w-full overflow-hidden">
         <div
-          className="flex size-full touch-pan-y transition-transform duration-300 ease-out"
-          style={{ transform: `translateX(-${activeImageIndex * 100}%)` }}
+          className="size-full touch-pan-y"
           aria-live="polite"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
-          {carouselImages.map((image, index) => (
-            <Link
-              key={`${image}-${index}`}
-              href={`/properties/${id}`}
-              className="relative block size-full shrink-0"
-              aria-label={`View ${title} details from image ${index + 1} of ${carouselImages.length}`}
-              onClick={handleImageClick}
-            >
-              <PropertyCarouselImage
-                src={image}
-                alt={`${title}, image ${index + 1}`}
-              />
-            </Link>
-          ))}
+          <Link
+            href={`/properties/${id}`}
+            className="relative block size-full"
+            aria-label={`View ${title} details from image ${activeImageIndex + 1} of ${carouselImages.length}`}
+            onClick={handleImageClick}
+          >
+            <PropertyCarouselImage
+              key={carouselImages[activeImageIndex]}
+              src={carouselImages[activeImageIndex]}
+              alt={`${title}, image ${activeImageIndex + 1}`}
+            />
+          </Link>
         </div>
 
         {carouselImages.length > 1 && (
@@ -266,9 +263,7 @@ function PropertyCarouselImage({ src, alt }: { src: string; alt: string }) {
       src={failed ? PROPERTY_IMAGE_FALLBACK : src}
       alt={alt}
       fill
-      crossOrigin="anonymous"
-      unoptimized
-      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+      sizes="(max-width: 640px) calc(100vw - 3rem), (max-width: 1279px) 50vw, 320px"
       className="object-cover transition-transform duration-300 group-hover:scale-105"
       onError={() => setFailed(true)}
     />

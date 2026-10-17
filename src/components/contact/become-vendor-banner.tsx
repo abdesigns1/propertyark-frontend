@@ -8,7 +8,7 @@ export function BecomeVendorBanner() {
       <div className="relative flex min-h-[460px] flex-col items-center justify-end overflow-visible rounded-3xl bg-primary px-6 pb-11 pt-72 sm:min-h-[490px] sm:px-10 sm:pt-80 lg:min-h-[248px] lg:flex-row lg:justify-start lg:px-16 lg:py-12 lg:pl-[39%]">
         <div className="absolute -top-10 left-1/2 size-[330px] -translate-x-1/2 sm:size-[370px] lg:bottom-0 lg:left-[5%] lg:top-auto lg:size-[315px] lg:translate-x-0">
           <Image
-            src="/Become%20a%20vendor.png"
+            src="/new%20vendor.png"
             alt="Property professional holding a model home"
             fill
             sizes="(max-width: 640px) 330px, (max-width: 1024px) 370px, 315px"

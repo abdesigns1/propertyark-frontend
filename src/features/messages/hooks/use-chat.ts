@@ -285,7 +285,7 @@ export function usePendingSupportRequests(
     queryFn: async () => {
       const requests = await chatService.getPendingSupport(status);
 
-      return Promise.all(
+      const enrichedRequests = await Promise.all(
         requests.map(async (request) => {
           if (request.status === "PENDING") return request;
 
@@ -343,6 +343,17 @@ export function usePendingSupportRequests(
           }
         }),
       );
+
+      return enrichedRequests.sort((first, second) => {
+        const firstActivity = new Date(
+          first.updatedAt || first.createdAt,
+        ).getTime();
+        const secondActivity = new Date(
+          second.updatedAt || second.createdAt,
+        ).getTime();
+
+        return secondActivity - firstActivity;
+      });
     },
     staleTime: 10_000,
     refetchInterval: 15_000,

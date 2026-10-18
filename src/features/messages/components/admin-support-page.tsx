@@ -75,7 +75,10 @@ import {
 const statusOptions: ChatSessionStatus[] = ["PENDING", "ACTIVE", "RESOLVED"];
 
 function supportActionId(request: SupportRequest) {
-  return request.supportRequestId ?? request.requestId;
+  // Support-management endpoints operate on the original request record.
+  // An accepted chat session can expose a different supportRequestId, so the
+  // normalized requestId must remain authoritative for resolve and transfer.
+  return request.requestId;
 }
 
 export function AdminSupportPage() {
@@ -116,7 +119,6 @@ export function AdminSupportPage() {
           },
         };
         toast.success("Support request accepted. You can reply now.");
-        setStatus("ACTIVE");
         setSelectedRequest(acceptedRequest);
       },
       onError: (error) =>
@@ -234,6 +236,10 @@ export function AdminSupportPage() {
                         selectedRequest?.requestId === request.requestId
                       }
                       opening={actions.open.isPending}
+                      isNew={
+                        request.status === "PENDING" &&
+                        !readRequestIds.has(request.requestId)
+                      }
                       unread={
                         request.unreadCount > 0 &&
                         !readRequestIds.has(request.requestId)
@@ -537,12 +543,14 @@ function SupportQueueItem({
   request,
   selected,
   opening,
+  isNew,
   unread,
   onSelect,
 }: {
   request: SupportRequest;
   selected: boolean;
   opening: boolean;
+  isNew: boolean;
   unread: number;
   onSelect: () => void;
 }) {
@@ -594,15 +602,19 @@ function SupportQueueItem({
           </span>
         </div>
         <div className="mt-1 flex items-center gap-2">
+          {isNew && <Badge className="px-1.5 text-[10px]">New</Badge>}
           <p
             className={cn(
-              "truncate text-xs",
+              "min-w-0 flex-1 truncate text-xs",
               unread > 0
                 ? "font-semibold text-foreground"
                 : "text-muted-foreground",
             )}
           >
-            {request.lastMessage || "No messages yet."}
+            {request.lastMessage ||
+              request.description ||
+              request.subject ||
+              "No request details supplied."}
           </p>
           {unread > 0 && (
             <Badge className="ml-auto min-w-5 justify-center rounded-full px-1.5">

@@ -28,7 +28,9 @@ export function getApiErrorMessage(
   error: unknown,
   fallback = "Something went wrong. Please try again.",
 ) {
-  if (!axios.isAxiosError(error)) return fallback;
+  if (!axios.isAxiosError(error)) {
+    return error instanceof Error && error.message ? error.message : fallback;
+  }
 
   const data = error.response?.data as
     | {

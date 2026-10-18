@@ -1,4 +1,5 @@
 import { api } from "@/services/axios";
+import axios from "axios";
 import type {
   ChatMessage,
   ChatParticipant,
@@ -38,6 +39,16 @@ function numberValue(source: UnknownRecord, keys: string[], fallback = 0) {
 
 function booleanValue(source: UnknownRecord, keys: string[]) {
   return keys.some((key) => source[key] === true);
+}
+
+function isDuplicateConstraintError(error: unknown) {
+  if (!axios.isAxiosError(error)) return false;
+
+  const response = JSON.stringify(error.response?.data ?? "").toLowerCase();
+  return (
+    response.includes("unique constraint") ||
+    response.includes("duplicate entry")
+  );
 }
 
 function identifier(source: UnknownRecord, keys: string[]) {
@@ -471,35 +482,55 @@ export const chatService = {
   },
 
   async acceptSupport(request: SupportRequest) {
-    const response = await api.patch<unknown>(
-      `/chat/support/${request.requestId}/accept`,
-    );
-    const responseSession = normalizeSupportRequest(
-      unwrapEntity(response.data, [
-        "request",
-        "supportRequest",
-        "session",
-        "chatSession",
-      ]),
-    );
+    let responseSession: SupportRequest | null = null;
+    let duplicateAcceptance = false;
+
+    try {
+      const response = await api.patch<unknown>(
+        `/chat/support/${request.requestId}/accept`,
+      );
+      responseSession = normalizeSupportRequest(
+        unwrapEntity(response.data, [
+          "request",
+          "supportRequest",
+          "session",
+          "chatSession",
+        ]),
+      );
+    } catch (error) {
+      if (!isDuplicateConstraintError(error)) throw error;
+      duplicateAcceptance = true;
+    }
 
     // Accepting creates/activates the chat session. Reload the active queue so
     // callers receive its session ID rather than reusing the support request ID.
     const { data } = await api.get<unknown>("/chat/sessions", {
       params: { type: "SUPPORT", status: "ACTIVE" },
     });
-    const accepted = findRows(data, ["sessions", "items", "results", "records"])
-      .map(normalizeSupportRequest)
-      .find(
-        (candidate) =>
-          candidate.requestId === request.requestId ||
-          (candidate.subject === request.subject &&
-            (candidate.requester?.id === request.requester?.id ||
-              candidate.participant?.id === request.requester?.id)) ||
-          candidate.subject === request.subject,
-      );
+    const activeRequests = findRows(data, [
+      "sessions",
+      "items",
+      "results",
+      "records",
+    ]).map(normalizeSupportRequest);
+    const accepted = activeRequests.find(
+      (candidate) =>
+        candidate.requestId === request.requestId ||
+        candidate.supportRequestId === request.requestId,
+    );
 
-    const candidate = accepted ?? responseSession;
+    if (duplicateAcceptance && !accepted) {
+      // A duplicate for this exact request is safe to treat as an idempotent
+      // acceptance. A constraint blocking a different active request must be
+      // corrected in the backend instead of mixing separate support tickets.
+      return resolveSupportSession(request).catch(() => {
+        throw new Error(
+          "The backend prevented this additional support request from being accepted. Its chat-session unique constraint must allow multiple active requests per admin.",
+        );
+      });
+    }
+
+    const candidate = accepted ?? responseSession ?? request;
     return resolveSupportSession({
       ...request,
       ...candidate,
@@ -507,7 +538,7 @@ export const chatService = {
       description: candidate.description || request.description,
       requester: candidate.requester || request.requester,
       sessionCandidates: [
-        ...responseSession.sessionCandidates,
+        ...(responseSession?.sessionCandidates ?? []),
         ...(accepted?.sessionCandidates ?? []),
         ...request.sessionCandidates,
       ],

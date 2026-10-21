@@ -102,11 +102,13 @@ export function MessagingPage({
   initialSessionId,
   initialPropertyId,
   initialPropertyTitle,
+  initialParticipantName,
 }: {
   role: "buyer" | "vendor";
   initialSessionId?: string;
   initialPropertyId?: string;
   initialPropertyTitle?: string;
+  initialParticipantName?: string;
 }) {
   const user = useDashboardUser();
   const currentUserId = useAuthStore(
@@ -119,8 +121,28 @@ export function MessagingPage({
   );
   const [supportOpen, setSupportOpen] = useState(false);
   const sessions = useMemo(
-    () => sessionsQuery.data ?? [],
-    [sessionsQuery.data],
+    () =>
+      (sessionsQuery.data ?? []).map((session) => {
+        if (
+          !initialParticipantName ||
+          !initialSessionId ||
+          session.id !== initialSessionId
+        ) {
+          return session;
+        }
+
+        return {
+          ...session,
+          participant: {
+            id: session.participant?.id ?? "",
+            name: initialParticipantName,
+            avatarUrl: session.participant?.avatarUrl ?? null,
+            role: session.participant?.role ?? "USER",
+            isOnline: session.participant?.isOnline ?? false,
+          },
+        };
+      }),
+    [initialParticipantName, initialSessionId, sessionsQuery.data],
   );
   const visibleSessions = useMemo(() => {
     const term = search.trim().toLowerCase();

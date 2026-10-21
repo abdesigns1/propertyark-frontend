@@ -6,7 +6,10 @@ import { Breadcrumb } from "@/components/shared/breadcrumb";
 import { PropertyGallery } from "@/features/properties/components/property-gallery";
 import { PropertyHeader } from "@/features/properties/components/property-header";
 import { PropertyOverview } from "@/features/properties/components/property-overview";
-import { PropertyInformation } from "@/features/properties/components/property-information";
+import {
+  PropertyInformation,
+  PropertyLandmarks,
+} from "@/features/properties/components/property-information";
 import { PropertyAmenities } from "@/features/properties/components/property-amenities";
 import { PropertyDescriptionContent } from "@/features/properties/components/property-description-content";
 import { PropertyVideo } from "@/features/properties/components/property-video";
@@ -15,13 +18,13 @@ import { VendorContactCard } from "@/features/properties/components/vendor-conta
 import { SimilarPropertiesCarousel } from "@/features/properties/components/similar-properties-carousel";
 import { PropertyViewTracker } from "@/features/properties/components/property-view-tracker";
 import { ShortletBookingCard } from "@/features/properties/components/shortlet-booking-card";
+import { ShortletStayInformation } from "@/features/properties/components/shortlet-stay-information";
 import { Footer } from "@/components/shared/footer";
 import {
   getAvailablePropertiesServer,
   getFeaturedPropertiesServer,
 } from "@/features/properties/server/get-available-properties";
 import { CONTAINER, cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { serializeJsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 const getPropertyResults = cache(() => getAvailablePropertiesServer());
@@ -197,10 +200,14 @@ export default async function PropertyDetailPage({
   return (
     <>
       <script
+        id="property-schema"
         type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: serializeJsonLd([propertyJsonLd, breadcrumbJsonLd]),
-        }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(propertyJsonLd) }}
+      />
+      <script
+        id="property-breadcrumb-schema"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd) }}
       />
       <PropertyViewTracker propertyId={property.id} />
       <Navbar reserveSpace />
@@ -233,7 +240,7 @@ export default async function PropertyDetailPage({
         <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_320px]">
           <div className="flex flex-col gap-10">
             <PropertyOverview property={property} />
-            <PropertyInformation property={property} />
+            <PropertyInformation property={property} showLandmarks={false} />
 
             <section>
               <h2 className="text-lg font-semibold text-foreground">
@@ -245,56 +252,20 @@ export default async function PropertyDetailPage({
               />
             </section>
 
+            <PropertyLandmarks property={property} />
+
             {property.amenities && (
               <PropertyAmenities amenities={property.amenities} />
             )}
 
             {property.purpose === "shortlet" && property.shortletDetails && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Stay information and policies</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-6 sm:grid-cols-2">
-                  <div>
-                    <h3 className="font-medium">Check-in and check-out</h3>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Check-in:{" "}
-                      {property.shortletDetails.checkInTime || "Contact host"}
-                      {" · "}
-                      Check-out:{" "}
-                      {property.shortletDetails.checkOutTime || "Contact host"}
-                    </p>
-                  </div>
-                  <div>
-                    <h3 className="font-medium">House rules</h3>
-                    {property.shortletDetails.houseRules.length ? (
-                      <ul className="mt-2 list-disc pl-5 text-sm text-muted-foreground">
-                        {property.shortletDetails.houseRules.map((rule) => (
-                          <li key={rule}>{rule}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        No additional house rules supplied.
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-medium">Cancellation policy</h3>
-                    <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
-                      {property.shortletDetails.cancellationPolicy ||
-                        "Contact the host for cancellation terms."}
-                    </p>
-                  </div>
-                  <div>
-                    <h3 className="font-medium">Payment policy</h3>
-                    <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
-                      {property.shortletDetails.paymentPolicy ||
-                        "Payment terms will be confirmed before booking."}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              <ShortletStayInformation
+                checkInTime={property.shortletDetails.checkInTime}
+                checkOutTime={property.shortletDetails.checkOutTime}
+                houseRules={property.shortletDetails.houseRules}
+                cancellationPolicy={property.shortletDetails.cancellationPolicy}
+                paymentPolicy={property.shortletDetails.paymentPolicy}
+              />
             )}
 
             {property.videoUrl && (

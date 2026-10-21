@@ -16,6 +16,7 @@ import {
   LoaderCircle,
   Mail,
   Megaphone,
+  MessageCircle,
   MoreHorizontal,
   Phone,
   Plus,
@@ -78,6 +79,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
   TableBody,
@@ -93,6 +95,7 @@ import {
 import { useVendorProperties } from "@/features/vendor/hooks/use-vendor-properties";
 import { ScheduleInspectionDialog } from "@/features/vendor/components/schedule-inspection-dialog";
 import { RescheduleInspectionDialog } from "@/features/vendor/components/reschedule-inspection-dialog";
+import { useInspectionConversation } from "@/features/messages/hooks/use-inspection-conversation";
 import {
   calendarDays,
   calendarEventTone,
@@ -696,21 +699,6 @@ function Reminders({
             {formatInspectionTime(upcoming)} with {upcoming.userName} at{" "}
             {upcoming.propertyName}.
           </CardContent>
-          <CardFooter>
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto px-0"
-              onClick={(event) => {
-                event.stopPropagation();
-                toast.info(
-                  "Inspection alerts require a backend notification endpoint.",
-                );
-              }}
-            >
-              Set Alert →
-            </Button>
-          </CardFooter>
         </Card>
       ) : (
         <Card>
@@ -760,6 +748,8 @@ function InspectionActionsMenu({
   onReschedule: (inspection: VendorInspection) => void;
 }) {
   const pending = inspection.status === "PENDING";
+  const { openConversation, isOpeningConversation } =
+    useInspectionConversation(inspection);
   const reschedulable = [
     "PENDING",
     "ACCEPTED",
@@ -801,6 +791,17 @@ function InspectionActionsMenu({
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
+          <DropdownMenuItem
+            disabled={isOpeningConversation}
+            onSelect={openConversation}
+          >
+            {isOpeningConversation ? (
+              <LoaderCircle className="animate-spin" />
+            ) : (
+              <MessageCircle />
+            )}
+            Message user
+          </DropdownMenuItem>
           <DropdownMenuItem
             disabled={!reschedulable}
             onSelect={() => onReschedule(inspection)}
@@ -915,6 +916,8 @@ function InspectionDetails({
   onReschedule: (inspection: VendorInspection) => void;
 }) {
   const pending = inspection.status === "PENDING";
+  const { openConversation, isOpeningConversation } =
+    useInspectionConversation(inspection);
 
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
@@ -1066,6 +1069,19 @@ function InspectionDetails({
           </div>
         </div>
         <SheetFooter className="border-t bg-background px-6 py-5">
+          <Button
+            className="w-full"
+            variant="outline"
+            disabled={isOpeningConversation}
+            onClick={openConversation}
+          >
+            {isOpeningConversation ? (
+              <Spinner data-icon="inline-start" />
+            ) : (
+              <MessageCircle data-icon="inline-start" />
+            )}
+            Message user
+          </Button>
           {pending && (
             <div className="grid w-full grid-cols-2 gap-2">
               <Button

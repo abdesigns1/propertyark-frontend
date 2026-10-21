@@ -15,10 +15,12 @@ export function PropertyInformation({
   property,
   compact = false,
   showHeading = true,
+  showLandmarks = true,
 }: {
   property: Property;
   compact?: boolean;
   showHeading?: boolean;
+  showLandmarks?: boolean;
 }) {
   const formatLabel = (value: string) =>
     value
@@ -97,46 +99,58 @@ export function PropertyInformation({
         </div>
       </div>
 
-      {(property.landmarks?.length ?? 0) > 0 && (
-        <section aria-labelledby="nearby-landmarks-heading">
-          <h2
-            id="nearby-landmarks-heading"
-            className="text-lg font-semibold text-foreground"
-          >
-            Nearby landmarks
-          </h2>
-          <div
-            className={cn(
-              "mt-4 grid gap-4",
-              compact ? "grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3",
-            )}
-          >
-            {property.landmarks?.map((landmark, index) => (
-              <Card key={`${landmark.name}-${index}`} size="sm">
-                <CardHeader className="flex flex-row items-center gap-3">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <MapPin aria-hidden="true" className="size-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <CardTitle className="break-words">
-                      {landmark.name}
-                    </CardTitle>
-                    <CardDescription>Nearby point of interest</CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Distance from property
-                  </p>
-                  <p className="mt-1 font-numeric font-semibold text-foreground">
-                    {landmark.distance}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
+      {showLandmarks && (
+        <PropertyLandmarks property={property} compact={compact} />
       )}
     </div>
+  );
+}
+
+export function PropertyLandmarks({
+  property,
+  compact = false,
+}: {
+  property: Property;
+  compact?: boolean;
+}) {
+  if (!property.landmarks?.length) return null;
+
+  return (
+    <section aria-labelledby="nearby-landmarks-heading">
+      <h2
+        id="nearby-landmarks-heading"
+        className="text-lg font-semibold text-foreground"
+      >
+        Nearby landmarks
+      </h2>
+      <div
+        className={cn(
+          "mt-4 grid gap-4",
+          compact ? "grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3",
+        )}
+      >
+        {property.landmarks.map((landmark, index) => (
+          <Card key={`${landmark.name}-${index}`} size="sm">
+            <CardHeader className="flex flex-row items-center gap-3">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <MapPin aria-hidden="true" className="size-4" />
+              </span>
+              <div className="min-w-0">
+                <CardTitle className="break-words">{landmark.name}</CardTitle>
+                <CardDescription>Nearby point of interest</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs font-medium text-muted-foreground">
+                Distance from property
+              </p>
+              <p className="mt-1 font-numeric font-semibold text-foreground">
+                {landmark.distance}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </section>
   );
 }

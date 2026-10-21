@@ -1,4 +1,9 @@
+import axios from "axios";
 import { api } from "@/services/axios";
+import {
+  getStoredBuyerBookings,
+  replaceStoredBuyerBookings,
+} from "@/features/dashboard/lib/buyer-shortlet-booking-store";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -22,7 +27,7 @@ export interface ShortletBooking {
   checkInTime?: string;
   checkOutTime?: string;
   requestedAt?: string;
-  guestId?: string;
+  userId?: string;
   guestEmail?: string;
   guestPhone?: string;
   adults?: number;
@@ -88,11 +93,24 @@ export interface ShortletDashboardData {
   activities: ShortletActivity[];
 }
 
+export interface BuyerShortletBookingsResult {
+  bookings: ShortletBooking[];
+  stats: {
+    total: number;
+    pending: number;
+    confirmed: number;
+    checkedIn: number;
+    completed: number;
+    cancelled: number;
+  };
+}
+
 export type ShortletBookingAction = "approve" | "check-in" | "cancel";
 export type ShortletPaymentMethod = "CASH" | "TRANSFER";
 
 export interface CreateShortletBookingInput {
   propertyId: string;
+  userId: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -102,6 +120,15 @@ export interface CreateShortletBookingInput {
   checkInDate: string;
   checkOutDate: string;
   paymentMethod: ShortletPaymentMethod;
+}
+
+export interface CreateShortletBookingContext {
+  propertyName: string;
+  propertyImageUrl?: string;
+  propertyLocation?: string;
+  vendorId?: string;
+  vendorName?: string;
+  amount: number;
 }
 
 function asRecord(value: unknown): UnknownRecord {
@@ -213,7 +240,13 @@ function initials(name: string) {
 function normalizeBooking(value: unknown, index: number): ShortletBooking {
   const booking = asRecord(value);
   const guest = asRecord(
-    booking.guest ?? booking.user ?? booking.customer ?? booking.bookedBy,
+    booking.guest ??
+      booking.user ??
+      booking.customer ??
+      booking.bookedBy ??
+      booking.buyer ??
+      booking.guestDetails ??
+      booking.userDetails,
   );
   const property = asRecord(booking.property ?? booking.shortlet);
   const vendor = asRecord(
@@ -283,9 +316,15 @@ function normalizeBooking(value: unknown, index: number): ShortletBooking {
     requestedAt:
       stringFrom(booking, ["createdAt", "requestedAt", "bookedAt"]) ??
       undefined,
-    guestId:
-      stringFrom(booking, ["guestId", "userId"]) ??
-      stringFrom(guest, ["id", "_id"]) ??
+    userId:
+      stringFrom(booking, [
+        "userId",
+        "buyerId",
+        "customerId",
+        "bookedById",
+        "createdById",
+      ]) ??
+      stringFrom(guest, ["id", "_id", "userId", "buyerId"]) ??
       undefined,
     guestEmail:
       stringFrom(booking, ["email", "guestEmail"]) ??
@@ -452,6 +491,82 @@ function normalizeDashboard(value: unknown): ShortletDashboardData {
   };
 }
 
+function normalizeBuyerBookings(value: unknown): BuyerShortletBookingsResult {
+  const bookings = findBookings(value)
+    .map(normalizeBooking)
+    .sort((first, second) => {
+      const firstTime = new Date(first.requestedAt ?? first.checkIn).getTime();
+      const secondTime = new Date(
+        second.requestedAt ?? second.checkIn,
+      ).getTime();
+      return (
+        (Number.isFinite(secondTime) ? secondTime : 0) -
+        (Number.isFinite(firstTime) ? firstTime : 0)
+      );
+    });
+  const count = (...statuses: ShortletBookingStatus[]) =>
+    bookings.filter((booking) => statuses.includes(booking.status)).length;
+
+  return {
+    bookings,
+    stats: {
+      total: bookings.length,
+      pending: count("PENDING"),
+      confirmed: count("CONFIRMED"),
+      checkedIn: count("CHECKED_IN"),
+      completed: count("COMPLETED"),
+      cancelled: count("CANCELLED"),
+    },
+  };
+}
+
+function bookingFingerprint(booking: ShortletBooking) {
+  return [
+    booking.propertyId,
+    booking.checkIn,
+    booking.checkOut,
+    booking.guestEmail?.toLowerCase() ?? "",
+  ].join("|");
+}
+
+function mergeBuyerBookings(
+  serverBookings: ShortletBooking[],
+  storedBookings: ShortletBooking[],
+) {
+  const merged = new Map<string, ShortletBooking>();
+
+  storedBookings.forEach((booking) =>
+    merged.set(bookingFingerprint(booking), booking),
+  );
+  serverBookings.forEach((booking) =>
+    merged.set(bookingFingerprint(booking), booking),
+  );
+
+  return [...merged.values()].sort((first, second) => {
+    const firstTime = new Date(first.requestedAt ?? first.checkIn).getTime();
+    const secondTime = new Date(second.requestedAt ?? second.checkIn).getTime();
+    return (
+      (Number.isFinite(secondTime) ? secondTime : 0) -
+      (Number.isFinite(firstTime) ? firstTime : 0)
+    );
+  });
+}
+
+function buyerBookingsResult(bookings: ShortletBooking[]) {
+  return normalizeBuyerBookings({ bookings });
+}
+
+function findCreatedBooking(value: unknown): UnknownRecord {
+  const source = asRecord(value);
+  for (const key of ["booking", "reservation", "data", "result"]) {
+    const nested = source[key];
+    if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+      return findCreatedBooking(nested);
+    }
+  }
+  return source;
+}
+
 export const shortletBookingService = {
   async getAdminBookings({
     page = 1,
@@ -494,9 +609,82 @@ export const shortletBookingService = {
     const result = await this.getAdminBookings({ page: 1, limit: 1000 });
     return result.bookings.find((booking) => booking.id === bookingId) ?? null;
   },
-  async create(input: CreateShortletBookingInput) {
+  async create(
+    input: CreateShortletBookingInput,
+    context: CreateShortletBookingContext,
+  ): Promise<ShortletBooking> {
     const { data } = await api.post("/shortlet-bookings", input);
-    return data;
+    const created = findCreatedBooking(data);
+
+    return normalizeBooking(
+      {
+        ...input,
+        ...created,
+        id:
+          stringFrom(created, ["id", "_id", "bookingId", "reference"]) ??
+          `local-${Date.now()}`,
+        propertyId:
+          stringFrom(created, ["propertyId", "shortletId"]) ?? input.propertyId,
+        userId:
+          stringFrom(created, ["userId", "buyerId", "bookedById"]) ??
+          input.userId,
+        propertyName:
+          stringFrom(created, [
+            "propertyName",
+            "propertyTitle",
+            "shortletName",
+          ]) ?? context.propertyName,
+        propertyImageUrl:
+          stringFrom(created, ["propertyImage", "propertyImageUrl"]) ??
+          context.propertyImageUrl,
+        propertyLocation:
+          stringFrom(created, ["propertyLocation", "location"]) ??
+          context.propertyLocation,
+        vendorId:
+          stringFrom(created, ["vendorId", "hostId"]) ?? context.vendorId,
+        vendorName:
+          stringFrom(created, ["vendorName", "hostName"]) ?? context.vendorName,
+        amount:
+          numberFrom(created, [
+            "amount",
+            "totalAmount",
+            "totalPrice",
+            "bookingAmount",
+            "price",
+          ]) || context.amount,
+        status: stringFrom(created, ["status"]) ?? "PENDING",
+        createdAt:
+          stringFrom(created, ["createdAt", "requestedAt", "bookedAt"]) ??
+          new Date().toISOString(),
+      },
+      0,
+    );
+  },
+  async getBuyerBookings(
+    accountKey: string,
+  ): Promise<BuyerShortletBookingsResult> {
+    const storedBookings = getStoredBuyerBookings(accountKey);
+
+    try {
+      // When available, this route supplies authoritative vendor status
+      // changes for the current bearer-token user.
+      const { data } = await api.get<unknown>("/shortlet-bookings/my");
+      const serverBookings = normalizeBuyerBookings(data).bookings;
+      const bookings = mergeBuyerBookings(serverBookings, storedBookings);
+      replaceStoredBuyerBookings(accountKey, bookings);
+      return buyerBookingsResult(bookings);
+    } catch (error) {
+      // The current API collection only exposes booking creation for buyers.
+      // Keep successful submissions visible until the scoped history endpoint
+      // is deployed by the backend.
+      if (
+        axios.isAxiosError(error) &&
+        [404, 405].includes(error.response?.status ?? 0)
+      ) {
+        return buyerBookingsResult(storedBookings);
+      }
+      throw error;
+    }
   },
   async getDashboard() {
     const { data } = await api.get("/shortlet-bookings/vendor-stats");

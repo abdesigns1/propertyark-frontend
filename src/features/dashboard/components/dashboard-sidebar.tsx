@@ -69,6 +69,11 @@ const buyerNavigation: DashboardNavigationItem[] = [
     href: "/buyer/inspections",
     tourTarget: "nav-inspections",
   },
+  {
+    label: "Shortlet Bookings",
+    icon: CalendarCheck2,
+    href: "/buyer/shortlet-bookings",
+  },
   { label: "Mortgage", icon: FileText, href: "/buyer/mortgage" },
   { label: "Investments", icon: WalletCards, href: "/buyer/investments" },
   { label: "Messages", icon: Mail, href: "/buyer/messages" },
@@ -177,7 +182,8 @@ export function DashboardNavigation({
               (href === "/vendor/inspections" && hasUnreadInspections) ||
               (href === "/vendor/notifications" && hasUnread))) ||
           (role !== "vendor" &&
-            ((href === "/buyer/inspections" && hasUnreadInspections) ||
+            ((href === "/buyer/shortlet-bookings" && hasUnreadBookings) ||
+              (href === "/buyer/inspections" && hasUnreadInspections) ||
               (href === "/buyer/notifications" && hasUnread)));
         const item = (
           <Link

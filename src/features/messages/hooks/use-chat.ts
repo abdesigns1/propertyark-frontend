@@ -16,6 +16,7 @@ import {
 } from "@/features/messages/realtime/chat-socket";
 import { useAuthStore } from "@/store/auth.store";
 import { decodeMessageContent } from "@/features/messages/lib/message-content";
+import { getCachedChatParticipant } from "@/features/messages/lib/session-participant-cache";
 
 export type ChatConnectionStatus =
   "connecting" | "connected" | "reconnecting" | "offline";
@@ -94,7 +95,7 @@ export function useChatSessions(
                   role: "USER",
                   isOnline: false,
                 }
-              : null);
+              : getCachedChatParticipant(session.id));
           const readAt = new Date(lastRead[session.id] ?? 0).getTime();
           const unreadCount = ordered.filter(
             (message) =>

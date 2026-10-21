@@ -333,7 +333,7 @@ function PersonCard({
     : (booking.vendorName ?? "Vendor not provided");
   const email = guest ? booking.guestEmail : booking.vendorEmail;
   const phone = guest ? booking.guestPhone : booking.vendorPhone;
-  const id = guest ? booking.guestId : booking.vendorId;
+  const id = guest ? booking.userId : booking.vendorId;
   return (
     <Card>
       <CardHeader>

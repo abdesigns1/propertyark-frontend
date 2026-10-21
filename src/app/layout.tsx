@@ -127,9 +127,17 @@ export default function RootLayout({
     >
       <head>
         <script
+          id="propertyark-organization-schema"
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: serializeJsonLd([organizationJsonLd, websiteJsonLd]),
+            __html: serializeJsonLd(organizationJsonLd),
+          }}
+        />
+        <script
+          id="propertyark-website-schema"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: serializeJsonLd(websiteJsonLd),
           }}
         />
       </head>
@@ -143,9 +151,7 @@ export default function RootLayout({
           <Toaster richColors position="top-right" />
         </QueryProvider>
       </body>
-      {googleAnalyticsId ? (
-        <GoogleAnalytics gaId={googleAnalyticsId} />
-      ) : null}
+      {googleAnalyticsId ? <GoogleAnalytics gaId={googleAnalyticsId} /> : null}
     </html>
   );
 }

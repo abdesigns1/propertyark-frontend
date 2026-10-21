@@ -185,8 +185,15 @@ function normalizeVendorProperty(value: unknown): PropertyApiItem {
   const pricing = asRecord(
     source.pricing ?? source.priceDetails ?? source.rates,
   );
+  const details = asRecord(source.details ?? source.propertyDetails);
   const shortlet = asRecord(
-    source.shortletDetails ?? source.shortletPolicies ?? source.policies,
+    source.shortletDetails ??
+      source.shortlet ??
+      source.shortletPolicies ??
+      source.shortletAvailabilityAndPolicies ??
+      details.shortletDetails ??
+      details.shortletPolicies ??
+      source.policies,
   );
   const optionalText = (...values: unknown[]) => {
     const value = values.find(
@@ -343,22 +350,31 @@ function normalizeVendorProperty(value: unknown): PropertyApiItem {
     shortletCheckInTime: optionalText(
       source.shortletCheckInTime,
       source.checkInTime,
+      source.check_in_time,
       shortlet.checkInTime,
+      shortlet.check_in_time,
       // Keep reading the initially proposed names for draft API compatibility.
       source.shortletCheckInDate,
     ),
     shortletCheckOutTime: optionalText(
       source.shortletCheckOutTime,
       source.checkOutTime,
+      source.check_out_time,
       shortlet.checkOutTime,
+      shortlet.check_out_time,
       source.shortletCheckOutDate,
     ),
     houseRules,
     cancellationPolicy: optionalText(
       source.cancellationPolicy,
       shortlet.cancellationPolicy,
+      shortlet.cancellationTerms,
     ),
-    paymentPolicy: optionalText(source.paymentPolicy, shortlet.paymentPolicy),
+    paymentPolicy: optionalText(
+      source.paymentPolicy,
+      shortlet.paymentPolicy,
+      shortlet.paymentTerms,
+    ),
     media: normalizeMediaResponse({ data: embeddedMedia }),
     documents: [...new Map(documents.map((item) => [item.id, item])).values()],
   };

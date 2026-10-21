@@ -51,7 +51,7 @@ export default function NotFound() {
                 ERROR 404
               </p>
               <CardTitle className="mt-3 max-w-2xl text-3xl font-semibold leading-tight sm:text-4xl lg:text-5xl">
-                This address doesn&apos;t lead anywhere—yet.
+                This address doesn&apos;t lead anywhere yet.
               </CardTitle>
               <CardDescription className="mt-5 max-w-xl text-base leading-7">
                 The page may have moved, the link may be outdated, or the

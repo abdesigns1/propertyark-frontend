@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import axios from "axios";
 import Image from "next/image";
+import Link from "next/link";
 import { showPropertyImageFallback } from "@/features/properties/utils/normalize-property-response";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { differenceInCalendarDays, format } from "date-fns";
 import {
   Banknote,
@@ -34,9 +35,16 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Property } from "@/features/properties/types";
+import { buyerShortletBookingsQueryKey } from "@/features/dashboard/hooks/use-buyer-shortlet-bookings";
+import { storeBuyerBooking } from "@/features/dashboard/lib/buyer-shortlet-booking-store";
+import { useAccountKey } from "@/lib/account-identity";
 import { getApiErrorMessage } from "@/services/api-error";
+import { useAuthStore } from "@/store/auth.store";
 import {
   shortletBookingService,
+  type BuyerShortletBookingsResult,
+  type CreateShortletBookingInput,
+  type ShortletBooking,
   type ShortletPaymentMethod,
 } from "@/services/shortlet-booking.service";
 
@@ -55,6 +63,11 @@ export function ShortletBookingForm({
   adults: initialAdults,
   childGuests: initialChildren,
 }: BookingFormProps) {
+  const accountKey = useAccountKey();
+  const authenticatedUserId = useAuthStore(
+    (state) => state.userId ?? state.user?.id ?? null,
+  );
+  const queryClient = useQueryClient();
   const [submissionState, setSubmissionState] = useState<
     "idle" | "confirmed" | "confirmation-delayed"
   >("idle");
@@ -77,8 +90,25 @@ export function ShortletBookingForm({
   const total = subtotal + serviceFee;
 
   const booking = useMutation({
-    mutationFn: shortletBookingService.create,
-    onSuccess: () => {
+    mutationFn: (input: CreateShortletBookingInput) =>
+      shortletBookingService.create(input, {
+        propertyName: property.title,
+        propertyImageUrl: property.images[0],
+        propertyLocation: [property.location.city, property.location.state]
+          .filter(Boolean)
+          .join(", "),
+        vendorId: property.vendorId,
+        vendorName: property.vendorName,
+        amount: total,
+      }),
+    onSuccess: (createdBooking) => {
+      if (accountKey) {
+        storeBuyerBooking(accountKey, createdBooking);
+        queryClient.setQueryData<BuyerShortletBookingsResult>(
+          buyerShortletBookingsQueryKey(accountKey),
+          (current) => addBookingToResult(current, createdBooking),
+        );
+      }
       setSubmissionState("confirmed");
       toast.success("Booking request sent", {
         description: "The vendor has been notified and will review your stay.",
@@ -107,6 +137,19 @@ export function ShortletBookingForm({
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!accountKey) {
+      toast.error("Sign in before booking", {
+        description:
+          "Your account is required so this stay can be tracked in My Shortlet Bookings.",
+      });
+      return;
+    }
+    if (!authenticatedUserId) {
+      toast.error("Your authenticated user ID is unavailable", {
+        description: "Please sign in again before booking this shortlet.",
+      });
+      return;
+    }
     if (!paymentMethod) {
       toast.error("Choose Cash or Transfer to continue.");
       return;
@@ -119,6 +162,7 @@ export function ShortletBookingForm({
     const form = new FormData(event.currentTarget);
     booking.mutate({
       propertyId: property.id,
+      userId: authenticatedUserId,
       firstName: String(form.get("firstName") ?? "").trim(),
       lastName: String(form.get("lastName") ?? "").trim(),
       email: String(form.get("email") ?? "").trim(),
@@ -149,6 +193,11 @@ export function ShortletBookingForm({
               ? `Please do not submit another request for ${property.title}. The vendor may already have received this booking, and confirmation is delayed.`
               : `Your stay at ${property.title} is awaiting vendor approval. You and the vendor will receive booking updates by email.`}
           </p>
+          {!confirmationDelayed ? (
+            <Button asChild>
+              <Link href="/buyer/shortlet-bookings">Track this booking</Link>
+            </Button>
+          ) : null}
           {paymentMethod === "TRANSFER" && (
             <p className="max-w-md text-sm text-muted-foreground">
               Online transfer payment will be enabled when the payment gateway
@@ -377,6 +426,30 @@ export function ShortletBookingForm({
       </Card>
     </form>
   );
+}
+
+function addBookingToResult(
+  current: BuyerShortletBookingsResult | undefined,
+  booking: ShortletBooking,
+): BuyerShortletBookingsResult {
+  const bookings = [
+    booking,
+    ...(current?.bookings ?? []).filter((item) => item.id !== booking.id),
+  ];
+  const count = (status: ShortletBooking["status"]) =>
+    bookings.filter((item) => item.status === status).length;
+
+  return {
+    bookings,
+    stats: {
+      total: bookings.length,
+      pending: count("PENDING"),
+      confirmed: count("CONFIRMED"),
+      checkedIn: count("CHECKED_IN"),
+      completed: count("COMPLETED"),
+      cancelled: count("CANCELLED"),
+    },
+  };
 }
 
 function TripDetail({ label, value }: { label: string; value: string }) {

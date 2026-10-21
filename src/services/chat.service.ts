@@ -409,14 +409,33 @@ async function resolveSupportSession(request: SupportRequest) {
 }
 
 export const chatService = {
-  createDirect(input: CreateDirectChatInput) {
-    return api
-      .post<unknown>("/chat/direct", input)
-      .then(({ data }) =>
-        normalizeSession(
-          unwrapEntity(data, ["session", "chat", "conversation"]),
-        ),
+  async createDirect(input: CreateDirectChatInput) {
+    try {
+      const { data } = await api.post<unknown>("/chat/direct", input);
+      return normalizeSession(
+        unwrapEntity(data, ["session", "chat", "conversation"]),
       );
+    } catch (error) {
+      if (!isDuplicateConstraintError(error)) throw error;
+
+      // A direct conversation may already exist for this pair. Treat the
+      // endpoint as idempotent so booking and property CTAs can safely reopen it.
+      const { data } = await api.get<unknown>("/chat/sessions", {
+        params: { type: "DIRECT" },
+      });
+      const sessions = findRows(data, [
+        "sessions",
+        "items",
+        "results",
+        "records",
+      ]).map(normalizeSession);
+      const existing = sessions.find(
+        (session) => session.participant?.id === input.participantId,
+      );
+
+      if (existing) return existing;
+      throw error;
+    }
   },
 
   createSupportRequest(input: CreateSupportRequestInput) {
@@ -439,6 +458,23 @@ export const chatService = {
           normalizeSession,
         ),
       );
+  },
+
+  async findParticipantByEmail(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) return null;
+
+    const { data } = await api.get<unknown>("/users/", {
+      params: { page: 1, limit: 1000, search: normalizedEmail },
+    });
+    const match = findRows(data, ["users", "items", "results", "records"])
+      .map(asRecord)
+      .find(
+        (user) =>
+          text(user, ["email"]).trim().toLowerCase() === normalizedEmail,
+      );
+
+    return match ? normalizeParticipant(match) : null;
   },
 
   getMessages(sessionId: string, page = 1, limit = 50) {

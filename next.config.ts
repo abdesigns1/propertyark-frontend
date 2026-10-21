@@ -39,6 +39,16 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "img.magnific.com",
       },
+      {
+        protocol: "https",
+        hostname: "propertyark-media-prod.s3.eu-west-1.amazonaws.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "propertyark-backend.onrender.com",
+        pathname: "/uploads/**",
+      },
       ...backendImagePattern(),
     ],
   },

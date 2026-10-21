@@ -328,7 +328,7 @@ function BookingDetailsSheet({
   onCheckIn,
   isUpdating,
 }: {
-  booking: ShortletBooking | null;
+  booking: ShortletBooking;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAccept: (bookingId: string) => void;
@@ -336,7 +336,6 @@ function BookingDetailsSheet({
   onCheckIn: (bookingId: string) => void;
   isUpdating: boolean;
 }) {
-  if (!booking) return null;
   const nightlyRate = booking.nights ? booking.amount / booking.nights : 0;
   const pending = booking.status === "PENDING";
 
@@ -1148,17 +1147,19 @@ export function ShortletBookingManagement() {
         </aside>
       </div>
 
-      <BookingDetailsSheet
-        booking={selectedBooking}
-        open={Boolean(selectedBooking)}
-        onOpenChange={(open) => {
-          if (!open) setSelectedBookingId(null);
-        }}
-        onAccept={confirmBooking}
-        onReject={rejectBooking}
-        onCheckIn={checkInBooking}
-        isUpdating={updateBooking.isPending}
-      />
+      {selectedBooking ? (
+        <BookingDetailsSheet
+          booking={selectedBooking}
+          open
+          onOpenChange={(open) => {
+            if (!open) setSelectedBookingId(null);
+          }}
+          onAccept={confirmBooking}
+          onReject={rejectBooking}
+          onCheckIn={checkInBooking}
+          isUpdating={updateBooking.isPending}
+        />
+      ) : null}
     </div>
   );
 }

@@ -83,7 +83,10 @@ import {
   useVendorProperties,
   vendorPropertiesQueryKey,
 } from "@/features/vendor/hooks/use-vendor-properties";
-import type { PropertyMediaResponse } from "@/features/properties/types/api";
+import type {
+  PropertyApiItem,
+  PropertyMediaResponse,
+} from "@/features/properties/types/api";
 import { PropertyDescriptionContent } from "@/features/properties/components/property-description-content";
 import { propertyImageUploadName } from "@/features/properties/lib/property-image-categories";
 import { getAmenityIcon } from "@/features/properties/utils/amenity-icons";
@@ -156,6 +159,80 @@ function localMediaSelectionKey(
   return `${kind}:${file.name}:${file.size}:${file.lastModified}:${index}`;
 }
 
+function timeInputValue(value?: string | null) {
+  if (!value?.trim()) return "";
+
+  const match = value
+    .trim()
+    .match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+  if (!match) return "";
+
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const meridiem = match[3]?.toUpperCase();
+  if (minutes > 59 || hours > (meridiem ? 12 : 23)) return "";
+
+  if (meridiem === "AM" && hours === 12) hours = 0;
+  if (meridiem === "PM" && hours !== 12) hours += 12;
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function editFormValues(property: PropertyApiItem): AddPropertyFormValues {
+  const price =
+    property.listingType === "FOR_RENT"
+      ? property.rentAmount
+      : property.listingType === "FOR_LAND"
+        ? property.landFee
+        : property.listingType === "FOR_SHORTLET"
+          ? property.shortletAmount
+          : property.salePrice;
+
+  return {
+    name: property.name ?? "",
+    description: property.description ?? "",
+    type: property.type as AddPropertyFormValues["type"],
+    listingType: property.listingType as AddPropertyFormValues["listingType"],
+    status: [
+      "AVAILABLE",
+      "OCCUPIED",
+      "UNDER_MAINTENANCE",
+      "UNDER_CONSTRUCTION",
+      "SOLD",
+      "RENTED",
+    ].includes(property.status?.toUpperCase())
+      ? (property.status.toUpperCase() as AddPropertyFormValues["status"])
+      : "AVAILABLE",
+    price: price == null ? "" : String(price),
+    address: property.address ?? "",
+    city: property.city ?? "",
+    state: property.state ?? "",
+    country: property.country ?? "Nigeria",
+    zipCode: property.zipCode ?? "",
+    size: property.size == null ? "" : String(property.size),
+    sizeUnit: property.sizeUnit ?? "sqm",
+    bedrooms: property.bedrooms == null ? "" : String(property.bedrooms),
+    bathrooms: property.bathrooms == null ? "" : String(property.bathrooms),
+    yearBuilt: property.yearBuilt == null ? "" : String(property.yearBuilt),
+    furnished:
+      property.furnished == null ? "" : property.furnished ? "true" : "false",
+    propertyLandMark: "",
+    distance: "",
+    landmarks: parsePropertyLandmarks(
+      property.propertyLandMark,
+      property.distance,
+    ),
+    rentDuration:
+      property.rentDuration?.toUpperCase() === "MONTHLY" ? "MONTHLY" : "YEARLY",
+    amenities: property.amenities ?? [],
+    shortletCheckInTime: timeInputValue(property.shortletCheckInTime),
+    shortletCheckOutTime: timeInputValue(property.shortletCheckOutTime),
+    houseRules: property.houseRules?.join("\n") ?? "",
+    cancellationPolicy: property.cancellationPolicy ?? "",
+    paymentPolicy: property.paymentPolicy ?? "",
+  };
+}
+
 export function AddPropertyWizard({
   initialDraftId,
   initialPropertyId,
@@ -187,6 +264,9 @@ export function AddPropertyWizard({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [terms, setTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [editDetailsLoading, setEditDetailsLoading] = useState(
+    Boolean(initialPropertyId),
+  );
   const [submitConfirmationOpen, setSubmitConfirmationOpen] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [existingMedia, setExistingMedia] = useState<PropertyMediaResponse[]>(
@@ -327,74 +407,26 @@ export function AddPropertyWizard({
     }
 
     editInitialized.current = true;
-    const price =
-      property.listingType === "FOR_RENT"
-        ? property.rentAmount
-        : property.listingType === "FOR_LAND"
-          ? property.landFee
-          : property.listingType === "FOR_SHORTLET"
-            ? property.shortletAmount
-            : property.salePrice;
-    queueMicrotask(() =>
-      setValues({
-        name: property.name ?? "",
-        description: property.description ?? "",
-        type: property.type as AddPropertyFormValues["type"],
-        listingType:
-          property.listingType as AddPropertyFormValues["listingType"],
-        status: [
-          "AVAILABLE",
-          "OCCUPIED",
-          "UNDER_MAINTENANCE",
-          "UNDER_CONSTRUCTION",
-          "SOLD",
-          "RENTED",
-        ].includes(property.status?.toUpperCase())
-          ? (property.status.toUpperCase() as AddPropertyFormValues["status"])
-          : "AVAILABLE",
-        price: price == null ? "" : String(price),
-        address: property.address ?? "",
-        city: property.city ?? "",
-        state: property.state ?? "",
-        country: property.country ?? "Nigeria",
-        zipCode: property.zipCode ?? "",
-        size: property.size == null ? "" : String(property.size),
-        sizeUnit: property.sizeUnit ?? "sqm",
-        bedrooms: property.bedrooms == null ? "" : String(property.bedrooms),
-        bathrooms: property.bathrooms == null ? "" : String(property.bathrooms),
-        yearBuilt: property.yearBuilt == null ? "" : String(property.yearBuilt),
-        furnished:
-          property.furnished == null
-            ? ""
-            : property.furnished
-              ? "true"
-              : "false",
-        propertyLandMark: "",
-        distance: "",
-        landmarks: parsePropertyLandmarks(
-          property.propertyLandMark,
-          property.distance,
-        ),
-        rentDuration:
-          property.rentDuration?.toUpperCase() === "MONTHLY"
-            ? "MONTHLY"
-            : "YEARLY",
-        amenities: property.amenities ?? [],
-        shortletCheckInTime: property.shortletCheckInTime ?? "",
-        shortletCheckOutTime: property.shortletCheckOutTime ?? "",
-        houseRules: property.houseRules?.join("\n") ?? "",
-        cancellationPolicy: property.cancellationPolicy ?? "",
-        paymentPolicy: property.paymentPolicy ?? "",
-      }),
-    );
     void (async () => {
+      let completeProperty = property;
       try {
-        const media = property.media?.length
-          ? property.media
-          : await propertyService.getMedia(property.id);
+        completeProperty = await propertyService.getById(property.id);
+      } catch {
+        // The list response remains a safe fallback when the detail route is
+        // unavailable, although it may omit shortlet-specific policy fields.
+      }
+
+      setValues(editFormValues(completeProperty));
+      setErrors({});
+      try {
+        const media = completeProperty.media?.length
+          ? completeProperty.media
+          : await propertyService.getMedia(completeProperty.id);
         setExistingMedia(sortPropertyMediaPrimaryFirst(media));
       } catch {
-        setExistingMedia(sortPropertyMediaPrimaryFirst(property.media));
+        setExistingMedia(sortPropertyMediaPrimaryFirst(completeProperty.media));
+      } finally {
+        setEditDetailsLoading(false);
       }
     })();
   }, [
@@ -2490,9 +2522,18 @@ export function AddPropertyWizard({
             </Button>
           )}
           {step < 4 ? (
-            <Button type="button" onClick={next}>
-              Next Step
-              <ArrowRight data-icon="inline-end" />
+            <Button type="button" onClick={next} disabled={editDetailsLoading}>
+              {editDetailsLoading ? (
+                <>
+                  <Spinner data-icon="inline-start" />
+                  Loading property...
+                </>
+              ) : (
+                <>
+                  Next Step
+                  <ArrowRight data-icon="inline-end" />
+                </>
+              )}
             </Button>
           ) : (
             <Button

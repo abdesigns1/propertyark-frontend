@@ -11,6 +11,14 @@ export interface CreditPointSettings {
   currency: string;
 }
 
+export interface AdminCreditGiftInput {
+  vendorIds?: string[];
+  points: number;
+  name: string;
+  expiresAt: string;
+  reason: string;
+}
+
 type UnknownRecord = Record<string, unknown>;
 
 export const DEFAULT_CREDIT_SETTINGS: CreditPointSettings = {
@@ -75,5 +83,9 @@ export const adminCreditService = {
   updateSettings: async (settings: CreditPointSettings) => {
     await api.patch("/credit-points/settings", settings);
     return settings;
+  },
+  giftPoints: async (gift: AdminCreditGiftInput) => {
+    const { data } = await api.post("/credit-points/admin-gift", gift);
+    return data;
   },
 };

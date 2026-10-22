@@ -186,40 +186,88 @@ function nestedNumber(value: unknown, keys: string[]): number | undefined {
 const KYC_DOCUMENT_KEYS = [
   "ninPhoto",
   "ninPhotoUrl",
+  "ninImage",
+  "ninImageUrl",
   "ninDocument",
   "ninDocumentUrl",
+  "identityPhoto",
+  "identityPhotoUrl",
+  "identityDocument",
+  "identityDocumentUrl",
+  "idDocument",
+  "idDocumentUrl",
   "documentUrl",
+  "document",
   "fileUrl",
+  "file",
   "secureUrl",
+  "signedUrl",
+  "downloadUrl",
+  "publicUrl",
   "imageUrl",
   "url",
 ] as const;
 
-function kycDocumentUrl(...sources: unknown[]): string | null {
-  for (const value of sources) {
-    if (typeof value === "string" && value.trim()) {
-      return normalizeKycDocumentUrl(value);
+function kycDocumentUrlFrom(value: unknown, depth = 0): string | null {
+  if (depth > 5) return null;
+  if (typeof value === "string" && value.trim()) {
+    return normalizeKycDocumentUrl(value);
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = kycDocumentUrlFrom(item, depth + 1);
+      if (found) return found;
     }
-
-    const source = record(value);
-    for (const key of KYC_DOCUMENT_KEYS) {
-      const candidate = source[key];
-      if (typeof candidate === "string" && candidate.trim()) {
-        return normalizeKycDocumentUrl(candidate);
-      }
-
-      const nested = record(candidate);
-      const nestedUrl = text(nested, [
-        "url",
-        "fileUrl",
-        "secureUrl",
-        "location",
-        "path",
-      ]);
-      if (nestedUrl) return normalizeKycDocumentUrl(nestedUrl);
-    }
+    return null;
   }
 
+  const source = record(value);
+  if (depth > 0) {
+    const bucket = text(source, ["bucket", "bucketName", "bucket_name"]);
+    const objectKey = text(source, [
+      "key",
+      "objectKey",
+      "object_key",
+      "storageKey",
+      "storage_key",
+    ]).replace(/^\/+/, "");
+    if (bucket.toLowerCase().startsWith("propertyark") && objectKey) {
+      const region = text(source, ["region", "awsRegion", "aws_region"]);
+      const encodedKey = objectKey
+        .split("/")
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
+      const storageUrl = `https://${bucket}.s3${region ? `.${region}` : ""}.amazonaws.com/${encodedKey}`;
+      const found = normalizeKycDocumentUrl(storageUrl);
+      if (found) return found;
+    }
+  }
+  for (const key of KYC_DOCUMENT_KEYS) {
+    const candidate = source[key];
+    if (candidate === undefined || candidate === null) continue;
+    const found = kycDocumentUrlFrom(candidate, depth + 1);
+    if (found) return found;
+  }
+
+  for (const [key, candidate] of Object.entries(source)) {
+    if (
+      !/(nin|kyc|identity|document|photo|upload|attachment|media)/i.test(key) ||
+      candidate === undefined ||
+      candidate === null
+    ) {
+      continue;
+    }
+    const found = kycDocumentUrlFrom(candidate, depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
+function kycDocumentUrl(...sources: unknown[]): string | null {
+  for (const source of sources) {
+    const found = kycDocumentUrlFrom(source);
+    if (found) return found;
+  }
   return null;
 }
 
@@ -230,7 +278,11 @@ function normalizeKycDocumentUrl(url: string) {
 function kycDocumentName(url: string | null, fallback: string) {
   if (!url) return fallback;
   try {
-    const pathname = url.split("?", 1)[0];
+    const parsed = new URL(url, "http://propertyark.local");
+    const remoteSource = parsed.searchParams.get("source");
+    const pathname = remoteSource
+      ? new URL(remoteSource).pathname
+      : parsed.pathname;
     return decodeURIComponent(pathname.split("/").pop() || fallback);
   } catch {
     return fallback;

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { FileBadge } from "lucide-react";
+import { PdfDocumentPreview } from "@/features/vendor/components/pdf-document-preview";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/store/auth.store";
 
@@ -22,7 +23,7 @@ export function AdminKycDocumentPreview({
     objectUrl: string;
     contentType: string;
   } | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failureMessage, setFailureMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -37,15 +38,28 @@ export function AdminKycDocumentPreview({
       signal: controller.signal,
     })
       .then(async (response) => {
-        if (!response.ok) throw new Error("KYC document request failed");
+        if (!response.ok) {
+          const error = (await response.json().catch(() => null)) as {
+            message?: unknown;
+          } | null;
+          throw new Error(
+            typeof error?.message === "string"
+              ? `${error.message} (${response.status})`
+              : `KYC document request failed (${response.status}).`,
+          );
+        }
         const blob = await response.blob();
         objectUrl = URL.createObjectURL(blob);
-        setFailed(false);
+        setFailureMessage(null);
         setDocument({ objectUrl, contentType: blob.type });
       })
       .catch((error: unknown) => {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
-          setFailed(true);
+          setFailureMessage(
+            error instanceof Error
+              ? error.message
+              : "This document could not be securely loaded.",
+          );
         }
       });
 
@@ -55,12 +69,13 @@ export function AdminKycDocumentPreview({
     };
   }, [accessToken, url]);
 
-  if (!accessToken || failed) {
+  if (!accessToken || failureMessage) {
     return (
       <div className={`flex items-center justify-center ${className}`}>
         <div className="text-center text-muted-foreground">
           <FileBadge className="mx-auto size-12" />
           <p className="mt-3">This document could not be securely loaded.</p>
+          {failureMessage && <p className="mt-1 text-sm">{failureMessage}</p>}
         </div>
       </div>
     );
@@ -70,13 +85,14 @@ export function AdminKycDocumentPreview({
 
   if (document.contentType === "application/pdf" || /\.pdf$/i.test(name)) {
     return (
-      <iframe
-        src={document.objectUrl}
-        title={`Identity document for ${ownerName}`}
-        sandbox=""
-        referrerPolicy="no-referrer"
-        className={`w-full rounded-md border ${className}`}
-      />
+      <div className={`w-full overflow-hidden rounded-md border ${className}`}>
+        <PdfDocumentPreview
+          src={document.objectUrl}
+          documentLabel={`Identity document for ${ownerName}`}
+          loadingLabel="Rendering identity document…"
+          errorDescription="The identity document was loaded, but its PDF pages could not be rendered."
+        />
+      </div>
     );
   }
 

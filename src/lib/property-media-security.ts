@@ -2,6 +2,7 @@ import { getBackendOrigin } from "@/lib/backend-url";
 
 const PROPERTY_MEDIA_PREFIX = "/api/property-media/";
 const KYC_MEDIA_PREFIX = "/api/kyc-media/";
+const KYC_REMOTE_MEDIA_PATH = `${KYC_MEDIA_PREFIX}remote`;
 
 const PROPERTY_MEDIA_TYPES = new Set([
   "image/avif",
@@ -63,6 +64,72 @@ export function sanitizeMediaPath(path: readonly string[]) {
     : null;
 }
 
+/**
+ * Accept only PropertyArk-owned S3 objects for the protected KYC viewer. The
+ * complete URL is revalidated again by the server-side proxy before fetching.
+ */
+export function trustedKycRemoteUrl(input: string) {
+  try {
+    const parsed = new URL(input.trim());
+    if (
+      parsed.protocol !== "https:" ||
+      parsed.username ||
+      parsed.password ||
+      parsed.port ||
+      parsed.hash
+    ) {
+      return null;
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+    const virtualHosted = hostname.match(
+      /^([a-z0-9][a-z0-9.-]*)\.s3(?:[.-][a-z0-9-]+)?\.amazonaws\.com$/,
+    );
+    const pathHosted = hostname.match(
+      /^s3(?:[.-][a-z0-9-]+)?\.amazonaws\.com$/,
+    );
+    const pathSegments = parsed.pathname.split("/").filter(Boolean);
+    const bucket = virtualHosted?.[1] ?? (pathHosted ? pathSegments[0] : null);
+    const objectSegments = virtualHosted ? pathSegments : pathSegments.slice(1);
+
+    if (
+      !bucket?.toLowerCase().startsWith("propertyark") ||
+      objectSegments.length === 0 ||
+      objectSegments.some((segment) => segment === "." || segment === "..")
+    ) {
+      return null;
+    }
+
+    for (const key of parsed.searchParams.keys()) {
+      if (
+        !key.toLowerCase().startsWith("x-amz-") &&
+        ![
+          "x-id",
+          "response-content-disposition",
+          "response-content-type",
+        ].includes(key.toLowerCase())
+      ) {
+        return null;
+      }
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function trustedKycRemoteObjectPath(input: string) {
+  const parsed = trustedKycRemoteUrl(input);
+  if (!parsed) return null;
+
+  const isPathHosted = /^s3(?:[.-][a-z0-9-]+)?\.amazonaws\.com$/i.test(
+    parsed.hostname,
+  );
+  const path = parsed.pathname.split("/").filter(Boolean);
+  return isPathHosted ? path.slice(1) : path;
+}
+
 function proxyUrl(pathname: string, purpose: MediaPurpose) {
   const path = sanitizeMediaPath(pathname.split("/"));
   if (!path) return null;
@@ -106,19 +173,33 @@ export function trustedUploadProxyUrl(input: string, purpose: MediaPurpose) {
           !parsed.port)),
     );
     if (
-      !matchesConfiguredOrigin ||
+      matchesConfiguredOrigin &&
+      ["http:", "https:"].includes(parsed.protocol) &&
+      !parsed.username &&
+      !parsed.password &&
+      !parsed.search &&
+      !parsed.hash &&
+      parsed.pathname.startsWith("/uploads/")
+    ) {
+      // The browser receives a same-origin proxy URL; the server-side proxy
+      // uses the exact backend origin configured for this environment.
+      return proxyUrl(parsed.pathname.slice("/uploads/".length), purpose);
+    }
+
+    const remoteKycUrl = purpose === "kyc" ? trustedKycRemoteUrl(value) : null;
+    if (remoteKycUrl) {
+      return `${KYC_REMOTE_MEDIA_PATH}?source=${encodeURIComponent(remoteKycUrl.toString())}`;
+    }
+
+    if (
       !["http:", "https:"].includes(parsed.protocol) ||
       parsed.username ||
       parsed.password ||
-      parsed.search ||
-      parsed.hash ||
-      !parsed.pathname.startsWith("/uploads/")
+      parsed.hash
     ) {
       return null;
     }
-    // The browser receives a same-origin proxy URL; the server-side proxy uses
-    // the exact backend origin configured for the current environment.
-    return proxyUrl(parsed.pathname.slice("/uploads/".length), purpose);
+    return null;
   } catch {
     return null;
   }

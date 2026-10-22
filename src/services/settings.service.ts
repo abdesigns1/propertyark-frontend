@@ -1,5 +1,6 @@
 import { normalizeAvatarMediaUrl } from "@/lib/property-media-security";
 import { api } from "@/services/axios";
+import type { LoginResponse } from "@/services/auth.service";
 
 export interface VendorSettingsProfile {
   id: string | null;
@@ -132,6 +133,10 @@ export const settingsService = {
           payload.confirmPassword ?? payload.confirmNewPassword ?? "",
       })
     ).data,
+  switchRole: async (role: "USER" | "VENDOR") =>
+    api
+      .patch<LoginResponse>("/users/switch-role", { role })
+      .then(({ data }) => data),
   deleteAccount: async (payload: {
     confirmationPhrase: "DELETE MY ACCOUNT";
     password?: string;

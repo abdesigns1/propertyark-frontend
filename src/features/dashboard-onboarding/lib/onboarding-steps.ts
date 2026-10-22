@@ -75,7 +75,7 @@ const userSteps: DashboardOnboardingStep[] = [
     eyebrow: "You are ready",
     title: "Get help or become a vendor",
     description:
-      "Use Messages when you need assistance. If you want to list properties, request a vendor account from Settings.",
+      "Use Messages when you need assistance. If you want to list properties, switch to Vendor mode from Settings and complete identity verification.",
     tip: "You can replay this guide anytime from the help icon in the top bar.",
     icon: Store,
   },

@@ -12,7 +12,17 @@ import { Spinner } from "@/components/ui/spinner";
 
 type PreviewState = "loading" | "ready" | "error";
 
-export function PdfDocumentPreview({ src }: { src: string }) {
+export function PdfDocumentPreview({
+  src,
+  documentLabel = "checklist",
+  loadingLabel = "Rendering checklist…",
+  errorDescription = "Open the checklist in a new tab or download it using the buttons below.",
+}: {
+  src: string;
+  documentLabel?: string;
+  loadingLabel?: string;
+  errorDescription?: string;
+}) {
   const pagesRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<PreviewState>("loading");
 
@@ -66,7 +76,7 @@ export function PdfDocumentPreview({ src }: { src: string }) {
             "overflow-hidden rounded-lg bg-background shadow-sm ring-1 ring-foreground/10";
           pageContainer.setAttribute(
             "aria-label",
-            `Checklist page ${pageNumber}`,
+            `${documentLabel} page ${pageNumber}`,
           );
 
           const canvas = window.document.createElement("canvas");
@@ -78,7 +88,7 @@ export function PdfDocumentPreview({ src }: { src: string }) {
           canvas.setAttribute("role", "img");
           canvas.setAttribute(
             "aria-label",
-            `Rendered checklist page ${pageNumber} of ${document.numPages}`,
+            `Rendered ${documentLabel} page ${pageNumber} of ${document.numPages}`,
           );
           pageContainer.append(canvas);
           pagesContainer.append(pageContainer);
@@ -108,7 +118,7 @@ export function PdfDocumentPreview({ src }: { src: string }) {
       void loadingTask?.destroy();
       pagesContainer.replaceChildren();
     };
-  }, [src]);
+  }, [documentLabel, src]);
 
   return (
     <div
@@ -119,7 +129,7 @@ export function PdfDocumentPreview({ src }: { src: string }) {
         <div className="absolute inset-0 flex items-center justify-center bg-muted">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Spinner />
-            Rendering checklist…
+            {loadingLabel}
           </div>
         </div>
       )}
@@ -129,10 +139,7 @@ export function PdfDocumentPreview({ src }: { src: string }) {
           <EmptyHeader>
             <FileWarning className="size-8 text-muted-foreground" />
             <EmptyTitle>Preview unavailable</EmptyTitle>
-            <EmptyDescription>
-              Open the checklist in a new tab or download it using the buttons
-              below.
-            </EmptyDescription>
+            <EmptyDescription>{errorDescription}</EmptyDescription>
           </EmptyHeader>
         </Empty>
       )}

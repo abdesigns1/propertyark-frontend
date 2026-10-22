@@ -32,7 +32,10 @@ export function VendorPropertyThumbnail({
   const backendMedia = useQuery({
     queryKey: ["properties", property.id, "media"],
     queryFn: () => propertyService.getMedia(property.id),
-    enabled: !isDraft && embeddedMedia.length === 0,
+    // Property-list responses can contain legacy Render records or only
+    // DOCUMENT entries after an edit. Refresh every persisted property's media
+    // from the canonical endpoint used by the full vendor preview.
+    enabled: !isDraft,
     staleTime: 5 * 60_000,
     retry: 1,
   });
@@ -56,7 +59,9 @@ export function VendorPropertyThumbnail({
 
   const propertyWithMedia = {
     ...property,
-    media: embeddedMedia.length ? embeddedMedia : backendMedia.data,
+    // Keep embedded media available while the canonical request is loading or
+    // if it fails, then replace it as soon as current media arrives.
+    media: backendMedia.data?.length ? backendMedia.data : embeddedMedia,
   };
 
   return (
@@ -64,8 +69,6 @@ export function VendorPropertyThumbnail({
       src={draftImageUrl ?? propertyImage(propertyWithMedia)}
       alt=""
       fill
-      crossOrigin="anonymous"
-      unoptimized
       onError={(event) => showPropertyImageFallback(event.currentTarget)}
       sizes={sizes}
       className={className}

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BadgeCheck,
   Download,
@@ -21,7 +21,10 @@ import {
   useAdminProperties,
 } from "@/features/admin/hooks/use-admin-dashboard";
 import { useAdminCreditSettings } from "@/features/admin/hooks/use-admin-credit";
-import { showPropertyImageFallback } from "@/features/properties/utils/normalize-property-response";
+import {
+  PROPERTY_IMAGE_FALLBACK,
+  showPropertyImageFallback,
+} from "@/features/properties/utils/normalize-property-response";
 import {
   adminPropertyCategory,
   adminPropertyImage,
@@ -559,18 +562,7 @@ function PropertyRow({
             aria-label={`View details for ${property.name}`}
             className="relative size-14 shrink-0 overflow-hidden rounded-lg outline-none ring-offset-background transition-shadow hover:ring-2 hover:ring-primary/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <Image
-              src={adminPropertyImage(property)}
-              alt={property.name}
-              fill
-              crossOrigin="anonymous"
-              unoptimized
-              onError={(event) =>
-                showPropertyImageFallback(event.currentTarget)
-              }
-              sizes="56px"
-              className="object-cover"
-            />
+            <AdminPropertyThumbnail property={property} />
           </Link>
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -645,6 +637,41 @@ function PropertyRow({
         </div>
       </TableCell>
     </TableRow>
+  );
+}
+
+function AdminPropertyThumbnail({
+  property,
+}: {
+  property: AdminManagedProperty;
+}) {
+  const mediaQuery = useQuery({
+    queryKey: ["admin", "property-thumbnail", property.id],
+    // Use the exact property payload that powers the working admin review
+    // gallery. The standalone assets envelope differs across backend versions.
+    queryFn: () => propertyService.getById(property.id),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+  const currentProperty = {
+    ...property,
+    media: mediaQuery.data?.media?.length
+      ? mediaQuery.data.media
+      : property.media,
+  };
+  const src = adminPropertyImage(currentProperty);
+
+  return (
+    <Image
+      key={src}
+      src={src || PROPERTY_IMAGE_FALLBACK}
+      alt={property.name}
+      fill
+      unoptimized
+      onError={(event) => showPropertyImageFallback(event.currentTarget)}
+      sizes="56px"
+      className="object-cover"
+    />
   );
 }
 

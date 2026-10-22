@@ -500,8 +500,6 @@ function PropertyMedia({
                     alt={`${selectedImage + 1} of ${images.length} for the property`}
                     fill
                     priority
-                    crossOrigin="anonymous"
-                    unoptimized
                     onError={(event) =>
                       showPropertyImageFallback(event.currentTarget)
                     }
@@ -537,8 +535,6 @@ function PropertyMedia({
                     src={normalizePropertyMediaUrl(image.url)}
                     alt={`Select property image ${index + 1}`}
                     fill
-                    crossOrigin="anonymous"
-                    unoptimized
                     onError={(event) =>
                       showPropertyImageFallback(event.currentTarget)
                     }

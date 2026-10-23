@@ -9,7 +9,6 @@ import { useAuthSessionReady } from "@/hooks/use-auth-session-ready";
 import { useAuthStore } from "@/store/auth.store";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { useAccountRoleSync } from "@/features/dashboard/hooks/use-account-role-sync";
 import { DashboardOnboardingProvider } from "@/features/dashboard-onboarding/components/dashboard-onboarding-provider";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -18,9 +17,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const ready = useAuthSessionReady();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const role = useAuthStore((state) => state.role);
-  useAccountRoleSync(
-    ready && (role === "buyer" || role === "user" || role === "vendor"),
-  );
   const expectedRole = pathname.startsWith("/vendor") ? "vendor" : "buyer";
   const hasAccess =
     isAuthenticated &&

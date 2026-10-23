@@ -62,6 +62,7 @@ export type PaymentVerificationState = "success" | "pending" | "failed";
 
 export interface VerifiedCreditPurchase {
   state: PaymentVerificationState;
+  paymentStatus: string | null;
   message: string;
   reference: string;
   purchaseNumber: string | null;
@@ -180,7 +181,15 @@ function paymentStateFor(value: unknown): PaymentVerificationState {
   }
   if (
     status &&
-    ["FAILED", "FAILURE", "CANCELLED", "CANCELED", "ABANDONED"].includes(status)
+    [
+      "FAILED",
+      "FAILURE",
+      "DECLINED",
+      "ERROR",
+      "CANCELLED",
+      "CANCELED",
+      "ABANDONED",
+    ].includes(status)
   ) {
     return "failed";
   }
@@ -461,8 +470,18 @@ export const creditPaymentService = {
       `/credit-points/purchase/verify/${encodeURIComponent(reference)}`,
     );
     const state = paymentStateFor(data);
+    const paymentStatus = stringFor(data, [
+      "paymentStatus",
+      "payment_status",
+      "transactionStatus",
+      "transaction_status",
+      "gatewayStatus",
+      "gateway_status",
+      "status",
+    ]);
     return {
       state,
+      paymentStatus,
       message:
         stringFor(data, ["message"]) ??
         (state === "success"

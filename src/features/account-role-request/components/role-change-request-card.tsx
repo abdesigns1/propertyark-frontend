@@ -3,7 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, ShieldCheck, Store, UserRound } from "lucide-react";
+import {
+  ArrowRight,
+  CircleCheck,
+  LogOut,
+  ShieldCheck,
+  Store,
+  UserRound,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,12 +32,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
-import { normalizeLoginResponse } from "@/features/authentication/utils/normalize-login-response";
 import type { RoleChangeTarget } from "@/features/account-role-request/lib/role-change-request";
 import { getApiErrorMessage } from "@/services/api-error";
 import { authService } from "@/services/auth.service";
 import { settingsService } from "@/services/settings.service";
-import { useAuthStore, type Role } from "@/store/auth.store";
+import { useAuthStore } from "@/store/auth.store";
 
 const roleRequestContent = {
   VENDOR: {
@@ -74,50 +80,18 @@ export function RoleChangeRequestCard({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const currentUser = useAuthStore((state) => state.user);
-  const currentUserId = useAuthStore((state) => state.userId);
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const content = roleRequestContent[targetRole];
   const Icon = content.Icon;
 
   const switchRole = useMutation({
-    mutationFn: async () => {
-      const response = await settingsService.switchRole(targetRole);
-      const switched = normalizeLoginResponse(response);
-      if (switched.accessToken) return switched;
-
-      const refreshed = normalizeLoginResponse(await authService.refresh());
-      if (!refreshed.accessToken) {
-        throw new Error(
-          "Your role changed, but the refreshed session did not include an access token. Please sign in again.",
-        );
-      }
-      return refreshed;
-    },
-    onSuccess: async (session) => {
-      const role = targetRole.toLowerCase() as Role;
-      setAuth({
-        accessToken: session.accessToken,
-        userId: session.userId ?? currentUserId,
-        role,
-        user: session.user ?? currentUser,
-      });
+    mutationFn: () => settingsService.switchRole(targetRole),
+    onSuccess: () => {
       setDialogOpen(false);
-      queryClient.clear();
-      toast.success(content.switched);
-
-      let destination = "/buyer/dashboard";
-      if (targetRole === "VENDOR") {
-        const profile = await settingsService.getProfile().catch(() => null);
-        destination =
-          profile?.identityVerificationStatus.toUpperCase() === "VERIFIED"
-            ? "/vendor/dashboard"
-            : "/vendor/kyc-onboarding";
-      }
-
-      router.replace(destination);
-      router.refresh();
+      setSuccessDialogOpen(true);
     },
     onError: (error) => {
       setDialogOpen(false);
@@ -126,6 +100,21 @@ export function RoleChangeRequestCard({
       );
     },
   });
+
+  async function handleLogout() {
+    setLoggingOut(true);
+
+    try {
+      await authService.logout();
+    } catch {
+      // Clear the local session even if the backend session is already stale.
+    } finally {
+      queryClient.clear();
+      clearAuth();
+      router.replace("/login");
+      router.refresh();
+    }
+  }
 
   return (
     <Card id={content.anchor} className="scroll-mt-24 shadow-sm">
@@ -176,6 +165,38 @@ export function RoleChangeRequestCard({
           </DialogContent>
         </Dialog>
       </CardFooter>
+
+      <Dialog open={successDialogOpen}>
+        <DialogContent
+          showCloseButton={false}
+          onEscapeKeyDown={(event) => event.preventDefault()}
+          onPointerDownOutside={(event) => event.preventDefault()}
+        >
+          <DialogHeader>
+            <div className="mb-2 flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+              <CircleCheck className="size-6" aria-hidden="true" />
+            </div>
+            <DialogTitle>Role switched successfully</DialogTitle>
+            <DialogDescription className="leading-6">
+              {content.switched} Log out and sign in again to refresh your
+              session and open the correct dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={() => void handleLogout()}
+              disabled={loggingOut}
+            >
+              {loggingOut ? (
+                <Spinner data-icon="inline-start" />
+              ) : (
+                <LogOut data-icon="inline-start" />
+              )}
+              {loggingOut ? "Logging out…" : "Log out and sign in again"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

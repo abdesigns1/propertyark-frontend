@@ -36,8 +36,10 @@ export function useAdminAllActivities(entityType = "ALL") {
       );
       return [firstPage, ...remainingPages].flatMap((page) => page.activities);
     },
-    refetchOnWindowFocus: false,
-    staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    staleTime: 10_000,
   });
 }
 

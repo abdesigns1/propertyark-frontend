@@ -416,9 +416,8 @@ export function AdminSupportPage() {
         request={dialog?.type === "resolve" ? dialog.request : null}
         pending={actions.resolve.isPending}
         onClose={() => setDialog(null)}
-        onResolve={(requestId, resolutionNote) => {
-          const request = dialog?.type === "resolve" ? dialog.request : null;
-          if (!request || request.assignedStaff?.id !== currentUserId) {
+        onResolve={(request, resolutionNote) => {
+          if (request.assignedStaff?.id !== currentUserId) {
             toast.error(
               "Only the staff member who accepted this request can resolve it.",
             );
@@ -426,7 +425,7 @@ export function AdminSupportPage() {
           }
 
           actions.resolve.mutate(
-            { requestId, resolutionNote },
+            { request, resolutionNote },
             {
               onSuccess: () => {
                 toast.success("Support request resolved.");
@@ -999,7 +998,7 @@ function ResolveDialog({
   request: SupportRequest | null;
   pending: boolean;
   onClose: () => void;
-  onResolve: (requestId: string, note: string) => void;
+  onResolve: (request: SupportRequest, note: string) => void;
 }) {
   const [note, setNote] = useState("");
   return (
@@ -1028,7 +1027,7 @@ function ResolveDialog({
           <Button
             disabled={!request || !note.trim() || pending}
             onClick={() =>
-              request && onResolve(supportActionId(request), note.trim())
+              request && onResolve(request, note.trim())
             }
           >
             {pending && <Spinner data-icon="inline-start" />} Resolve request

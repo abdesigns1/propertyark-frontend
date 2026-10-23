@@ -51,6 +51,18 @@ function isDuplicateConstraintError(error: unknown) {
   );
 }
 
+function isSupportResolutionCandidateError(error: unknown) {
+  if (!axios.isAxiosError(error)) return false;
+
+  const response = JSON.stringify(error.response?.data ?? "").toLowerCase();
+  return (
+    error.response?.status === 404 ||
+    response.includes("not found") ||
+    response.includes("not assigned") ||
+    response.includes("assigned to you")
+  );
+}
+
 function identifier(source: UnknownRecord, keys: string[]) {
   for (const key of keys) {
     const value = source[key];
@@ -591,8 +603,33 @@ export const chatService = {
     });
   },
 
-  resolveSupport(requestId: string, resolutionNote: string) {
-    return api.patch(`/chat/support/${requestId}/resolve`, { resolutionNote });
+  async resolveSupport(request: SupportRequest, resolutionNote: string) {
+    // The backend has returned both a support-request ID and a chat-session ID
+    // for accepted conversations. Resolve against the active session first,
+    // then fall back to the related request ID for older API responses.
+    const candidates = [
+      request.id,
+      request.supportRequestId,
+      request.requestId,
+    ].filter(
+      (candidate, index, all): candidate is string =>
+        Boolean(candidate) && all.indexOf(candidate) === index,
+    );
+    let lastError: unknown;
+
+    for (const candidate of candidates) {
+      try {
+        return await api.patch(
+          `/chat/support/${encodeURIComponent(candidate)}/resolve`,
+          { resolutionNote },
+        );
+      } catch (error) {
+        lastError = error;
+        if (!isSupportResolutionCandidateError(error)) throw error;
+      }
+    }
+
+    throw lastError ?? new Error("The support request could not be resolved.");
   },
 
   cancelSupport(requestId: string) {

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   CalendarClock,
@@ -15,6 +16,9 @@ import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
 import {
   date,
   money,
+  paymentVerificationReference,
+  reconcileVerifiedPayment,
+  shouldVerifyPayment,
   transactionFrom,
 } from "@/features/admin/components/admin-transactions-page";
 import { useAdminActivity } from "@/features/admin/hooks/use-admin-activity";
@@ -30,6 +34,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DEFAULT_CREDIT_SETTINGS } from "@/services/admin-credit.service";
+import { creditPaymentService } from "@/services/credit-payment.service";
 
 const SENSITIVE_KEY = /token|password|secret|authorization|cookie/i;
 
@@ -42,8 +47,30 @@ export function AdminTransactionDetailsPage({
   const settingsQuery = useAdminCreditSettings();
   const pricePerPoint =
     settingsQuery.data?.pricePerPoint ?? DEFAULT_CREDIT_SETTINGS.pricePerPoint;
-  const transaction = activityQuery.data
+  const activityTransaction = activityQuery.data
     ? transactionFrom(activityQuery.data, pricePerPoint)
+    : null;
+  const verificationReference = activityTransaction
+    ? paymentVerificationReference(activityTransaction)
+    : null;
+  const verificationQuery = useQuery({
+    queryKey: [
+      "admin",
+      "payment-verification",
+      verificationReference ?? "missing",
+    ],
+    queryFn: () => creditPaymentService.verifyPurchase(verificationReference!),
+    enabled: Boolean(
+      activityTransaction && shouldVerifyPayment(activityTransaction),
+    ),
+    retry: 1,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: (query) =>
+      query.state.data?.state === "pending" ? 30_000 : false,
+  });
+  const transaction = activityTransaction
+    ? reconcileVerifiedPayment(activityTransaction, verificationQuery.data)
     : null;
   const metadata = transaction
     ? Object.entries(transaction.metadata).filter(
@@ -70,7 +97,8 @@ export function AdminTransactionDetailsPage({
             <CardHeader>
               <CardTitle>Transaction could not be loaded</CardTitle>
               <CardDescription>
-                The record may no longer exist or the activity service is unavailable.
+                The record may no longer exist or the activity service is
+                unavailable.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -121,16 +149,41 @@ export function AdminTransactionDetailsPage({
               <CardHeader>
                 <CardTitle>Payment and vendor information</CardTitle>
                 <CardDescription>
-                  Identifiers and account information associated with this transaction.
+                  Identifiers and account information associated with this
+                  transaction.
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-5 sm:grid-cols-2">
-                <Detail icon={Hash} label="Internal reference" value={transaction.reference ?? "Not recorded"} />
-                <Detail icon={UserRound} label="Vendor" value={transaction.vendor} />
-                <Detail icon={Mail} label="Email" value={transaction.email ?? "Not recorded"} />
-                <Detail icon={CreditCard} label="Status" value={transaction.status} />
-                <Detail icon={WalletCards} label="Channel" value={transaction.channel} />
-                <Detail icon={CalendarClock} label="Created" value={date(transaction.createdAt)} />
+                <Detail
+                  icon={Hash}
+                  label="Internal reference"
+                  value={transaction.reference ?? "Not recorded"}
+                />
+                <Detail
+                  icon={UserRound}
+                  label="Vendor"
+                  value={transaction.vendor}
+                />
+                <Detail
+                  icon={Mail}
+                  label="Email"
+                  value={transaction.email ?? "Not recorded"}
+                />
+                <Detail
+                  icon={CreditCard}
+                  label="Status"
+                  value={transaction.status}
+                />
+                <Detail
+                  icon={WalletCards}
+                  label="Channel"
+                  value={transaction.channel}
+                />
+                <Detail
+                  icon={CalendarClock}
+                  label="Created"
+                  value={date(transaction.createdAt)}
+                />
               </CardContent>
             </Card>
 
@@ -139,7 +192,8 @@ export function AdminTransactionDetailsPage({
                 <CardHeader>
                   <CardTitle>Backend audit metadata</CardTitle>
                   <CardDescription>
-                    Complete non-sensitive information returned by the activity endpoint.
+                    Complete non-sensitive information returned by the activity
+                    endpoint.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -206,8 +260,10 @@ function Detail({
 }
 
 function displayValue(value: unknown) {
-  if (value === null || value === undefined || value === "") return "Not recorded";
-  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (value === null || value === undefined || value === "")
+    return "Not recorded";
+  if (typeof value === "string" || typeof value === "number")
+    return String(value);
   if (typeof value === "boolean") return value ? "Yes" : "No";
   return JSON.stringify(value, null, 2);
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useQueries } from "@tanstack/react-query";
 import {
   Banknote,
   CalendarDays,
@@ -75,6 +76,10 @@ import {
 } from "@/components/ui/table";
 import type { AdminActivity } from "@/services/activity.service";
 import { DEFAULT_CREDIT_SETTINGS } from "@/services/admin-credit.service";
+import {
+  creditPaymentService,
+  type VerifiedCreditPurchase,
+} from "@/services/credit-payment.service";
 
 type TransactionKind =
   "purchase" | "usage" | "payment" | "refund" | "adjustment";
@@ -435,6 +440,63 @@ function transactionCorrelationIds(transaction: TransactionRecord) {
   return [...new Set(identifiers)];
 }
 
+export function paymentVerificationReference(transaction: TransactionRecord) {
+  return (
+    text(transaction.metadata, [
+      "paymentReference",
+      "payment_reference",
+      "transactionReference",
+      "transaction_reference",
+      "transactionRef",
+      "transaction_ref",
+      "paystackReference",
+      "paystack_reference",
+      "reference",
+      "ref",
+    ]) ?? transaction.reference
+  );
+}
+
+export function shouldVerifyPayment(transaction: TransactionRecord) {
+  return (
+    transaction.kind === "purchase" &&
+    /INITIALIZE|INITIATED|PENDING|PROCESSING/.test(transaction.status) &&
+    paymentVerificationReference(transaction) !== null
+  );
+}
+
+function verifiedStatus(verification: VerifiedCreditPurchase) {
+  if (verification.paymentStatus) {
+    return verification.paymentStatus.trim().toUpperCase();
+  }
+  if (verification.state === "success") return "SUCCESS";
+  if (verification.state === "failed") return "FAILED";
+  return "PENDING";
+}
+
+export function reconcileVerifiedPayment(
+  transaction: TransactionRecord,
+  verification: VerifiedCreditPurchase | undefined,
+) {
+  if (!verification) return transaction;
+
+  return {
+    ...transaction,
+    status: verifiedStatus(verification),
+    amount: verification.amountPaid ?? transaction.amount,
+    points: verification.points ?? transaction.points,
+    metadata: {
+      ...transaction.metadata,
+      livePaymentVerification: {
+        paymentStatus: verifiedStatus(verification),
+        purchaseNumber: verification.purchaseNumber,
+        paidAt: verification.paidAt,
+        newBalance: verification.newBalance,
+      },
+    },
+  } satisfies TransactionRecord;
+}
+
 function mergeTransactionRecords(
   existing: TransactionRecord,
   candidate: TransactionRecord,
@@ -537,7 +599,7 @@ export function AdminTransactionsPage() {
   // Payment completion can be recorded as PAYMENT or TRANSACTION while the
   // original purchase initialization is recorded as CREDIT_POINT.
   const query = useAdminAllActivities();
-  const transactions = useMemo(() => {
+  const activityTransactions = useMemo(() => {
     const unique = new Map<string, TransactionRecord>();
     const keyByIdentifier = new Map<string, string>();
     (query.data ?? [])
@@ -568,6 +630,52 @@ export function AdminTransactionsPage() {
         new Date(first.createdAt).getTime(),
     );
   }, [pricePerPoint, query.data]);
+  const verificationReferences = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          activityTransactions
+            .filter(shouldVerifyPayment)
+            .map(paymentVerificationReference)
+            .filter((reference): reference is string => Boolean(reference)),
+        ),
+      ),
+    [activityTransactions],
+  );
+  const verificationQueries = useQueries({
+    queries: verificationReferences.map((reference) => ({
+      queryKey: ["admin", "payment-verification", reference],
+      queryFn: () => creditPaymentService.verifyPurchase(reference),
+      retry: 1,
+      staleTime: 30_000,
+      refetchOnWindowFocus: true,
+      refetchInterval: (verificationQuery: {
+        state: { data?: VerifiedCreditPurchase };
+      }) =>
+        verificationQuery.state.data?.state === "pending" ? 30_000 : false,
+    })),
+  });
+  const verifiedPayments = useMemo(
+    () =>
+      new Map(
+        verificationReferences.flatMap((reference, index) => {
+          const verification = verificationQueries[index]?.data;
+          return verification ? [[reference, verification] as const] : [];
+        }),
+      ),
+    [verificationQueries, verificationReferences],
+  );
+  const transactions = useMemo(
+    () =>
+      activityTransactions.map((transaction) => {
+        const reference = paymentVerificationReference(transaction);
+        return reconcileVerifiedPayment(
+          transaction,
+          reference ? verifiedPayments.get(reference) : undefined,
+        );
+      }),
+    [activityTransactions, verifiedPayments],
+  );
   const channels = useMemo(
     () => Array.from(new Set(transactions.map((item) => item.channel))).sort(),
     [transactions],
@@ -1043,8 +1151,13 @@ function TransactionStatusBadge({ status }: { status: string }) {
     refunded: "bg-secondary",
     other: "bg-muted-foreground",
   }[group];
-  const label =
-    group === "other" ? status : `${group[0].toUpperCase()}${group.slice(1)}`;
+  const label = /SUCCESS/.test(status)
+    ? "Successful"
+    : /DECLINED/.test(status)
+      ? "Declined"
+      : group === "other"
+        ? status
+        : `${group[0].toUpperCase()}${group.slice(1)}`;
 
   return (
     <Badge variant={variant}>

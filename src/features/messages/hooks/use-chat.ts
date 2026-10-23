@@ -8,6 +8,7 @@ import type {
   ChatSessionStatus,
   ChatSessionType,
   SendChatMessageInput,
+  SupportRequest,
 } from "@/features/messages/types/chat.types";
 import {
   chatSocketEvents,
@@ -449,12 +450,12 @@ export function useSupportActions() {
     }),
     resolve: useMutation({
       mutationFn: ({
-        requestId,
+        request,
         resolutionNote,
       }: {
-        requestId: string;
+        request: SupportRequest;
         resolutionNote: string;
-      }) => chatService.resolveSupport(requestId, resolutionNote),
+      }) => chatService.resolveSupport(request, resolutionNote),
       onSuccess: refresh,
     }),
     cancel: useMutation({

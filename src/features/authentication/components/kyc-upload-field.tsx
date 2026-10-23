@@ -6,8 +6,11 @@ import { UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
-
-const ACCEPTED = ".jpg,.jpeg,.png,.pdf";
+import {
+  isAcceptedKycDocument,
+  KYC_DOCUMENT_ACCEPT,
+  KYC_DOCUMENT_TYPE_ERROR,
+} from "../validation/register.schema";
 
 interface KycUploadFieldProps<T extends FieldValues> {
   control: Control<T>;
@@ -20,6 +23,7 @@ export function KycUploadField<T extends FieldValues>({
 }: KycUploadFieldProps<T>) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
 
   return (
     <Controller
@@ -29,8 +33,21 @@ export function KycUploadField<T extends FieldValues>({
         const file = field.value as File | undefined;
 
         function handleFiles(files: FileList | null) {
-          if (files?.[0]) field.onChange(files[0]);
+          const selectedFile = files?.[0];
+          if (!selectedFile) return;
+
+          if (!isAcceptedKycDocument(selectedFile)) {
+            setSelectionError(KYC_DOCUMENT_TYPE_ERROR);
+            field.onChange(undefined);
+            if (inputRef.current) inputRef.current.value = "";
+            return;
+          }
+
+          setSelectionError(null);
+          field.onChange(selectedFile);
         }
+
+        const errorMessage = selectionError ?? fieldState.error?.message;
 
         return (
           <Field>
@@ -51,7 +68,7 @@ export function KycUploadField<T extends FieldValues>({
               className={cn(
                 "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors",
                 isDragging ? "border-primary bg-primary/5" : "border-border",
-                fieldState.error && "border-destructive",
+                errorMessage && "border-destructive",
               )}
             >
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -63,7 +80,7 @@ export function KycUploadField<T extends FieldValues>({
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   National ID, Driver&apos;s Licence, or International Passport.
-                  JPEG, PNG, and PDF formats, up to 10 MB.
+                  JPG, JPEG, and PNG formats, up to 10 MB.
                 </p>
               </div>
               <Button
@@ -77,14 +94,12 @@ export function KycUploadField<T extends FieldValues>({
               <input
                 ref={inputRef}
                 type="file"
-                accept={ACCEPTED}
+                accept={KYC_DOCUMENT_ACCEPT}
                 className="hidden"
                 onChange={(e) => handleFiles(e.target.files)}
               />
             </div>
-            {fieldState.error && (
-              <FieldError>{fieldState.error.message}</FieldError>
-            )}
+            {errorMessage && <FieldError>{errorMessage}</FieldError>}
           </Field>
         );
       }}

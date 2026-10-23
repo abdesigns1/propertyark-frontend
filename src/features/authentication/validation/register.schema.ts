@@ -1,7 +1,18 @@
 import { z } from "zod";
 
 const MAX_FILE_SIZE_MB = 10;
-const ACCEPTED_KYC_TYPES = ["image/jpeg", "image/png", "application/pdf"];
+const ACCEPTED_KYC_TYPES = ["image/jpeg", "image/jpg", "image/png"];
+
+export const KYC_DOCUMENT_ACCEPT = ".jpg,.jpeg,.png";
+export const KYC_DOCUMENT_TYPE_ERROR =
+  "Only JPG, JPEG, or PNG images are accepted";
+
+export function isAcceptedKycDocument(file: Pick<File, "name" | "type">) {
+  const hasAcceptedType = ACCEPTED_KYC_TYPES.includes(file.type.toLowerCase());
+  const hasAcceptedExtension = /\.(?:jpe?g|png)$/i.test(file.name);
+
+  return hasAcceptedType && hasAcceptedExtension;
+}
 
 export const kycDocumentSchema = z
   .instanceof(File, {
@@ -10,8 +21,8 @@ export const kycDocumentSchema = z
   .refine((file) => file.size <= MAX_FILE_SIZE_MB * 1024 * 1024, {
     message: `File must be under ${MAX_FILE_SIZE_MB}MB`,
   })
-  .refine((file) => ACCEPTED_KYC_TYPES.includes(file.type), {
-    message: "File must be JPEG, PNG, or PDF",
+  .refine(isAcceptedKycDocument, {
+    message: KYC_DOCUMENT_TYPE_ERROR,
   });
 
 const baseFields = {

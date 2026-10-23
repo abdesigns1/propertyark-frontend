@@ -200,7 +200,7 @@ export function VendorKycOnboarding() {
           </form>
 
           <div className="grid gap-3 rounded-xl bg-muted/50 p-4 text-sm sm:grid-cols-3">
-            <Requirement icon={FileCheck2} label="JPEG, PNG or PDF" />
+            <Requirement icon={FileCheck2} label="JPG, JPEG or PNG" />
             <Requirement icon={Check} label="Maximum size: 10 MB" />
             <Requirement icon={ShieldCheck} label="Encrypted upload" />
           </div>

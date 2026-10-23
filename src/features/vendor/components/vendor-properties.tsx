@@ -95,9 +95,40 @@ import {
   useCreditRules,
 } from "@/features/vendor/hooks/use-credit-payment";
 import { DEFAULT_CREDIT_SETTINGS } from "@/services/admin-credit.service";
+import {
+  readablePropertyValue,
+  type PropertyStatus,
+} from "@/features/vendor/lib/add-property-form";
 
 const PAGE_SIZE = 6;
 const EMPTY_PROPERTIES: PropertyApiItem[] = [];
+const PROPERTY_STATUSES: PropertyStatus[] = [
+  "AVAILABLE",
+  "OCCUPIED",
+  "UNDER_MAINTENANCE",
+  "UNDER_CONSTRUCTION",
+  "SOLD",
+  "RENTED",
+];
+
+function operationalStatus(property: PropertyApiItem) {
+  const value = String(property.status || "AVAILABLE").toUpperCase();
+  return {
+    value,
+    label:
+      value === "AVAILABLE"
+        ? "Available / Active"
+        : readablePropertyValue(value),
+  };
+}
+
+function operationalStatusVariant(
+  status: string,
+): "default" | "secondary" | "outline" {
+  if (status === "AVAILABLE") return "default";
+  if (["OCCUPIED", "RENTED", "SOLD"].includes(status)) return "secondary";
+  return "outline";
+}
 
 function StatCard({
   title,
@@ -139,7 +170,8 @@ export function VendorProperties() {
   const queryClient = useQueryClient();
   const accountKey = useAccountKey();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
+  const [approvalStatus, setApprovalStatus] = useState("all");
+  const [propertyStatusFilter, setPropertyStatusFilter] = useState("all");
   const [type, setType] = useState("all");
   const [city, setCity] = useState("all");
   const [page, setPage] = useState(1);
@@ -214,7 +246,8 @@ export function VendorProperties() {
     () =>
       properties.filter((property) => {
         const term = search.trim().toLocaleLowerCase();
-        const propertyStatus = getPropertyStatus(property).key;
+        const approval = getPropertyStatus(property).key;
+        const propertyStatus = operationalStatus(property).value;
         return (
           (!term ||
             [
@@ -224,12 +257,14 @@ export function VendorProperties() {
               property.state,
               property.id,
             ].some((value) => value?.toLocaleLowerCase().includes(term))) &&
-          (status === "all" || propertyStatus === status) &&
+          (approvalStatus === "all" || approval === approvalStatus) &&
+          (propertyStatusFilter === "all" ||
+            propertyStatus === propertyStatusFilter) &&
           (type === "all" || property.type === type) &&
           (city === "all" || property.city === city)
         );
       }),
-    [properties, search, status, type, city],
+    [properties, search, approvalStatus, propertyStatusFilter, type, city],
   );
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, pages);
@@ -240,7 +275,8 @@ export function VendorProperties() {
   const resetPage = () => setPage(1);
   const clearFilters = () => {
     setSearch("");
-    setStatus("all");
+    setApprovalStatus("all");
+    setPropertyStatusFilter("all");
     setType("all");
     setCity("all");
     setPage(1);
@@ -386,7 +422,7 @@ export function VendorProperties() {
       </section>
       <ExplorePrimeCard />
       <Card>
-        <CardContent className="grid gap-3 py-1 md:grid-cols-[minmax(260px,1fr)_auto_auto_auto_auto]">
+        <CardContent className="grid gap-3 py-1 md:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_auto_auto_auto_auto_auto]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -401,22 +437,45 @@ export function VendorProperties() {
             />
           </div>
           <Select
-            value={status}
+            value={approvalStatus}
             onValueChange={(value) => {
-              setStatus(value);
+              setApprovalStatus(value);
               resetPage();
             }}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder="Approval" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="all">Status: All</SelectItem>
+                <SelectItem value="all">Approval: All</SelectItem>
                 <SelectItem value="published">Published</SelectItem>
                 <SelectItem value="pending">Pending review</SelectItem>
                 <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <Select
+            value={propertyStatusFilter}
+            onValueChange={(value) => {
+              setPropertyStatusFilter(value);
+              resetPage();
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Property status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="all">Property status: All</SelectItem>
+                {PROPERTY_STATUSES.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {item === "AVAILABLE"
+                      ? "Available / Active"
+                      : readablePropertyValue(item)}
+                  </SelectItem>
+                ))}
               </SelectGroup>
             </SelectContent>
           </Select>
@@ -539,7 +598,8 @@ export function VendorProperties() {
                     <TableHead>Location</TableHead>
                     <TableHead>Price</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Approval</TableHead>
+                    <TableHead>Property status</TableHead>
                     <TableHead>Featured placement</TableHead>
                     <TableHead>Views</TableHead>
                     <TableHead>Leads</TableHead>
@@ -550,10 +610,11 @@ export function VendorProperties() {
                 </TableHeader>
                 <TableBody>
                   {visible.map((property) => {
-                    const propertyStatus = getPropertyStatus(property);
+                    const approval = getPropertyStatus(property);
+                    const propertyStatus = operationalStatus(property);
                     const viewHref = property.id.startsWith("draft:")
                       ? `/vendor/properties/new?draft=${property.id.slice("draft:".length)}`
-                      : propertyStatus.key === "published"
+                      : approval.key === "published"
                         ? `/properties/${property.id}`
                         : `/vendor/properties/${property.id}`;
                     return (
@@ -591,8 +652,15 @@ export function VendorProperties() {
                           {property.type.replaceAll("_", " ").toLowerCase()}
                         </TableCell>
                         <TableCell>
+                          <Badge variant={propertyStatusVariant(approval.key)}>
+                            {approval.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
                           <Badge
-                            variant={propertyStatusVariant(propertyStatus.key)}
+                            variant={operationalStatusVariant(
+                              propertyStatus.value,
+                            )}
                           >
                             {propertyStatus.label}
                           </Badge>
@@ -630,7 +698,7 @@ export function VendorProperties() {
                                 <DropdownMenuItem asChild>
                                   <Link href={viewHref}>
                                     <Eye />
-                                    {propertyStatus.key === "published"
+                                    {approval.key === "published"
                                       ? "View listing"
                                       : "Preview listing"}
                                   </Link>
@@ -644,7 +712,7 @@ export function VendorProperties() {
                                   </Link>
                                 </DropdownMenuItem>
                                 {!property.id.startsWith("draft:") &&
-                                  propertyStatus.key === "published" &&
+                                  approval.key === "published" &&
                                   featuredQuery.isSuccess &&
                                   !property.isFeatured && (
                                     <DropdownMenuItem

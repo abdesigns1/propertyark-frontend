@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { PropertyArkMark } from "@/components/admin/propertyark-mark";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { adminNavigation } from "@/features/admin/data/dashboard-data";
@@ -103,6 +103,7 @@ export function AdminSidebar({
         )}
       >
         <Avatar>
+          <AvatarImage src={user?.avatarUrl ?? undefined} alt={identity.name} />
           <AvatarFallback className="bg-white text-primary">
             {identity.initials}
           </AvatarFallback>

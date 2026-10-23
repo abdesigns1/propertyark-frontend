@@ -120,6 +120,10 @@ export const settingsService = {
     if (updated.avatarUrl) return updated;
     return normalizeProfile((await api.get("/users/profile")).data);
   },
+  removeAvatar: async () => {
+    await api.delete("/users/avatar");
+    return normalizeProfile((await api.get("/users/profile")).data);
+  },
   changePassword: async (payload: {
     newPassword: string;
     confirmPassword?: string;

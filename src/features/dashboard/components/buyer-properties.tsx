@@ -1,7 +1,6 @@
 "use client";
 
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SlidersHorizontal } from "lucide-react";
 import { AnimatedContainer, AnimatedItem, FadeIn } from "@/components/motion";
@@ -19,7 +18,8 @@ import {
   PropertyFilters,
   type PropertyFilterState,
 } from "@/features/properties/components/property-filters";
-import { usePaginatedAvailableProperties } from "@/features/properties/hooks/use-available-properties";
+import { useAllAvailableProperties } from "@/features/properties/hooks/use-available-properties";
+import type { Property } from "@/features/properties/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RecommendedPropertyCard } from "./recommended-property-card";
 
@@ -30,16 +30,50 @@ const DEFAULT_FILTERS: PropertyFilterState = {
 };
 const PROPERTIES_PER_PAGE = 9;
 
-const LISTING_TYPE_MAP: Record<string, string> = {
-  Rent: "FOR_RENT",
-  Sale: "FOR_SALE",
-  Land: "FOR_LAND",
-  Shortlet: "FOR_SHORTLET",
-};
+function normalizedFilterText(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function matchesText(value: string, query: string) {
+  const normalizedQuery = normalizedFilterText(query);
+  if (!normalizedQuery) return true;
+  return normalizedFilterText(value).includes(normalizedQuery);
+}
+
+function propertyLocationText(property: Property) {
+  return [
+    property.location.address,
+    property.location.city,
+    property.location.state,
+    property.location.country,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function matchesPropertyType(property: Property, type: string) {
+  if (type === "Rent") return property.purpose === "rent";
+  if (type === "Sale") return property.purpose === "sale";
+  if (type === "Land") return property.purpose === "land";
+  if (type === "Shortlet") return property.purpose === "shortlet";
+  if (type === "Joint Venture") {
+    return matchesText(
+      [property.title, property.description, property.amenities?.join(" ")]
+        .filter(Boolean)
+        .join(" "),
+      "joint venture",
+    );
+  }
+  return false;
+}
 
 export function BuyerProperties() {
   const pathname = usePathname();
-  const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
@@ -48,42 +82,61 @@ export function BuyerProperties() {
     () => searchParams.get("search")?.trim() ?? "",
   );
   const deferredFilters = useDeferredValue(filters);
-  const backendFilters = useMemo(
-    () => ({
-      listingTypes: deferredFilters.types
-        .map((type) => LISTING_TYPE_MAP[type])
-        .filter(Boolean),
-      city: deferredFilters.location.trim() || undefined,
-      minPrice:
-        deferredFilters.priceRange[0] > DEFAULT_FILTERS.priceRange[0]
-          ? deferredFilters.priceRange[0]
-          : undefined,
-      maxPrice:
-        deferredFilters.priceRange[1] < DEFAULT_FILTERS.priceRange[1]
-          ? deferredFilters.priceRange[1]
-          : undefined,
-      search: searchQuery || undefined,
-    }),
-    [deferredFilters, searchQuery],
-  );
 
   /* eslint-disable react-hooks/set-state-in-effect -- URL search is external navigation state. */
   useEffect(() => {
     setSearchQuery(searchParams.get("search")?.trim() ?? "");
+    setPage(1);
   }, [searchParams]);
   /* eslint-enable react-hooks/set-state-in-effect */
-  const availableProperties = usePaginatedAvailableProperties({
-    page,
-    limit: PROPERTIES_PER_PAGE,
-    filters: backendFilters,
-  });
-  const properties = availableProperties.data?.properties ?? [];
+  const availableProperties = useAllAvailableProperties();
+  const matchingProperties = useMemo(
+    () =>
+      (availableProperties.data ?? [])
+        .filter(
+          (property) =>
+            deferredFilters.types.length === 0 ||
+            deferredFilters.types.some((type) =>
+              matchesPropertyType(property, type),
+            ),
+        )
+        .filter((property) =>
+          matchesText(propertyLocationText(property), deferredFilters.location),
+        )
+        .filter((property) => {
+          const [minimum, maximum] = deferredFilters.priceRange;
+          const meetsMinimum =
+            minimum === DEFAULT_FILTERS.priceRange[0] ||
+            property.price >= minimum;
+          const meetsMaximum =
+            maximum === DEFAULT_FILTERS.priceRange[1] ||
+            property.price <= maximum;
+          return meetsMinimum && meetsMaximum;
+        })
+        .filter((property) =>
+          matchesText(
+            [
+              property.title,
+              property.description,
+              property.type,
+              property.purpose,
+              propertyLocationText(property),
+            ].join(" "),
+            searchQuery,
+          ),
+        ),
+    [availableProperties.data, deferredFilters, searchQuery],
+  );
 
   const totalPages = Math.max(
     1,
-    availableProperties.data?.pagination.pages ?? 1,
+    Math.ceil(matchingProperties.length / PROPERTIES_PER_PAGE),
   );
   const currentPage = Math.min(page, totalPages);
+  const properties = matchingProperties.slice(
+    (currentPage - 1) * PROPERTIES_PER_PAGE,
+    currentPage * PROPERTIES_PER_PAGE,
+  );
 
   function handleFiltersChange(next: PropertyFilterState) {
     setFilters(next);
@@ -92,9 +145,6 @@ export function BuyerProperties() {
 
   function handleFiltersReset() {
     setSearchQuery("");
-    void queryClient.invalidateQueries({
-      queryKey: ["properties", "available"],
-    });
     router.replace(pathname, { scroll: false });
   }
 

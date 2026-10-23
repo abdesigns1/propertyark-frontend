@@ -55,9 +55,8 @@ export function PropertyFilters({
     onChange?.({ types, location, priceRange, ...next });
   }
 
-  function toggleType(type: string) {
-    const next = types.includes(type) ? [] : [type];
-    emit({ types: next });
+  function toggleType(type: string, checked: boolean) {
+    emit({ types: checked ? [type] : [] });
   }
 
   function selectCity(city: string) {
@@ -101,7 +100,9 @@ export function PropertyFilters({
             >
               <Checkbox
                 checked={types.includes(type)}
-                onCheckedChange={() => toggleType(type)}
+                onCheckedChange={(checked) =>
+                  toggleType(type, checked === true)
+                }
               />
               {type}
             </label>

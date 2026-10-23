@@ -1,9 +1,10 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Save, UserCog } from "lucide-react";
+import { Camera, LoaderCircle, Save, Trash2, UserCog } from "lucide-react";
 import { toast } from "sonner";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,12 +51,21 @@ function AdminGeneralSettingsForm({
 }) {
   const queryClient = useQueryClient();
   const updateUser = useAuthStore((state) => state.updateUser);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl ?? "");
   const initialForm = {
     fullName: profile.fullName,
     phone: profile.phone,
     location: profile.location,
   };
   const [form, setForm] = useState(initialForm);
+  const initials =
+    form.fullName
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0))
+      .join("")
+      .toUpperCase() || "PA";
   const mutation = useMutation({
     mutationFn: settingsService.updateProfile,
     onSuccess: async (profile) => {
@@ -72,6 +82,49 @@ function AdminGeneralSettingsForm({
         getApiErrorMessage(error, "Profile changes could not be saved."),
       ),
   });
+  const avatarMutation = useMutation({
+    mutationFn: settingsService.updateAvatar,
+    onSuccess: (updated) => {
+      const nextAvatarUrl = updated.avatarUrl ?? null;
+      setAvatarUrl(nextAvatarUrl ?? "");
+      updateUser({ avatarUrl: nextAvatarUrl });
+      queryClient.setQueryData<VendorSettingsProfile>(profileKey, updated);
+      toast.success("Admin profile picture updated.");
+    },
+    onError: (error) =>
+      toast.error(
+        getApiErrorMessage(error, "The profile picture could not be updated."),
+      ),
+  });
+  const removeAvatarMutation = useMutation({
+    mutationFn: settingsService.removeAvatar,
+    onSuccess: (updated) => {
+      setAvatarUrl("");
+      updateUser({ avatarUrl: null });
+      queryClient.setQueryData<VendorSettingsProfile>(profileKey, {
+        ...updated,
+        avatarUrl: null,
+      });
+      toast.success("Admin profile picture removed.");
+    },
+    onError: (error) =>
+      toast.error(
+        getApiErrorMessage(error, "The profile picture could not be removed."),
+      ),
+  });
+
+  function chooseAvatar(file?: File) {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/gif"].includes(file.type)) {
+      toast.error("Choose a JPG, PNG, or GIF image.");
+      return;
+    }
+    if (file.size > 800 * 1024) {
+      toast.error("The image must be 800 KB or smaller.");
+      return;
+    }
+    avatarMutation.mutate(file);
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -97,6 +150,83 @@ function AdminGeneralSettingsForm({
         </CardHeader>
         <CardContent>
           <FieldGroup className="grid gap-5 md:grid-cols-2">
+            <Field className="md:col-span-2">
+              <FieldLabel>Profile picture</FieldLabel>
+              <div className="flex flex-col items-center gap-4 rounded-xl border p-4 sm:flex-row">
+                <Avatar className="size-24 rounded-2xl">
+                  <AvatarImage
+                    src={avatarUrl || undefined}
+                    alt={form.fullName}
+                    className="rounded-2xl object-cover"
+                  />
+                  <AvatarFallback className="rounded-2xl text-xl">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col items-center gap-2 sm:items-start">
+                  <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => fileInput.current?.click()}
+                      disabled={
+                        avatarMutation.isPending ||
+                        removeAvatarMutation.isPending
+                      }
+                    >
+                      {avatarMutation.isPending ? (
+                        <LoaderCircle
+                          data-icon="inline-start"
+                          className="animate-spin"
+                        />
+                      ) : (
+                        <Camera data-icon="inline-start" />
+                      )}
+                      {avatarMutation.isPending
+                        ? "Uploading..."
+                        : "Change picture"}
+                    </Button>
+                    {avatarUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => removeAvatarMutation.mutate()}
+                        disabled={
+                          avatarMutation.isPending ||
+                          removeAvatarMutation.isPending
+                        }
+                      >
+                        {removeAvatarMutation.isPending ? (
+                          <LoaderCircle
+                            data-icon="inline-start"
+                            className="animate-spin"
+                          />
+                        ) : (
+                          <Trash2 data-icon="inline-start" />
+                        )}
+                        {removeAvatarMutation.isPending
+                          ? "Removing..."
+                          : "Remove"}
+                      </Button>
+                    )}
+                  </div>
+                  <FieldDescription>
+                    JPG, PNG, or GIF. Maximum size 800 KB.
+                  </FieldDescription>
+                </div>
+                <input
+                  ref={fileInput}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif"
+                  className="hidden"
+                  aria-label="Choose administrator profile picture"
+                  onChange={(event) => {
+                    chooseAvatar(event.target.files?.[0]);
+                    event.target.value = "";
+                  }}
+                />
+              </div>
+            </Field>
             <Field>
               <FieldLabel htmlFor="admin-name">Full name</FieldLabel>
               <Input

@@ -16,7 +16,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { AdminSidebar } from "@/features/admin/components/admin-sidebar";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -119,6 +119,10 @@ export function AdminDashboardHeader() {
               className="group flex items-center gap-2 rounded-full p-1 pr-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Avatar className="size-9">
+                <AvatarImage
+                  src={user?.avatarUrl ?? undefined}
+                  alt={identity.name}
+                />
                 <AvatarFallback>{identity.initials}</AvatarFallback>
               </Avatar>
               <ChevronDown className="hidden size-4 transition-transform group-data-[state=open]:rotate-180 sm:block" />

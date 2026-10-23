@@ -1044,7 +1044,13 @@ export function AddPropertyWizard({
                 .filter(Boolean),
             ),
             cancellationPolicy: values.cancellationPolicy.trim(),
-            paymentPolicy: values.paymentPolicy.trim(),
+            // Temporary backend workaround: Prisma currently rejects
+            // `paymentPolicy` during property updates. Keep collecting and
+            // displaying it, but omit it from PATCH requests until the backend
+            // update contract is repaired. New-property creation is unchanged.
+            ...(!isEditing
+              ? { paymentPolicy: values.paymentPolicy.trim() }
+              : {}),
           }
         : {}),
     };

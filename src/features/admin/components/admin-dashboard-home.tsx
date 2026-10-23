@@ -45,7 +45,7 @@ import type {
   AdminUser,
 } from "@/services/admin.service";
 import type { AdminActivity } from "@/services/activity.service";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { AdminRoleBadge } from "@/features/admin/components/admin-role-badge";
 import { Button } from "@/components/ui/button";
@@ -260,6 +260,10 @@ function DashboardHeader() {
               className="group flex items-center gap-2 rounded-full p-1 pr-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Avatar className="size-9">
+                <AvatarImage
+                  src={user?.avatarUrl ?? undefined}
+                  alt={identity.name}
+                />
                 <AvatarFallback>{identity.initials}</AvatarFallback>
               </Avatar>
               <ChevronDown className="hidden size-4 transition-transform group-data-[state=open]:rotate-180 sm:block" />

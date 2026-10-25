@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios";
 import { api } from "@/services/axios";
 
 type ApiRecord = Record<string, unknown>;
@@ -466,36 +467,74 @@ export const creditPaymentService = {
   verifyPurchase: async (
     reference: string,
   ): Promise<VerifiedCreditPurchase> => {
-    const { data } = await api.get(
-      `/credit-points/purchase/verify/${encodeURIComponent(reference)}`,
-    );
-    const state = paymentStateFor(data);
-    const paymentStatus = stringFor(data, [
-      "paymentStatus",
-      "payment_status",
-      "transactionStatus",
-      "transaction_status",
-      "gatewayStatus",
-      "gateway_status",
-      "status",
-    ]);
-    return {
-      state,
-      paymentStatus,
-      message:
-        stringFor(data, ["message"]) ??
-        (state === "success"
-          ? "Payment verified and credit points added successfully."
-          : state === "failed"
-            ? "Paystack could not complete this payment."
-            : "Your payment is still being confirmed."),
-      reference,
-      purchaseNumber: stringFor(data, ["purchaseNumber", "purchase_number"]),
-      points: numberFor(data, ["points", "creditPoints", "credit_points"]),
-      amountPaid: numberFor(data, ["amountPaid", "amount_paid", "amount"]),
-      currency: stringFor(data, ["currency"]) ?? "NGN",
-      newBalance: numberFor(data, ["newBalance", "new_balance"]),
-      paidAt: stringFor(data, ["paidAt", "paid_at"]),
-    };
+    try {
+      const { data } = await api.get(
+        `/credit-points/purchase/verify/${encodeURIComponent(reference)}`,
+      );
+      const state = paymentStateFor(data);
+      const paymentStatus = stringFor(data, [
+        "paymentStatus",
+        "payment_status",
+        "transactionStatus",
+        "transaction_status",
+        "gatewayStatus",
+        "gateway_status",
+        "status",
+      ]);
+      return {
+        state,
+        paymentStatus,
+        message:
+          stringFor(data, ["message"]) ??
+          (state === "success"
+            ? "Payment verified and credit points added successfully."
+            : state === "failed"
+              ? "Paystack could not complete this payment."
+              : "Your payment is still being confirmed."),
+        reference,
+        purchaseNumber: stringFor(data, [
+          "purchaseNumber",
+          "purchase_number",
+        ]),
+        points: numberFor(data, ["points", "creditPoints", "credit_points"]),
+        amountPaid: numberFor(data, ["amountPaid", "amount_paid", "amount"]),
+        currency: stringFor(data, ["currency"]) ?? "NGN",
+        newBalance: numberFor(data, ["newBalance", "new_balance"]),
+        paidAt: stringFor(data, ["paidAt", "paid_at"]),
+      };
+    } catch (error) {
+      const responseData = isAxiosError(error) ? error.response?.data : null;
+      const responseMessage = stringFor(responseData, [
+        "error",
+        "message",
+        "details",
+      ]);
+
+      // The backend persists FAILED and intentionally returns HTTP 400 when
+      // Paystack confirms that a purchase did not succeed. Treat that response
+      // as a final verification result instead of leaving the admin ledger on
+      // the earlier INITIALIZE_CREDIT_PURCHASE activity status.
+      if (
+        isAxiosError(error) &&
+        error.response?.status === 400 &&
+        responseMessage &&
+        /payment failed/i.test(responseMessage)
+      ) {
+        return {
+          state: "failed",
+          paymentStatus: "FAILED",
+          message: responseMessage,
+          reference,
+          purchaseNumber: null,
+          points: null,
+          amountPaid: null,
+          currency: "NGN",
+          newBalance: null,
+          paidAt: null,
+        };
+      }
+
+      throw error;
+    }
   },
 };

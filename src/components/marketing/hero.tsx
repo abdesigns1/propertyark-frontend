@@ -11,7 +11,7 @@ export function Hero() {
         {/* Background image + overlay */}
         <div className="absolute inset-0 -z-10">
           <Image
-            src="/2nd hero image.jpg"
+            src="/hero image updated.jpg"
             alt="Aerial view of a modern city and residential neighbourhood"
             fill
             priority

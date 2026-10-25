@@ -349,18 +349,6 @@ export function transactionFrom(
       "transaction_ref",
       "paystackReference",
       "paystack_reference",
-      "purchaseNumber",
-      "purchase_number",
-      "purchaseId",
-      "purchase_id",
-      "creditPurchaseId",
-      "credit_purchase_id",
-      "transactionId",
-      "transaction_id",
-      // Activity records currently expose the credit-purchase record ID but
-      // not the Paystack reference. Use that stable ID as the internal ref.
-      "entityId",
-      "entity_id",
     ]),
     status: paymentStatus(activity),
     channel:
@@ -441,20 +429,29 @@ function transactionCorrelationIds(transaction: TransactionRecord) {
 }
 
 export function paymentVerificationReference(transaction: TransactionRecord) {
-  return (
-    text(transaction.metadata, [
-      "paymentReference",
-      "payment_reference",
-      "transactionReference",
-      "transaction_reference",
-      "transactionRef",
-      "transaction_ref",
-      "paystackReference",
-      "paystack_reference",
-      "reference",
-      "ref",
-    ]) ?? transaction.reference
-  );
+  const explicitReference = text(transaction.metadata, [
+    "paymentReference",
+    "payment_reference",
+    "transactionReference",
+    "transaction_reference",
+    "transactionRef",
+    "transaction_ref",
+    "paystackReference",
+    "paystack_reference",
+    "reference",
+    "ref",
+  ]);
+
+  if (explicitReference) return explicitReference;
+
+  // The activity endpoint currently uses the CreditPurchase database ID
+  // (`cm...`) as the table reference when it omits the Paystack reference.
+  // The verification route only accepts the backend-generated `CRT-...`
+  // reference, so never send a database ID to it.
+  const fallbackReference = transaction.reference?.trim() ?? "";
+  return /^CRT-\d{10,}-[A-Z0-9]+$/i.test(fallbackReference)
+    ? fallbackReference
+    : null;
 }
 
 export function shouldVerifyPayment(transaction: TransactionRecord) {
@@ -557,7 +554,7 @@ function csvCell(value: string | number | null) {
 function exportTransactions(records: TransactionRecord[]) {
   const rows = records.map((item) =>
     [
-      item.reference ?? item.id,
+      item.reference,
       kindLabel(item.kind),
       item.vendor,
       item.email,
@@ -572,7 +569,7 @@ function exportTransactions(records: TransactionRecord[]) {
       .join(","),
   );
   const csv = [
-    "Transaction ID,Type,Buyer or vendor,Email,Credits,Amount,Currency,Status,Payment method,Created",
+    "Reference ID,Type,Buyer or vendor,Email,Credits,Amount,Currency,Status,Payment method,Created",
     ...rows,
   ].join("\n");
   const url = URL.createObjectURL(
@@ -978,7 +975,7 @@ export function AdminTransactionsPage() {
                 <Table className="min-w-[980px]">
                   <TableHeader className="bg-surface">
                     <TableRow>
-                      <TableHead>Transaction ID</TableHead>
+                      <TableHead>Reference ID</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Buyer / Vendor</TableHead>
                       <TableHead>Credits</TableHead>
@@ -993,12 +990,18 @@ export function AdminTransactionsPage() {
                     {visible.map((item) => (
                       <TableRow key={item.id} className="h-20">
                         <TableCell>
-                          <Link
-                            href={`/admin/transactions/${encodeURIComponent(item.id)}`}
-                            className="font-mono text-xs font-semibold text-primary hover:underline"
-                          >
-                            #{item.reference ?? item.id}
-                          </Link>
+                          {item.reference ? (
+                            <Link
+                              href={`/admin/transactions/${encodeURIComponent(item.id)}`}
+                              className="font-mono text-xs font-semibold text-primary hover:underline"
+                            >
+                              {item.reference}
+                            </Link>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              Unavailable
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <TransactionTypeBadge kind={item.kind} />
@@ -1068,7 +1071,7 @@ export function AdminTransactionsPage() {
                   <div className="min-w-0">
                     <p className="truncate font-medium">{item.description}</p>
                     <p className="text-xs text-muted-foreground">
-                      {date(item.createdAt)} · {item.reference ?? item.id}
+                      {date(item.createdAt)} · {item.reference ?? "Reference unavailable"}
                     </p>
                   </div>
                 </div>
@@ -1178,7 +1181,11 @@ function TransactionActions({
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label={`Actions for ${transaction.reference ?? transaction.id}`}
+          aria-label={
+            transaction.reference
+              ? `Actions for reference ${transaction.reference}`
+              : "Transaction actions"
+          }
         >
           <MoreHorizontal />
         </Button>
@@ -1193,16 +1200,16 @@ function TransactionActions({
               View details
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() =>
-              void navigator.clipboard.writeText(
-                transaction.reference ?? transaction.id,
-              )
-            }
-          >
-            <ReceiptText />
-            Copy transaction ID
-          </DropdownMenuItem>
+          {transaction.reference && (
+            <DropdownMenuItem
+              onSelect={() =>
+                void navigator.clipboard.writeText(transaction.reference!)
+              }
+            >
+              <ReceiptText />
+              Copy reference ID
+            </DropdownMenuItem>
+          )}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>

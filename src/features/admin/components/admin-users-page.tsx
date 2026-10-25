@@ -11,6 +11,14 @@ import {
 } from "@/features/admin/hooks/use-admin-dashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -22,14 +30,24 @@ const userFilters = [
   { value: "admin", label: "Admins" },
 ] as const;
 
+const verificationFilters = [
+  { value: "all", label: "All verification" },
+  { value: "verified", label: "Verified users" },
+  { value: "pending", label: "Pending users" },
+] as const;
+
 export function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState("all");
+  const [verificationFilter, setVerificationFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const isSearching = Boolean(search.trim());
+  const isFiltering =
+    Boolean(search.trim()) ||
+    filter !== "all" ||
+    verificationFilter !== "all";
   const usersQuery = useAdminUsers(
-    isSearching ? 1 : page,
-    isSearching ? 1000 : 10,
+    isFiltering ? 1 : page,
+    isFiltering ? 1000 : 10,
   );
   const statsQuery = useAdminUserStats();
   const users = useMemo(() => {
@@ -37,14 +55,19 @@ export function AdminUsersPage() {
     return (usersQuery.data?.users ?? []).filter((user) => {
       const matchesRole =
         filter === "all" || user.role.toLowerCase() === filter;
+      const matchesVerification =
+        verificationFilter === "all" ||
+        (verificationFilter === "verified"
+          ? user.isVerified
+          : !user.isVerified);
       const matchesSearch =
         !normalizedSearch ||
         `${user.id} ${user.fullName} ${user.email} ${user.phone ?? ""} ${user.role}`
           .toLowerCase()
           .includes(normalizedSearch);
-      return matchesRole && matchesSearch;
+      return matchesRole && matchesVerification && matchesSearch;
     });
-  }, [filter, search, usersQuery.data?.users]);
+  }, [filter, search, usersQuery.data?.users, verificationFilter]);
 
   function exportCsv() {
     const header = [
@@ -136,17 +159,42 @@ export function AdminUsersPage() {
               ))}
             </TabsList>
           </Tabs>
-          <div className="relative mb-3 w-full sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
+          <div className="mb-3 flex w-full flex-col gap-3 sm:max-w-xl sm:flex-row">
+            <Select
+              value={verificationFilter}
+              onValueChange={(value) => {
+                setVerificationFilter(value);
                 setPage(1);
               }}
-              placeholder="Search by user ID, name, email or phone..."
-              className="pl-10"
-            />
+            >
+              <SelectTrigger
+                className="w-full sm:w-48"
+                aria-label="Filter users by verification status"
+              >
+                <SelectValue placeholder="All verification" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {verificationFilters.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <div className="relative min-w-0 flex-1">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search by user ID, name, email or phone..."
+                className="pl-10"
+              />
+            </div>
           </div>
         </section>
 
@@ -157,15 +205,15 @@ export function AdminUsersPage() {
             <AdminUsersTable
               users={users}
               page={
-                isSearching ? 1 : (usersQuery.data?.pagination.page ?? page)
+                isFiltering ? 1 : (usersQuery.data?.pagination.page ?? page)
               }
-              pages={isSearching ? 1 : (usersQuery.data?.pagination.pages ?? 1)}
+              pages={isFiltering ? 1 : (usersQuery.data?.pagination.pages ?? 1)}
               total={
-                isSearching
+                isFiltering
                   ? users.length
                   : (usersQuery.data?.pagination.total ?? 0)
               }
-              pageSize={isSearching ? Math.max(1, users.length) : 10}
+              pageSize={isFiltering ? Math.max(1, users.length) : 10}
               onPageChange={setPage}
             />
           )}

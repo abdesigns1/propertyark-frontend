@@ -14,6 +14,7 @@ import { PropertyCard } from "@/features/properties/components/property-card";
 import { PaginationControls } from "@/components/shared/pagination-controls";
 import { BecomeVendorBanner } from "@/components/contact/become-vendor-banner";
 import { Footer } from "@/components/shared/footer";
+import { WhatsAppChatBubble } from "@/components/shared/whatsapp-chat-bubble";
 import { CONTAINER, cn } from "@/lib/utils";
 import { useAllAvailableProperties } from "@/features/properties/hooks/use-available-properties";
 import type { Property } from "@/features/properties/types";
@@ -564,6 +565,7 @@ function PropertiesContent() {
 
       <BecomeVendorBanner />
       <Footer />
+      <WhatsAppChatBubble />
     </>
   );
 }

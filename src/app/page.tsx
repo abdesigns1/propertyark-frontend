@@ -9,6 +9,7 @@ import { Footer } from "@/components/shared/footer";
 import { PropertySearchForm } from "@/components/shared/property-search-form";
 import { CONTAINER, cn } from "@/lib/utils";
 import { HomepageAnnouncementMarquee } from "@/components/shared/site-announcement";
+import { WhatsAppChatBubble } from "@/components/shared/whatsapp-chat-bubble";
 
 export default function HomePage() {
   return (
@@ -33,6 +34,7 @@ export default function HomePage() {
       {/* <Testimonials /> */}
 
       <Footer />
+      <WhatsAppChatBubble />
     </>
   );
 }

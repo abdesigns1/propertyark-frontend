@@ -156,8 +156,8 @@ export function AdminTransactionDetailsPage({
               <CardContent className="grid gap-5 sm:grid-cols-2">
                 <Detail
                   icon={Hash}
-                  label="Internal reference"
-                  value={transaction.reference ?? "Not recorded"}
+                  label="Reference ID"
+                  value={transaction.reference ?? "Unavailable"}
                 />
                 <Detail
                   icon={UserRound}

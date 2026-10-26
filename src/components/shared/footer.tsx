@@ -107,7 +107,7 @@ export function Footer() {
 
           <div className="mt-10 border-t border-border pt-6 text-center text-xs text-muted-foreground">
             © {new Date().getFullYear()} PropertyArk Premium Real Estate. All
-            rights reserved. | A property of Solinky Global Services Limited.
+            rights reserved. | A property of Solinki Global Services Limited.
           </div>
         </div>
       </div>

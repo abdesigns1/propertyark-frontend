@@ -647,8 +647,6 @@ export function AddPropertyWizard({
       !existingMedia.some((item) => item.type === "IMAGE")
     )
       next.photos = "Upload at least one property photo.";
-    if (index === 3 && !isEditing && documents.ownership.length === 0)
-      next.ownership = "Upload proof of ownership.";
     setErrors(next);
     if (Object.keys(next).length) {
       toast.error("Please complete the highlighted fields.");
@@ -2241,7 +2239,10 @@ export function AddPropertyWizard({
                 ).map(({ key, title, copy, icon }) => (
                   <Card key={key}>
                     <CardHeader>
-                      <CardTitle>{title}</CardTitle>
+                      <CardTitle className="flex items-center gap-2">
+                        {title}
+                        <Badge variant="secondary">Optional</Badge>
+                      </CardTitle>
                       <CardDescription>{copy}</CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-col gap-3">
@@ -2287,9 +2288,10 @@ export function AddPropertyWizard({
                     />
                   </CardContent>
                 </Card>
-                <PropertyTipCard title="Secure upload">
-                  Documents are sent through the authenticated endpoint and are
-                  only listed as complete after the server accepts the property.
+                <PropertyTipCard title="Documents are optional">
+                  You can continue to the Review step and submit your property
+                  without uploading a legal document. Any files you add here
+                  will still be sent securely with the listing.
                 </PropertyTipCard>
               </aside>
             </>

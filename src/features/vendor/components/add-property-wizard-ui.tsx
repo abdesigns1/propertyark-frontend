@@ -19,12 +19,13 @@ export function PropertyStepper({ current }: { current: number }) {
           key={label}
           className="relative flex flex-col items-center gap-2 text-center"
         >
-          {index > 0 && (
+          {index < PROPERTY_STEPS.length - 1 && (
             <span
               className={cn(
-                "absolute right-1/2 top-5 h-px w-full bg-border",
-                index <= current && "bg-primary",
+                "absolute left-[calc(50%+1.5rem)] top-5 h-px w-[calc(100%-3rem)] bg-border",
+                index < current && "bg-primary",
               )}
+              aria-hidden="true"
             />
           )}
           <span

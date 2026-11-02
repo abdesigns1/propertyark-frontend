@@ -178,6 +178,10 @@ export function normalizePropertyResponse(property: PropertyApiItem): Property {
   const videos = media
     .filter((item) => item.type === "VIDEO")
     .map((item) => normalizePropertyMediaUrl(item.url));
+  const vendorProfile =
+    property.vendor?.profile ?? property.vendor?.vendorProfile;
+  const vendorVerificationStatus =
+    property.vendor?.verificationStatus ?? property.vendor?.ninStatus;
   return {
     id: property.id,
     title: property.name,
@@ -221,6 +225,25 @@ export function normalizePropertyResponse(property: PropertyApiItem): Property {
     vendorName: property.vendor?.fullName,
     vendorAvatarUrl: property.vendor?.avatar,
     vendorPhone: property.vendor?.phone,
+    vendorBusinessName:
+      property.vendor?.businessName ??
+      property.vendor?.companyName ??
+      property.vendor?.agencyName ??
+      vendorProfile?.businessName,
+    vendorBio:
+      property.vendor?.businessDescription ??
+      property.vendor?.companyDescription ??
+      property.vendor?.bio ??
+      property.vendor?.about ??
+      vendorProfile?.businessDescription ??
+      vendorProfile?.bio ??
+      vendorProfile?.about,
+    vendorLocation: property.vendor?.location ?? vendorProfile?.location,
+    vendorIsVerified:
+      property.vendor?.isVerified === true ||
+      ["VERIFIED", "APPROVED", "ACTIVE"].includes(
+        vendorVerificationStatus?.toUpperCase() ?? "",
+      ),
     isVerified: true,
     isFeatured: property.isFeatured === true,
     featuredAt: property.featuredAt ?? null,

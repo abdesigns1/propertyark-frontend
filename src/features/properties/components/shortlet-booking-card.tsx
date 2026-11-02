@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   addMonths,
   differenceInCalendarDays,
@@ -22,6 +23,7 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   LoaderCircle,
   MapPin,
   MessageSquare,
@@ -418,9 +420,18 @@ export function ShortletBookingCard({ property }: { property: Property }) {
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">
-                {property.vendorName ?? "PropertyArk Vendor"}
-              </p>
+              <Link
+                href={`/vendors/${encodeURIComponent(property.vendorId)}`}
+                className="inline-flex max-w-full items-center gap-1 text-sm font-semibold transition-colors hover:text-primary"
+              >
+                <span className="truncate">
+                  {property.vendorName ?? "PropertyArk Vendor"}
+                </span>
+                <ExternalLink
+                  className="size-3.5 shrink-0"
+                  aria-hidden="true"
+                />
+              </Link>
               <p className="mt-1 flex items-center gap-1.5 text-xs text-primary">
                 <Phone className="size-3.5" />
                 {isAuthenticated
@@ -429,6 +440,11 @@ export function ShortletBookingCard({ property }: { property: Property }) {
               </p>
             </div>
           </div>
+          <Button asChild variant="outline" size="sm" className="w-full">
+            <Link href={`/vendors/${encodeURIComponent(property.vendorId)}`}>
+              View vendor profile
+            </Link>
+          </Button>
           <div className="grid grid-cols-2 gap-2">
             {isAuthenticated && property.vendorPhone ? (
               <Button variant="outline" size="sm" asChild>

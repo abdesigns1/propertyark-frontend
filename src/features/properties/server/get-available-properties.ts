@@ -5,6 +5,7 @@ import type {
   PropertyApiItem,
 } from "@/features/properties/types/api";
 import { normalizePropertyResponse } from "@/features/properties/utils/normalize-property-response";
+import type { Property } from "@/features/properties/types";
 
 const RETRY_DELAYS_MS = [0, 1_000, 2_000] as const;
 
@@ -55,6 +56,106 @@ export async function getAvailablePropertiesServer({
     properties: payload.data.properties.map(normalizePropertyResponse),
     pagination: payload.data.pagination,
   };
+}
+
+export async function getAllAvailablePropertiesServer() {
+  const firstPage = await getAvailablePropertiesServer({ page: 1, limit: 100 });
+  const pageCount = firstPage.pagination.pages;
+
+  if (pageCount <= 1) return firstPage.properties;
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: pageCount - 1 }, (_, index) =>
+      getAvailablePropertiesServer({ page: index + 2, limit: 100 }),
+    ),
+  );
+
+  return [
+    ...firstPage.properties,
+    ...remainingPages.flatMap((page) => page.properties),
+  ];
+}
+
+export interface PublicVendorProfile {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  phone: string | null;
+  businessName: string | null;
+  about: string | null;
+  location: string | null;
+  isVerified: boolean;
+  serviceAreas: string[];
+  listingPurposes: Property["purpose"][];
+  properties: Property[];
+}
+
+function firstPropertyValue(
+  properties: Property[],
+  select: (property: Property) => string | undefined,
+) {
+  for (const property of properties) {
+    const value = select(property)?.trim();
+    if (value) return value;
+  }
+  return null;
+}
+
+/**
+ * Builds the public vendor profile strictly from the already-public property
+ * catalogue. This avoids exposing the authenticated/admin user endpoints and
+ * automatically gains richer profile fields if the listing API adds them.
+ */
+export async function getPublicVendorProfileServer(vendorId: string) {
+  const allProperties = await getAllAvailablePropertiesServer();
+  const properties = allProperties.filter(
+    (property) => property.vendorId === vendorId,
+  );
+
+  if (!properties.length) return null;
+
+  const serviceAreas = [
+    ...new Set(
+      properties
+        .map(({ location }) =>
+          [location.city, location.state].filter(Boolean).join(", "),
+        )
+        .filter(Boolean),
+    ),
+  ];
+
+  return {
+    id: vendorId,
+    name:
+      firstPropertyValue(properties, (property) => property.vendorName) ??
+      "PropertyArk Vendor",
+    avatarUrl: firstPropertyValue(
+      properties,
+      (property) => property.vendorAvatarUrl,
+    ),
+    phone: firstPropertyValue(properties, (property) => property.vendorPhone),
+    businessName: firstPropertyValue(
+      properties,
+      (property) => property.vendorBusinessName,
+    ),
+    about: firstPropertyValue(properties, (property) => property.vendorBio),
+    location:
+      firstPropertyValue(properties, (property) => property.vendorLocation) ??
+      serviceAreas[0] ??
+      null,
+    // Vendors must complete identity verification before a listing can enter
+    // the public catalogue. Prefer an explicit vendor flag when the API sends
+    // one, with the public listing verification as the current contract fallback.
+    isVerified: properties.some(
+      (property) =>
+        property.vendorIsVerified === true || property.isVerified === true,
+    ),
+    serviceAreas,
+    listingPurposes: [
+      ...new Set(properties.map((property) => property.purpose)),
+    ],
+    properties,
+  } satisfies PublicVendorProfile;
 }
 
 function featuredRows(payload: unknown): PropertyApiItem[] {

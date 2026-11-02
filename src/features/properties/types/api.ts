@@ -88,6 +88,31 @@ export interface PropertyApiItem {
     email: string;
     phone?: string;
     avatar?: string;
+    businessName?: string;
+    companyName?: string;
+    agencyName?: string;
+    businessDescription?: string;
+    companyDescription?: string;
+    bio?: string;
+    about?: string;
+    location?: string;
+    isVerified?: boolean;
+    verificationStatus?: string;
+    ninStatus?: string;
+    profile?: {
+      businessName?: string;
+      businessDescription?: string;
+      location?: string;
+      bio?: string;
+      about?: string;
+    };
+    vendorProfile?: {
+      businessName?: string;
+      businessDescription?: string;
+      location?: string;
+      bio?: string;
+      about?: string;
+    };
   };
 }
 

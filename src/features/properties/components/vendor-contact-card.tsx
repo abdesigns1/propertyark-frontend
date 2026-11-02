@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarCheck2,
+  ExternalLink,
   LoaderCircle,
   MessageSquare,
   Phone,
@@ -188,9 +190,13 @@ export function VendorContactCard({ property }: { property: Property }) {
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-sm font-semibold text-foreground">
+            <Link
+              href={`/vendors/${encodeURIComponent(property.vendorId)}`}
+              className="inline-flex items-center gap-1 text-sm font-semibold text-foreground transition-colors hover:text-primary"
+            >
               {property.vendorName ?? "Vendor"}
-            </p>
+              <ExternalLink className="size-3.5" aria-hidden="true" />
+            </Link>
             <p className="flex items-center gap-1 text-xs text-muted-foreground">
               <Phone className="h-3 w-3" />
               {isAuthenticated
@@ -199,6 +205,16 @@ export function VendorContactCard({ property }: { property: Property }) {
             </p>
           </div>
         </div>
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className="mt-4 w-full rounded-lg"
+        >
+          <Link href={`/vendors/${encodeURIComponent(property.vendorId)}`}>
+            View vendor profile
+          </Link>
+        </Button>
         <div className="mt-4 flex gap-2">
           {isAuthenticated && property.vendorPhone ? (
             <Button

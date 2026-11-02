@@ -135,5 +135,9 @@ export interface Property {
   vendorName?: string;
   vendorAvatarUrl?: string;
   vendorPhone?: string;
+  vendorBusinessName?: string;
+  vendorBio?: string;
+  vendorLocation?: string;
+  vendorIsVerified?: boolean;
   reviews?: PropertyReview[];
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { authService } from "@/services/auth.service";
+import { requestAccessTokenFromOpenTab } from "@/services/auth-session-channel";
 import { settingsService } from "@/services/settings.service";
 import { useAuthStore, type Role } from "@/store/auth.store";
 
@@ -30,26 +31,42 @@ function profileRole(value: string): Role | null {
 let sessionRestorePromise: Promise<void> | null = null;
 
 /**
- * Gives every browser tab its own access token using the shared secure refresh
- * cookie. The bearer token remains in sessionStorage and is never copied into
- * localStorage just to make cross-tab authentication work.
+ * Gives every browser tab its own access token. An already-authenticated tab
+ * supplies the token first; the shared secure refresh cookie is only a
+ * fallback. The bearer token is never copied into localStorage.
  */
 export function restoreAuthSession() {
   if (sessionRestorePromise) return sessionRestorePromise;
 
   sessionRestorePromise = (async () => {
+    const current = useAuthStore.getState();
+    if (current.isAuthenticated && current.role) {
+      const openTabAccessToken = await requestAccessTokenFromOpenTab({
+        userId: current.userId,
+        role: current.role,
+      });
+      if (openTabAccessToken) {
+        current.setAccessToken(openTabAccessToken);
+        return;
+      }
+    }
+
+    // Keep the backend refresh call as a fallback for sessions restored after
+    // every other PropertyArk tab has been closed. Current backend deployments
+    // may not support this endpoint, so cross-tab restoration does not depend
+    // on it anymore.
     const response = await authService.refresh();
     const accessToken = accessTokenFrom(response);
     if (!accessToken) {
       throw new Error("Refresh response did not include a token.");
     }
 
-    const current = useAuthStore.getState();
+    const refreshedState = useAuthStore.getState();
 
     // Same-origin tabs normally share the non-secret profile metadata. If it
     // is unavailable, rebuild it from the authenticated profile endpoint.
-    if (current.isAuthenticated && current.role) {
-      current.setAccessToken(accessToken);
+    if (refreshedState.isAuthenticated && refreshedState.role) {
+      refreshedState.setAccessToken(accessToken);
       return;
     }
 
@@ -87,7 +104,6 @@ export function useAuthSessionReady() {
     () => false,
   );
   const accessToken = useAuthStore((state) => state.accessToken);
-  const clearAuth = useAuthStore((state) => state.clearAuth);
   const [restoreAttempted, setRestoreAttempted] = useState(false);
   const needsRestore = hydrated && !accessToken;
 
@@ -96,9 +112,9 @@ export function useAuthSessionReady() {
 
     let active = true;
     restoreAuthSession()
-      .catch(() => {
-        if (active) clearAuth();
-      })
+      // A restore failure belongs to this tab. Do not call clearAuth here:
+      // that writes to shared localStorage and would sign out healthy tabs.
+      .catch(() => undefined)
       .finally(() => {
         if (active) setRestoreAttempted(true);
       });
@@ -106,7 +122,7 @@ export function useAuthSessionReady() {
     return () => {
       active = false;
     };
-  }, [clearAuth, needsRestore, restoreAttempted]);
+  }, [needsRestore, restoreAttempted]);
 
   return hydrated && (!needsRestore || restoreAttempted);
 }

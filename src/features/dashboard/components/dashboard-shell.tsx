@@ -16,10 +16,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const ready = useAuthSessionReady();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const accessToken = useAuthStore((state) => state.accessToken);
   const role = useAuthStore((state) => state.role);
   const expectedRole = pathname.startsWith("/vendor") ? "vendor" : "buyer";
   const hasAccess =
     isAuthenticated &&
+    Boolean(accessToken) &&
     (expectedRole === "vendor"
       ? role === "vendor"
       : role === "buyer" || role === "user");
@@ -29,7 +31,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!ready || hasAccess) return;
-    if (isAuthenticated && role) {
+    if (isAuthenticated && accessToken && role) {
       router.replace(
         role === "vendor" ? "/vendor/dashboard" : "/buyer/dashboard",
       );
@@ -37,7 +39,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       const redirect = `${pathname}${window.location.search}`;
       router.replace(`/login?redirect=${encodeURIComponent(redirect)}`);
     }
-  }, [hasAccess, isAuthenticated, pathname, ready, role, router]);
+  }, [accessToken, hasAccess, isAuthenticated, pathname, ready, role, router]);
 
   if (!ready || !hasAccess) {
     return (

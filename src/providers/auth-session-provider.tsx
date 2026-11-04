@@ -5,6 +5,7 @@ import {
   restoreAuthSession,
   useAuthSessionReady,
 } from "@/hooks/use-auth-session-ready";
+import { activateAuthSessionChannel } from "@/services/auth-session-channel";
 import { AUTH_STORAGE_KEY, useAuthStore } from "@/store/auth.store";
 
 export function AuthSessionProvider({
@@ -15,6 +16,8 @@ export function AuthSessionProvider({
   useAuthSessionReady();
 
   useEffect(() => {
+    activateAuthSessionChannel();
+
     async function synchronizeSession(event: StorageEvent) {
       if (event.key !== AUTH_STORAGE_KEY) return;
 
@@ -37,7 +40,8 @@ export function AuthSessionProvider({
       try {
         await restoreAuthSession();
       } catch {
-        useAuthStore.getState().clearAuth();
+        // Keep the failure local. Clearing the persisted account here would
+        // turn one tab's restoration failure into a logout in every tab.
       }
     }
 

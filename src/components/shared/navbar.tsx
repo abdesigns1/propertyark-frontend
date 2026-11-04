@@ -94,7 +94,9 @@ export function Navbar({ reserveSpace = false }: NavbarProps) {
   const queryClient = useQueryClient();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [professionalsOpen, setProfessionalsOpen] = useState(false);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isAuthenticated = useAuthStore(
+    (state) => state.isAuthenticated && Boolean(state.accessToken),
+  );
   const role = useAuthStore((state) => state.role);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const user = useDashboardUser();

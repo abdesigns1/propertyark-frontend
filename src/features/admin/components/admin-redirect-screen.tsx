@@ -9,7 +9,9 @@ import { useAuthStore } from "@/store/auth.store";
 
 export function AdminRedirectScreen() {
   const router = useRouter();
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isAuthenticated = useAuthStore(
+    (state) => state.isAuthenticated && Boolean(state.accessToken),
+  );
   const role = useAuthStore((state) => state.role);
 
   useEffect(() => {

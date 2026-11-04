@@ -20,9 +20,12 @@ export function AdminWorkspace({
   const router = useRouter();
   const ready = useAuthSessionReady();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const accessToken = useAuthStore((state) => state.accessToken);
   const role = useAuthStore((state) => state.role);
   const hasAdminAccess =
-    isAuthenticated && (role === "admin" || role === "staff");
+    isAuthenticated &&
+    Boolean(accessToken) &&
+    (role === "admin" || role === "staff");
   const [collapsed, setCollapsed] = useSidebarCollapse(
     "propertyark-admin-sidebar-collapsed",
   );

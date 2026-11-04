@@ -57,6 +57,7 @@ api.interceptors.response.use(
     if (
       error.response?.status === 401 &&
       authState.isAuthenticated &&
+      Boolean(authState.accessToken) &&
       !isPublicAuthRequest &&
       !originalRequest._retry
     ) {

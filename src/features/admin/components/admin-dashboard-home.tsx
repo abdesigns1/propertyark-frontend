@@ -1092,6 +1092,7 @@ export function AdminDashboardHome() {
   const router = useRouter();
   const ready = useAuthSessionReady();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const accessToken = useAuthStore((state) => state.accessToken);
   const role = useAuthStore((state) => state.role);
   const user = useAuthStore((state) => state.user);
   const identity = adminDisplayIdentity(user, role);
@@ -1118,10 +1119,20 @@ export function AdminDashboardHome() {
     kycRequests.isPending;
 
   useEffect(() => {
-    if (ready && (!isAuthenticated || (role !== "admin" && role !== "staff")))
+    if (
+      ready &&
+      (!isAuthenticated ||
+        !accessToken ||
+        (role !== "admin" && role !== "staff"))
+    )
       router.replace("/admin/login");
-  }, [isAuthenticated, ready, role, router]);
-  if (!ready || !isAuthenticated || (role !== "admin" && role !== "staff"))
+  }, [accessToken, isAuthenticated, ready, role, router]);
+  if (
+    !ready ||
+    !isAuthenticated ||
+    !accessToken ||
+    (role !== "admin" && role !== "staff")
+  )
     return (
       <main className="mx-auto flex min-h-screen max-w-7xl flex-col gap-5 px-6 py-10">
         <Skeleton className="h-16 w-full" />

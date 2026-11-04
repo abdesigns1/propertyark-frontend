@@ -21,6 +21,16 @@ function backendImagePattern() {
 }
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "propertyark.ng" }],
+        destination: "https://www.propertyark.ng/:path*",
+        permanent: true,
+      },
+    ];
+  },
   images: {
     // Property uploads use unique, timestamped filenames. Keep their generated
     // responsive variants cached so repeat visits do not wake the media origin.

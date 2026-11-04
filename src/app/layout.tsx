@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { QueryProvider } from "@/providers/query-provider";
+import { AuthSessionProvider } from "@/providers/auth-session-provider";
 import { BackToTopButton } from "@/components/shared/back-to-top";
 import { Toaster } from "@/components/ui/sonner";
 import {
@@ -146,9 +147,11 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <QueryProvider>
-          {children}
-          <BackToTopButton />
-          <Toaster richColors position="top-right" />
+          <AuthSessionProvider>
+            {children}
+            <BackToTopButton />
+            <Toaster richColors position="top-right" />
+          </AuthSessionProvider>
         </QueryProvider>
       </body>
       {googleAnalyticsId ? <GoogleAnalytics gaId={googleAnalyticsId} /> : null}

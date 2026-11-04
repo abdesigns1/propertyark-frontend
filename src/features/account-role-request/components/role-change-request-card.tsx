@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
@@ -78,7 +77,6 @@ export function RoleChangeRequestCard({
 }: {
   targetRole: RoleChangeTarget;
 }) {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -111,8 +109,10 @@ export function RoleChangeRequestCard({
     } finally {
       queryClient.clear();
       clearAuth();
-      router.replace("/login");
-      router.refresh();
+      // Role switching invalidates the current dashboard session. Use a full
+      // document navigation so the protected vendor/buyer tree cannot render
+      // between clearing auth and loading the login page.
+      window.location.replace("/login");
     }
   }
 
@@ -183,10 +183,7 @@ export function RoleChangeRequestCard({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              onClick={() => void handleLogout()}
-              disabled={loggingOut}
-            >
+            <Button onClick={() => void handleLogout()} disabled={loggingOut}>
               {loggingOut ? (
                 <Spinner data-icon="inline-start" />
               ) : (

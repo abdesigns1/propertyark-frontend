@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export const AUTH_STORAGE_KEY = "propertyark-auth-session";
 const ACCESS_TOKEN_SESSION_KEY = "propertyark-access-token";
 
 function readSessionAccessToken(): string | null {
@@ -50,7 +51,7 @@ interface AuthState {
     role: Role;
     user?: AuthUser | null;
   }) => void;
-  setAccessToken: (accessToken: string) => void;
+  setAccessToken: (accessToken: string | null) => void;
   updateUser: (payload: Partial<AuthUser>) => void;
   clearAuth: () => void;
 }
@@ -93,7 +94,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: "propertyark-auth-session",
+      name: AUTH_STORAGE_KEY,
       version: 2,
       /*
        * Persist only non-secret session metadata in localStorage. The access

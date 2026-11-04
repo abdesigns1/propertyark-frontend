@@ -49,6 +49,7 @@ api.interceptors.response.use(
       "/auth/forgot-password",
       "/auth/reset-password",
       "/auth/refresh",
+      "/auth/logout",
     ].some((path) => requestPath.includes(path));
 
     // Login and other public requests can legitimately return 401. Only try to

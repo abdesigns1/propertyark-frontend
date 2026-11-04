@@ -95,6 +95,14 @@ function normalizeProfile(value: unknown): VendorSettingsProfile {
 export const settingsService = {
   getProfile: async () =>
     normalizeProfile((await api.get("/users/profile")).data),
+  getProfileWithAccessToken: async (accessToken: string) =>
+    normalizeProfile(
+      (
+        await api.get("/users/profile", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        })
+      ).data,
+    ),
   updateProfile: async (payload: {
     fullName: string;
     phone: string;

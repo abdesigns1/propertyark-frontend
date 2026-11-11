@@ -100,6 +100,13 @@ export function AdminPropertiesPage() {
     () => featuredQuery.data ?? [],
     [featuredQuery.data],
   );
+  const activeFeaturedItems = useMemo(
+    () =>
+      featuredItems.filter(
+        (property) => featuredPlacementState(property) !== "EXPIRED",
+      ),
+    [featuredItems],
+  );
   const featuredById = useMemo(
     () => new Map(featuredItems.map((property) => [property.id, property])),
     [featuredItems],
@@ -110,7 +117,7 @@ export function AdminPropertiesPage() {
       return feature
         ? {
             ...property,
-            isFeatured: true,
+            isFeatured: featuredPlacementState(feature) !== "EXPIRED",
             featuredAt: feature.featuredAt,
             featuredUntil: feature.featuredUntil,
             featureExpiresAt: feature.featureExpiresAt,
@@ -119,7 +126,7 @@ export function AdminPropertiesPage() {
     });
     const source =
       featured === "FEATURED"
-        ? featuredItems.map(toAdminManagedProperty)
+        ? activeFeaturedItems.map(toAdminManagedProperty)
         : regular;
     return filterProperties(source, {
       search,
@@ -130,9 +137,9 @@ export function AdminPropertiesPage() {
   }, [
     category,
     data?.properties,
+    activeFeaturedItems,
     featured,
     featuredById,
-    featuredItems,
     priceRange,
     search,
   ]);
@@ -255,7 +262,7 @@ export function AdminPropertiesPage() {
           <AdminPropertyStats
             stats={statsQuery.data?.stats}
             loading={statsQuery.isLoading || featuredQuery.isLoading}
-            featuredCount={featuredItems.length}
+            featuredCount={activeFeaturedItems.length}
           />
         </section>
 
@@ -263,7 +270,7 @@ export function AdminPropertiesPage() {
           <BadgeCheck className="size-5 text-primary" />
           <span className="font-medium">Featured placement monitor</span>
           <Badge variant="outline" className="bg-background">
-            {featuredItems.length} active
+            {activeFeaturedItems.length} active
           </Badge>
           <Badge
             variant="outline"
@@ -454,7 +461,7 @@ function PropertyFilters({
           value={featured}
           onValueChange={setFeatured}
           placeholder="All Placements"
-          items={["ALL", "FEATURED", "NOT_FEATURED"]}
+          items={["ALL", "FEATURED", "EXPIRED", "NOT_FEATURED"]}
         />
       </div>
     </div>
@@ -720,11 +727,11 @@ function FeaturedPlacement({
   property: AdminManagedProperty;
   featureCost: number;
 }) {
-  if (!property.isFeatured) {
+  const state = featuredPlacementState(property);
+  if (!property.isFeatured && state !== "EXPIRED") {
     return <span className="text-sm text-muted-foreground">Not featured</span>;
   }
 
-  const state = featuredPlacementState(property);
   const started = property.featuredAt;
   const expiry = property.featuredUntil ?? property.featureExpiresAt;
   const points =
@@ -851,8 +858,14 @@ function filterProperties(
       (filters.priceRange === "OVER_200M" && amount > 200_000_000);
     const matchesFeatured =
       filters.featured === "ALL" ||
-      (filters.featured === "FEATURED" && property.isFeatured) ||
-      (filters.featured === "NOT_FEATURED" && !property.isFeatured);
+      (filters.featured === "FEATURED" &&
+        property.isFeatured &&
+        featuredPlacementState(property) !== "EXPIRED") ||
+      (filters.featured === "EXPIRED" &&
+        featuredPlacementState(property) === "EXPIRED") ||
+      (filters.featured === "NOT_FEATURED" &&
+        !property.isFeatured &&
+        featuredPlacementState(property) !== "EXPIRED");
     return matchesSearch && matchesCategory && matchesPrice && matchesFeatured;
   });
 }
@@ -906,6 +919,7 @@ function filterLabel(value: string, fallback: string) {
     "50M_200M": "₦50M – ₦200M",
     OVER_200M: "Over ₦200M",
     FEATURED: "Featured",
+    EXPIRED: "Expired",
     NOT_FEATURED: "Not Featured",
   };
   return labels[value] ?? value;

@@ -13,11 +13,6 @@ export function startGoogleAuth({
   redirectTo?: string | null;
   requireVendorKyc?: boolean;
 }) {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!apiBaseUrl) {
-    throw new Error("Google authentication is not configured.");
-  }
-
   if (redirectTo?.startsWith("/") && !redirectTo.startsWith("//")) {
     window.sessionStorage.setItem(GOOGLE_AUTH_REDIRECT_KEY, redirectTo);
   } else {
@@ -31,7 +26,13 @@ export function startGoogleAuth({
     window.sessionStorage.removeItem(GOOGLE_AUTH_VENDOR_KYC_KEY);
   }
 
-  const googleAuthUrl = new URL(`${apiBaseUrl.replace(/\/$/, "")}/auth/google`);
+  // Start OAuth through our same-origin route. It asks the backend for its
+  // canonical Google authorization URL, then adds `prompt=select_account` so
+  // Google does not silently reuse whichever account is already active.
+  const googleAuthUrl = new URL(
+    "/api/google-auth/start",
+    window.location.origin,
+  );
   googleAuthUrl.searchParams.set("role", role);
   window.location.assign(googleAuthUrl.toString());
 }

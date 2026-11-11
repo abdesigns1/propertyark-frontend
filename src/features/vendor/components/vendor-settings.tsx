@@ -55,6 +55,7 @@ import { useAccountKey } from "@/lib/account-identity";
 import { cn } from "@/lib/utils";
 import { RoleChangeRequestCard } from "@/features/account-role-request/components/role-change-request-card";
 import { SelfDeleteAccountCard } from "@/features/account/components/self-delete-account-card";
+import { finishPasswordChange } from "@/features/authentication/utils/password-change-session";
 
 type Section = "profile" | "business" | "password" | "notifications";
 const sections: Array<{
@@ -418,6 +419,7 @@ function ProfileSettings({ businessOnly = false }: { businessOnly?: boolean }) {
 }
 
 function PasswordSettings() {
+  const queryClient = useQueryClient();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -428,7 +430,7 @@ function PasswordSettings() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirm("");
-      toast.success("Password updated successfully.");
+      void finishPasswordChange({ queryClient, loginPath: "/login" });
     },
     onError: (requestError) =>
       toast.error(
@@ -440,6 +442,10 @@ function PasswordSettings() {
       return setError("Use at least eight characters.");
     if (newPassword !== confirm)
       return setError("The new passwords do not match.");
+    if (currentPassword === newPassword)
+      return setError(
+        "Your new password must differ from your current password.",
+      );
     setError("");
     mutation.mutate({
       currentPassword,

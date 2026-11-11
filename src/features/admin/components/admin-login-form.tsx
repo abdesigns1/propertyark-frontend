@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
@@ -25,12 +25,21 @@ import {
   adminLoginSchema,
   type AdminLoginValues,
 } from "@/features/admin/validation/admin.schema";
+import { consumePasswordChangedNotice } from "@/features/authentication/utils/password-change-session";
 
 export function AdminLoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
+
+  useEffect(() => {
+    if (consumePasswordChangedNotice()) {
+      toast.success(
+        "Password changed successfully. Sign in again with your new password.",
+      );
+    }
+  }, []);
   const {
     register,
     control,

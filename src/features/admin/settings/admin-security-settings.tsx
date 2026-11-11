@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -23,29 +23,37 @@ import {
 import { Input } from "@/components/ui/input";
 import { getApiErrorMessage } from "@/services/api-error";
 import { settingsService } from "@/services/settings.service";
+import { finishPasswordChange } from "@/features/authentication/utils/password-change-session";
 
 const emptyForm = {
+  currentPassword: "",
   newPassword: "",
   confirmPassword: "",
 };
 
 export function AdminSecuritySettings() {
+  const queryClient = useQueryClient();
   const [form, setForm] = useState(emptyForm);
   const mismatch = Boolean(
     form.confirmPassword && form.newPassword !== form.confirmPassword,
+  );
+  const passwordReused = Boolean(
+    form.currentPassword &&
+    form.newPassword &&
+    form.currentPassword === form.newPassword,
   );
   const mutation = useMutation({
     mutationFn: settingsService.changePassword,
     onSuccess: () => {
       setForm(emptyForm);
-      toast.success("Password changed successfully.");
+      void finishPasswordChange({ queryClient, loginPath: "/admin/login" });
     },
     onError: (error) =>
       toast.error(getApiErrorMessage(error, "Password could not be changed.")),
   });
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!mismatch) mutation.mutate(form);
+    if (!mismatch && !passwordReused) mutation.mutate(form);
   }
   return (
     <form onSubmit={submit}>
@@ -60,8 +68,29 @@ export function AdminSecuritySettings() {
         </CardHeader>
         <CardContent>
           <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="current-password">
+                Current password
+              </FieldLabel>
+              <Input
+                id="current-password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={form.currentPassword}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    currentPassword: event.target.value,
+                  }))
+                }
+              />
+              <FieldDescription>
+                Confirm your existing password before changing it.
+              </FieldDescription>
+            </Field>
             <div className="grid gap-5 md:grid-cols-2">
-              <Field>
+              <Field data-invalid={passwordReused}>
                 <FieldLabel htmlFor="new-password">New password</FieldLabel>
                 <Input
                   id="new-password"
@@ -69,6 +98,7 @@ export function AdminSecuritySettings() {
                   autoComplete="new-password"
                   minLength={8}
                   required
+                  aria-invalid={passwordReused}
                   value={form.newPassword}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -80,6 +110,11 @@ export function AdminSecuritySettings() {
                 <FieldDescription>
                   Use at least eight characters.
                 </FieldDescription>
+                {passwordReused && (
+                  <FieldError>
+                    Your new password must differ from your current password.
+                  </FieldError>
+                )}
               </Field>
               <Field data-invalid={mismatch}>
                 <FieldLabel htmlFor="confirm-password">
@@ -105,7 +140,17 @@ export function AdminSecuritySettings() {
           </FieldGroup>
         </CardContent>
         <CardFooter className="justify-end">
-          <Button type="submit" disabled={mutation.isPending || mismatch}>
+          <Button
+            type="submit"
+            disabled={
+              mutation.isPending ||
+              mismatch ||
+              passwordReused ||
+              !form.currentPassword ||
+              !form.newPassword ||
+              !form.confirmPassword
+            }
+          >
             <KeyRound data-icon="inline-start" />
             Update password
           </Button>

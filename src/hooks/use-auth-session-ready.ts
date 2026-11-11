@@ -104,8 +104,9 @@ export function useAuthSessionReady() {
     () => false,
   );
   const accessToken = useAuthStore((state) => state.accessToken);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [restoreAttempted, setRestoreAttempted] = useState(false);
-  const needsRestore = hydrated && !accessToken;
+  const needsRestore = hydrated && isAuthenticated && !accessToken;
 
   useEffect(() => {
     if (!needsRestore || restoreAttempted) return;

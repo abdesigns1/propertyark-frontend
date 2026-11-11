@@ -133,13 +133,14 @@ export const settingsService = {
     return normalizeProfile((await api.get("/users/profile")).data);
   },
   changePassword: async (payload: {
+    currentPassword: string;
     newPassword: string;
     confirmPassword?: string;
     confirmNewPassword?: string;
-    currentPassword?: string;
   }) =>
     (
       await api.patch("/users/change-password", {
+        currentPassword: payload.currentPassword,
         newPassword: payload.newPassword,
         confirmPassword:
           payload.confirmPassword ?? payload.confirmNewPassword ?? "",

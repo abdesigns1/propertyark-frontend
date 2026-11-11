@@ -55,6 +55,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { useAccountKey } from "@/lib/account-identity";
 import { RoleChangeRequestCard } from "@/features/account-role-request/components/role-change-request-card";
 import { SelfDeleteAccountCard } from "@/features/account/components/self-delete-account-card";
+import { finishPasswordChange } from "@/features/authentication/utils/password-change-session";
 
 const accountSettingsTabTriggerClassName =
   "h-12 flex-none rounded-none px-0 text-base after:bottom-0 after:bg-primary data-active:font-semibold data-active:text-primary data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:after:opacity-100";
@@ -69,6 +70,7 @@ function buyerProfileQueryKey(accountKey: string) {
 }
 
 function PasswordSettings() {
+  const queryClient = useQueryClient();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -81,7 +83,7 @@ function PasswordSettings() {
       setNewPassword("");
       setConfirmNewPassword("");
       setValidationError("");
-      toast.success("Password changed successfully.");
+      void finishPasswordChange({ queryClient, loginPath: "/login" });
     },
     onError: (error) =>
       toast.error(getApiErrorMessage(error, "Unable to change your password.")),

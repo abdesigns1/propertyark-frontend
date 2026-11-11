@@ -1,4 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { isSessionEnding } from "@/services/auth-session-lifecycle";
 import { useAuthStore } from "@/store/auth.store";
 
 const API_BASE_URL = (
@@ -58,6 +59,7 @@ api.interceptors.response.use(
       error.response?.status === 401 &&
       authState.isAuthenticated &&
       Boolean(authState.accessToken) &&
+      !isSessionEnding() &&
       !isPublicAuthRequest &&
       !originalRequest._retry
     ) {

@@ -14,6 +14,8 @@ import {
 } from "@/features/authentication/utils/google-auth";
 import { normalizeLoginResponse } from "@/features/authentication/utils/normalize-login-response";
 import type { LoginResponse } from "@/services/auth.service";
+import { getApiErrorMessage } from "@/services/api-error";
+import { settingsService } from "@/services/settings.service";
 import { useAuthStore } from "@/store/auth.store";
 import { markVendorWelcomeBonusPending } from "@/features/authentication/utils/vendor-welcome-bonus";
 
@@ -30,6 +32,7 @@ export function GoogleAuthCallback() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const setAuth = useAuthStore((state) => state.setAuth);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
   const handled = useRef(false);
 
   useEffect(() => {
@@ -49,62 +52,93 @@ export function GoogleAuthCallback() {
       return;
     }
 
-    try {
-      const auth = normalizeLoginResponse({
-        accessToken: token,
-        user: parseGoogleUser(serializedUser),
-      });
-      if (!auth.accessToken || !auth.user) {
-        throw new Error("The Google authentication response is incomplete.");
-      }
+    async function completeGoogleAuthentication(
+      googleToken: string,
+      googleUser: string,
+    ) {
+      try {
+        const auth = normalizeLoginResponse({
+          accessToken: googleToken,
+          user: parseGoogleUser(googleUser),
+        });
+        if (!auth.accessToken || !auth.user) {
+          throw new Error("The Google authentication response is incomplete.");
+        }
 
-      queryClient.clear();
-      setAuth(auth);
+        queryClient.clear();
+        setAuth(auth);
 
-      const requestedRole = window.sessionStorage.getItem(GOOGLE_AUTH_ROLE_KEY);
-      const requiresVendorKyc =
-        window.sessionStorage.getItem(GOOGLE_AUTH_VENDOR_KYC_KEY) === "1";
-      const requestedRedirect = window.sessionStorage.getItem(
-        GOOGLE_AUTH_REDIRECT_KEY,
-      );
-      window.sessionStorage.removeItem(GOOGLE_AUTH_REDIRECT_KEY);
-      window.sessionStorage.removeItem(GOOGLE_AUTH_ROLE_KEY);
-      window.sessionStorage.removeItem(GOOGLE_AUTH_VENDOR_KYC_KEY);
-
-      const roleMismatch = requestedRole === "VENDOR" && auth.role !== "vendor";
-      if (roleMismatch) {
-        toast.error(
-          "Google returned a regular user account instead of a vendor account. Please contact support before continuing.",
+        const requestedRole =
+          window.sessionStorage.getItem(GOOGLE_AUTH_ROLE_KEY);
+        const requiresVendorKyc =
+          window.sessionStorage.getItem(GOOGLE_AUTH_VENDOR_KYC_KEY) === "1";
+        const requestedRedirect = window.sessionStorage.getItem(
+          GOOGLE_AUTH_REDIRECT_KEY,
         );
-      }
-      const destination =
-        requiresVendorKyc && auth.role === "vendor"
-          ? "/vendor/kyc-onboarding"
-          : requestedRedirect?.startsWith("/") &&
-              !requestedRedirect.startsWith("//")
-            ? requestedRedirect
-            : getDashboardPath(auth.role);
+        window.sessionStorage.removeItem(GOOGLE_AUTH_REDIRECT_KEY);
+        window.sessionStorage.removeItem(GOOGLE_AUTH_ROLE_KEY);
+        window.sessionStorage.removeItem(GOOGLE_AUTH_VENDOR_KYC_KEY);
 
-      if (
-        requestedRole === "VENDOR" &&
-        auth.role === "vendor" &&
-        auth.user.email
-      ) {
-        markVendorWelcomeBonusPending(auth.user.email);
-      }
+        const roleMismatch =
+          requestedRole === "VENDOR" && auth.role !== "vendor";
+        if (roleMismatch) {
+          // Google returns the requested account type in the OAuth `state`
+          // parameter. Older API deployments created the account as USER even
+          // when this registration flow requested VENDOR. Recover by using the
+          // same role-switch endpoint available in account settings so the
+          // registrant does not end up in the buyer dashboard.
+          await settingsService.switchRole("VENDOR");
+          queryClient.clear();
+          setAuth({
+            ...auth,
+            role: "vendor",
+          });
 
-      if (!roleMismatch) {
+          if (auth.user.email) {
+            markVendorWelcomeBonusPending(auth.user.email);
+          }
+
+          toast.success(
+            "Your vendor account is ready. Complete identity verification to start listing properties.",
+          );
+          router.replace("/vendor/kyc-onboarding");
+          return;
+        }
+        const destination =
+          requiresVendorKyc && auth.role === "vendor"
+            ? "/vendor/kyc-onboarding"
+            : requestedRedirect?.startsWith("/") &&
+                !requestedRedirect.startsWith("//")
+              ? requestedRedirect
+              : getDashboardPath(auth.role);
+
+        if (
+          requestedRole === "VENDOR" &&
+          auth.role === "vendor" &&
+          auth.user.email
+        ) {
+          markVendorWelcomeBonusPending(auth.user.email);
+        }
+
         toast.success("Signed in with Google successfully.");
+        router.replace(destination);
+      } catch (error) {
+        clearAuth();
+        window.sessionStorage.removeItem(GOOGLE_AUTH_REDIRECT_KEY);
+        window.sessionStorage.removeItem(GOOGLE_AUTH_ROLE_KEY);
+        window.sessionStorage.removeItem(GOOGLE_AUTH_VENDOR_KYC_KEY);
+        toast.error(
+          getApiErrorMessage(
+            error,
+            "The Google authentication response could not be verified.",
+          ),
+        );
+        router.replace("/login");
       }
-      router.replace(destination);
-    } catch {
-      window.sessionStorage.removeItem(GOOGLE_AUTH_REDIRECT_KEY);
-      window.sessionStorage.removeItem(GOOGLE_AUTH_ROLE_KEY);
-      window.sessionStorage.removeItem(GOOGLE_AUTH_VENDOR_KYC_KEY);
-      toast.error("The Google authentication response could not be verified.");
-      router.replace("/login");
     }
-  }, [queryClient, router, searchParams, setAuth]);
+
+    void completeGoogleAuthentication(token, serializedUser);
+  }, [clearAuth, queryClient, router, searchParams, setAuth]);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-6">

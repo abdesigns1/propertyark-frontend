@@ -45,6 +45,13 @@ import {
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -141,6 +148,15 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
   ).toUpperCase();
   const propertyStatus = String(property.status ?? "AVAILABLE").toUpperCase();
   const reviewComplete = isPropertyReviewComplete(property, approvalStatus);
+  const [reviewChecks, setReviewChecks] = useState<Record<string, boolean>>(
+    () =>
+      Object.fromEntries(
+        propertyReviewChecks.map((item) => [item.id, reviewComplete]),
+      ),
+  );
+  const checklistComplete = propertyReviewChecks.every(
+    (item) => reviewChecks[item.id],
+  );
   const creditSettings = useAdminCreditSettings();
   const featureCost =
     creditSettings.data?.featurePropertyCost ??
@@ -290,7 +306,16 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
         <aside className="flex flex-col gap-5 xl:sticky xl:top-20">
           <VendorCard property={property} />
           <DocumentsCard documents={property.documents ?? []} />
-          <ReviewChecklist />
+          <ReviewChecklist
+            checks={reviewChecks}
+            disabled={reviewComplete}
+            onCheckedChange={(id, checked) =>
+              setReviewChecks((current) => ({
+                ...current,
+                [id]: checked,
+              }))
+            }
+          />
           <ActiveIssues issue={property.rejectionReason} />
           <AdminNotes propertyId={property.id} />
         </aside>
@@ -332,9 +357,14 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
               Request Changes
             </Button>
             <Button
-              disabled={review.isPending}
+              disabled={review.isPending || !checklistComplete}
               onClick={() => setApproveOpen(true)}
               className="col-span-2 w-full sm:w-auto"
+              title={
+                checklistComplete
+                  ? undefined
+                  : "Complete the manual checklist before approving this property."
+              }
             >
               <CheckCircle2 data-icon="inline-start" />
               Approve &amp; Publish
@@ -355,6 +385,7 @@ function PropertyReview({ property }: { property: PropertyApiItem }) {
         open={approveOpen}
         propertyName={property.name}
         pending={review.isPending}
+        checklistComplete={checklistComplete}
         onClose={() => setApproveOpen(false)}
         onConfirm={() => review.mutate("approve")}
       />
@@ -549,7 +580,6 @@ function PropertyMedia({
             <video
               key={video.id}
               controls
-              crossOrigin="anonymous"
               preload="metadata"
               className="aspect-video w-full rounded-xl bg-foreground"
               src={normalizePropertyMediaUrl(video.url)}
@@ -923,27 +953,58 @@ function isImageDocument(url: string, type?: string) {
   );
 }
 
-function ReviewChecklist() {
-  const items = [
-    "Images meet quality standards",
-    "Address matches listing data",
-    "Pricing is reasonable",
-    "Required legal documents reviewed",
-  ];
+const propertyReviewChecks = [
+  { id: "images", label: "Images meet quality standards" },
+  { id: "address", label: "Address matches listing data" },
+  { id: "pricing", label: "Pricing is reasonable" },
+  {
+    id: "legal-documents",
+    label: "Legal documents reviewed (if supplied)",
+  },
+] as const;
+
+function ReviewChecklist({
+  checks,
+  disabled,
+  onCheckedChange,
+}: {
+  checks: Record<string, boolean>;
+  disabled: boolean;
+  onCheckedChange: (id: string, checked: boolean) => void;
+}) {
   return (
     <Card className="border-primary/15">
       <CardHeader>
-        <CardDescription className="font-semibold uppercase">
-          Manual checklist
+        <CardTitle className="text-base">Manual checklist</CardTitle>
+        <CardDescription>
+          Complete every item before approving this property.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {items.map((item) => (
-          <label key={item} className="flex items-start gap-3 text-sm">
-            <Checkbox />
-            <span>{item}</span>
-          </label>
-        ))}
+      <CardContent>
+        <FieldSet>
+          <FieldLegend className="sr-only">Property review checks</FieldLegend>
+          <FieldGroup data-slot="checkbox-group">
+            {propertyReviewChecks.map((item) => (
+              <Field
+                key={item.id}
+                orientation="horizontal"
+                data-disabled={disabled}
+              >
+                <Checkbox
+                  id={`property-review-${item.id}`}
+                  checked={checks[item.id] ?? false}
+                  disabled={disabled}
+                  onCheckedChange={(checked) =>
+                    onCheckedChange(item.id, checked === true)
+                  }
+                />
+                <FieldLabel htmlFor={`property-review-${item.id}`}>
+                  {item.label}
+                </FieldLabel>
+              </Field>
+            ))}
+          </FieldGroup>
+        </FieldSet>
       </CardContent>
     </Card>
   );
@@ -1181,12 +1242,14 @@ function ApprovalDialog({
   open,
   propertyName,
   pending,
+  checklistComplete,
   onClose,
   onConfirm,
 }: {
   open: boolean;
   propertyName: string;
   pending: boolean;
+  checklistComplete: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }) {
@@ -1209,7 +1272,7 @@ function ApprovalDialog({
           <Button variant="outline" disabled={pending} onClick={onClose}>
             Cancel
           </Button>
-          <Button disabled={pending} onClick={onConfirm}>
+          <Button disabled={pending || !checklistComplete} onClick={onConfirm}>
             <CheckCircle2 data-icon="inline-start" />
             {pending ? "Approving..." : "Confirm Approval"}
           </Button>

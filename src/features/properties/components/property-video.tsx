@@ -23,7 +23,6 @@ export function PropertyVideo({ thumbnailSrc, videoUrl }: PropertyVideoProps) {
             poster={thumbnailSrc}
             className="h-full w-full"
             controls
-            crossOrigin="anonymous"
             autoPlay
             playsInline
             preload="metadata"

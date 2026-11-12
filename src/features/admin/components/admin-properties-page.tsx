@@ -515,7 +515,7 @@ function PropertiesTable({
       <Table>
         <TableHeader className="bg-primary/5">
           <TableRow>
-            <TableHead className="pl-6">Property</TableHead>
+            <TableHead className="w-96 pl-6">Property</TableHead>
             <TableHead>Vendor</TableHead>
             <TableHead>Price (₦)</TableHead>
             <TableHead>Category</TableHead>
@@ -562,8 +562,8 @@ function PropertyRow({
   const propertyStatus = (property.status || "AVAILABLE").toUpperCase();
   return (
     <TableRow className="h-[110px]">
-      <TableCell className="pl-6">
-        <div className="flex min-w-56 items-center gap-3">
+      <TableCell className="w-96 max-w-96 whitespace-normal pl-6">
+        <div className="flex min-w-0 items-center gap-3">
           <Link
             href={`/admin/properties/${property.id}`}
             aria-label={`View details for ${property.name}`}
@@ -571,9 +571,14 @@ function PropertyRow({
           >
             <AdminPropertyThumbnail property={property} />
           </Link>
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="font-semibold">{property.name}</p>
+              <p
+                className="line-clamp-2 min-w-0 max-w-72 break-words font-semibold leading-snug"
+                title={property.name}
+              >
+                {property.name}
+              </p>
               {property.isFeatured && (
                 <Badge className="gap-1 bg-primary text-primary-foreground">
                   <BadgeCheck className="size-3" /> Featured

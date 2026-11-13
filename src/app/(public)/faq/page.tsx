@@ -24,9 +24,9 @@ import { CONTAINER, cn } from "@/lib/utils";
 import { createPageMetadata, serializeJsonLd } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "Help Center & FAQs",
+  title: "PropertyArk FAQs: Property Listings, Inspections & Shortlets",
   description:
-    "Find answers about PropertyArk listings, inspections, shortlet bookings, payments, and account security.",
+    "Get answers about finding and listing property in Nigeria, vendor verification, inspections, shortlet bookings, payments, and PropertyArk accounts.",
   path: "/faq",
 });
 
@@ -55,14 +55,82 @@ const TOPICS = [
 
 const FAQS: FaqItem[] = [
   {
-    question: "How do I find properties available in a particular city?",
+    question:
+      "How do I find properties for sale or rent in a particular Nigerian city?",
     answer:
-      "Use the location field in the homepage search or select one of the Popular Cities cards. You can refine the results further by listing purpose, property type, budget, and bedrooms.",
+      "Use the location field in the homepage search or browse the Property Locations page. You can then refine available listings by purpose, property type, budget, and bedrooms.",
+    links: [
+      { label: "Browse property locations", href: "/locations" },
+      { label: "View all properties", href: "/properties" },
+    ],
+  },
+  {
+    question: "How do I list a property for sale or rent in Nigeria?",
+    answer:
+      "Create a vendor account, complete identity verification, and make sure your credit-point balance covers the current listing charge. From the vendor dashboard, select Add Property, provide accurate details and images, and submit the listing for review. Approved listings are published on the PropertyArk marketplace.",
+    links: [
+      { label: "Become a PropertyArk vendor", href: "/register?role=vendor" },
+    ],
+  },
+  {
+    question: "How do I become a verified PropertyArk vendor?",
+    answer:
+      "Register as a vendor, or switch an existing user account to Vendor from account settings. Upload a clear, valid government-issued identity document and submit it for review. Once an administrator approves the verification, vendor property-listing tools become available.",
+    links: [{ label: "Register as a vendor", href: "/register?role=vendor" }],
+  },
+  {
+    question: "How does vendor identity verification work?",
+    answer:
+      "PropertyArk accepts a clear JPG, JPEG, or PNG identity document up to 10 MB. The submission remains pending while an administrator reviews it. An approved submission unlocks property creation; if it is rejected, the vendor can review the reason and submit a clearer or valid document.",
+  },
+  {
+    question: "How much does it cost to list a property on PropertyArk?",
+    answer:
+      "Property listings use PropertyArk credit points. The point price, minimum purchase, listing charge, featured-placement charge, and any vendor bonus are controlled by the platform and can change. Vendors can see the current live rates in Credit Points & Payments before purchasing points or publishing a listing.",
+    links: [
+      { label: "Create a vendor account", href: "/register?role=vendor" },
+    ],
+  },
+  {
+    question: "Can I advertise land, rentals, sales, and shortlets?",
+    answer:
+      "Yes. Verified vendors can create listings for supported categories such as land, properties for sale, properties for rent, and shortlets. Each submission must contain accurate information and pass the platform review before it becomes publicly available.",
+    links: [
+      { label: "Explore property categories", href: "/properties" },
+      { label: "Become a vendor", href: "/register?role=vendor" },
+    ],
+  },
+  {
+    question: "How are property listings reviewed before approval?",
+    answer:
+      "A PropertyArk administrator reviews the submitted listing details and media, including image quality, address information, pricing, and any supporting documents supplied by the vendor. The listing remains pending until it is approved or rejected, and the vendor can track its status from the property dashboard.",
+  },
+  {
+    question: "How do I contact a property vendor?",
+    answer:
+      "Open a public property listing to view its vendor information and available contact actions. Depending on the listing, you can call the vendor, send a message through PropertyArk, or request an inspection. You can also open the vendor's public profile to review their other active listings.",
+    links: [{ label: "Browse verified properties", href: "/properties" }],
+  },
+  {
+    question: "How do I find verified properties in Lagos or Abuja?",
+    answer:
+      "Visit Property Locations and select Lagos or Abuja together with the property category you need. Location pages display matching live inventory, such as properties for sale, rent, land, houses, apartments, and shortlets, when those listings are available.",
+    links: [
+      {
+        label: "Properties for sale in Lagos",
+        href: "/locations/lagos/properties-for-sale",
+      },
+      {
+        label: "Properties for sale in Abuja",
+        href: "/locations/abuja/properties-for-sale",
+      },
+    ],
   },
   {
     question: "How do I book an inspection?",
     answer:
       "Open a property, choose the inspection option, and submit your preferred date and inspection type. The vendor can accept the request, propose a new time, or decline it. You will receive an in-app notification whenever its status changes.",
+    links: [{ label: "Find a property", href: "/properties" }],
   },
   {
     question: "Can a vendor reschedule an inspection?",
@@ -73,6 +141,7 @@ const FAQS: FaqItem[] = [
     question: "How are unavailable shortlet dates handled?",
     answer:
       "Dates covered by confirmed bookings or dates manually blocked by the vendor are disabled in the booking calendar. This prevents another guest from requesting an unavailable stay.",
+    links: [{ label: "Browse shortlets", href: "/shortlets" }],
   },
   {
     question: "When is a shortlet booking completed?",
@@ -98,6 +167,7 @@ const FAQS: FaqItem[] = [
     question: "How do I contact support?",
     answer:
       "Use the Contact page to send the PropertyArk team a message. Include the relevant property, booking, inspection, or transaction reference so the team can assist you faster.",
+    links: [{ label: "Contact PropertyArk support", href: "/contact" }],
   },
 ];
 
@@ -119,8 +189,8 @@ export default function FaqPage() {
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqJsonLd) }}
       />
       <PageBanner
-        title="How can we help?"
-        description="Clear answers for every step of your PropertyArk journey—from finding a home to managing inspections and shortlet stays."
+        title="PropertyArk Help Center and Property FAQs"
+        description="Clear answers about finding and listing property in Nigeria, vendor verification, inspections, payments, and shortlet stays."
         imageSrc="https://images.unsplash.com/photo-1497366811353-6870744d04b2?q=80&w=1600"
         imageAlt="Modern office support area"
       />
@@ -168,7 +238,7 @@ export default function FaqPage() {
                 Frequently asked questions
               </p>
               <h2 className="mt-3 text-2xl font-semibold sm:text-3xl">
-                Everything you need to move forward
+                Frequently Asked Questions About PropertyArk
               </h2>
               <p className="mt-4 max-w-md text-sm leading-7 text-muted-foreground">
                 These answers cover the most common questions from buyers,

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import {
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils";
 export interface FaqItem {
   question: string;
   answer: string;
+  links?: Array<{ label: string; href: string }>;
 }
 
 export function FaqList({ items }: { items: FaqItem[] }) {
@@ -40,7 +42,20 @@ export function FaqList({ items }: { items: FaqItem[] }) {
               />
             </CollapsibleTrigger>
             <CollapsibleContent className="pb-5 text-sm leading-7 text-muted-foreground">
-              {item.answer}
+              <p>{item.answer}</p>
+              {item.links?.length ? (
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+                  {item.links.map((link) => (
+                    <Link
+                      key={`${item.question}-${link.href}`}
+                      href={link.href}
+                      className="font-medium text-primary underline-offset-4 hover:underline"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
             </CollapsibleContent>
           </Collapsible>
         );

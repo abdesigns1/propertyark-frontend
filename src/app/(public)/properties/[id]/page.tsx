@@ -21,16 +21,16 @@ import { ShortletBookingCard } from "@/features/properties/components/shortlet-b
 import { ShortletStayInformation } from "@/features/properties/components/shortlet-stay-information";
 import { Footer } from "@/components/shared/footer";
 import {
-  getAvailablePropertiesServer,
+  getAllAvailablePropertiesServer,
   getFeaturedPropertiesServer,
 } from "@/features/properties/server/get-available-properties";
 import { CONTAINER, cn } from "@/lib/utils";
 import { serializeJsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
 
-const getPropertyResults = cache(() => getAvailablePropertiesServer());
+const getPropertyResults = cache(getAllAvailablePropertiesServer);
 
 async function getProperty(id: string) {
-  const { properties } = await getPropertyResults();
+  const properties = await getPropertyResults();
   return properties.find((property) => property.id === id);
 }
 
@@ -99,7 +99,7 @@ export default async function PropertyDetailPage({
   if (id.startsWith("draft:"))
     redirect(`/vendor/properties/new?draft=${id.slice("draft:".length)}`);
 
-  const [{ properties }, featuredProperties] = await Promise.all([
+  const [properties, featuredProperties] = await Promise.all([
     getPropertyResults(),
     getFeaturedPropertiesServer(),
   ]);

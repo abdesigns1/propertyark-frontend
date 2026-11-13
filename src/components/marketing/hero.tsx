@@ -25,15 +25,15 @@ export function Hero() {
           {/* Left: copy */}
           <div className="text-center lg:text-left">
             <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
-              Buy, Sell &amp; Rent
+              Find Verified Property
               <br />
-              <span className="text-white">Verified</span> Properties
+              Listings Across Nigeria
             </h1>
-            {/* <p className="mx-auto mt-6 max-w-md text-base leading-relaxed text-white/85 lg:mx-0">
-              Discover a curated selection of premium real estate, backed by
-              data and verified for your security. Join thousands of investors
-              in the next generation of property management.
-            </p> */}
+            <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/90 lg:mx-0">
+              Buy, rent, sell, or book shortlets with confidence on a Nigerian
+              property marketplace built around verified listings and trusted
+              vendors.
+            </p>
             {/* <div className="mt-8 flex flex-wrap justify-center gap-4 lg:justify-start">
               <Button
                 asChild

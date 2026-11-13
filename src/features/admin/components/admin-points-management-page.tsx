@@ -2,19 +2,26 @@
 
 import { useState, type FormEvent } from "react";
 import {
+  Building2,
   CalendarClock,
+  Check,
+  ChevronsUpDown,
   Coins,
   Gift,
+  History,
   LoaderCircle,
   RefreshCw,
   Save,
   Search,
+  Settings2,
   ShieldCheck,
+  Sparkles,
   Star,
   UserRound,
   UsersRound,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AdminStatCard } from "@/features/admin/components/admin-stat-card";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
 import {
   useAdminCreditGiftHistory,
@@ -35,6 +42,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Dialog,
   DialogClose,
@@ -57,13 +72,10 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -81,6 +93,7 @@ import {
   type CreditPointSettings,
 } from "@/services/admin-credit.service";
 import { getApiErrorMessage } from "@/services/api-error";
+import { cn } from "@/lib/utils";
 import {
   Empty,
   EmptyDescription,
@@ -161,6 +174,7 @@ function CreditGiftForm() {
   const [reason, setReason] = useState("");
   const [errors, setErrors] = useState<GiftErrors>({});
   const [confirmAllOpen, setConfirmAllOpen] = useState(false);
+  const [vendorPickerOpen, setVendorPickerOpen] = useState(false);
   const [pendingGift, setPendingGift] = useState<AdminCreditGiftInput | null>(
     null,
   );
@@ -173,6 +187,20 @@ function CreditGiftForm() {
       vendor.email.toLocaleLowerCase().includes(query)
     );
   });
+  const selectedVendor = (vendors.data ?? []).find(
+    (vendor) => vendor.id === selectedVendorIds[0],
+  );
+  const recipientCount =
+    mode === "all"
+      ? (vendors.data?.length ?? 0)
+      : mode === "individual"
+        ? Math.min(selectedVendorIds.length, 1)
+        : selectedVendorIds.length;
+  const pointValue = Number(points);
+  const totalGiftPoints =
+    Number.isInteger(pointValue) && pointValue > 0
+      ? pointValue * recipientCount
+      : 0;
 
   function toggleVendor(vendorId: string, checked: boolean) {
     setSelectedVendorIds((current) =>
@@ -265,20 +293,43 @@ function CreditGiftForm() {
   return (
     <>
       <form onSubmit={submit}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Gift className="text-primary" /> Gift vendor credit points
-            </CardTitle>
+        <Card className="overflow-hidden border-primary/15 shadow-sm">
+          <CardHeader className="border-b bg-linear-to-r from-primary/10 via-primary/5 to-card">
+            <Badge variant="secondary" className="mb-1 w-fit">
+              <Gift aria-hidden="true" /> Issue credit gift
+            </Badge>
+            <CardTitle className="text-xl">Gift vendor credit points</CardTitle>
             <CardDescription>
               Reward one vendor, a selected group, or every vendor on the
               platform. Each gift is recorded with its name, reason, and expiry.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-6">
+            <ol
+              className="grid gap-2 sm:grid-cols-3"
+              aria-label="Gift workflow"
+            >
+              {[
+                ["1", "Choose recipients"],
+                ["2", "Set gift details"],
+                ["3", "Review and issue"],
+              ].map(([step, label]) => (
+                <li
+                  key={step}
+                  className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3"
+                >
+                  <Badge>{step}</Badge>
+                  <span className="text-sm font-medium">{label}</span>
+                </li>
+              ))}
+            </ol>
             <FieldGroup>
-              <FieldSet>
-                <FieldLegend>Recipients</FieldLegend>
+              <FieldSet className="rounded-xl border bg-background p-4 sm:p-5">
+                <FieldLegend>1. Choose recipients</FieldLegend>
+                <FieldDescription>
+                  Select whether this reward goes to one vendor, a selected
+                  group, or the entire vendor network.
+                </FieldDescription>
                 <ToggleGroup
                   type="single"
                   value={mode}
@@ -308,46 +359,93 @@ function CreditGiftForm() {
               {mode === "individual" && (
                 <Field data-invalid={Boolean(errors.vendors)}>
                   <FieldLabel htmlFor="credit-gift-vendor">Vendor</FieldLabel>
-                  <Select
-                    value={selectedVendorIds[0] ?? ""}
-                    onValueChange={(value) => {
-                      setSelectedVendorIds([value]);
-                      setErrors((current) => ({
-                        ...current,
-                        vendors: undefined,
-                      }));
-                    }}
-                    disabled={vendors.isPending || vendors.isError}
+                  <Popover
+                    open={vendorPickerOpen}
+                    onOpenChange={setVendorPickerOpen}
                   >
-                    <SelectTrigger
-                      id="credit-gift-vendor"
-                      className="w-full"
-                      aria-invalid={Boolean(errors.vendors)}
-                    >
-                      <SelectValue
-                        placeholder={
-                          vendors.isPending
+                    <PopoverTrigger asChild>
+                      <Button
+                        id="credit-gift-vendor"
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={vendorPickerOpen}
+                        aria-invalid={Boolean(errors.vendors)}
+                        disabled={vendors.isPending || vendors.isError}
+                        className="w-full justify-between font-normal"
+                      >
+                        <span className="min-w-0 truncate">
+                          {vendors.isPending
                             ? "Loading vendors…"
-                            : "Select a vendor"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {(vendors.data ?? []).map((vendor) => (
-                          <SelectItem key={vendor.id} value={vendor.id}>
-                            {vendor.fullName} · {vendor.email}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                            : selectedVendor
+                              ? `${selectedVendor.fullName} · ${selectedVendor.email}`
+                              : "Search and select a vendor"}
+                        </span>
+                        <ChevronsUpDown
+                          data-icon="inline-end"
+                          className="opacity-50"
+                          aria-hidden="true"
+                        />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      className="w-(--radix-popover-trigger-width) p-0"
+                    >
+                      <Command>
+                        <CommandInput placeholder="Search vendors by name or email…" />
+                        <CommandList>
+                          <CommandEmpty>No vendor found.</CommandEmpty>
+                          <CommandGroup heading="Vendors">
+                            {(vendors.data ?? []).map((vendor) => (
+                              <CommandItem
+                                key={vendor.id}
+                                value={`${vendor.fullName} ${vendor.email} ${vendor.id}`}
+                                onSelect={() => {
+                                  setSelectedVendorIds([vendor.id]);
+                                  setVendorPickerOpen(false);
+                                  setErrors((current) => ({
+                                    ...current,
+                                    vendors: undefined,
+                                  }));
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "size-4",
+                                    selectedVendor?.id === vendor.id
+                                      ? "opacity-100"
+                                      : "opacity-0",
+                                  )}
+                                  aria-hidden="true"
+                                />
+                                <span className="min-w-0">
+                                  <span className="block truncate font-medium">
+                                    {vendor.fullName}
+                                  </span>
+                                  <span className="block truncate text-xs text-muted-foreground">
+                                    {vendor.email}
+                                  </span>
+                                </span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <FieldDescription>
+                    Type a vendor name or email to narrow the list.
+                  </FieldDescription>
                   <FieldError>{errors.vendors}</FieldError>
                 </Field>
               )}
 
               {mode === "multiple" && (
-                <FieldSet data-invalid={Boolean(errors.vendors)}>
+                <FieldSet
+                  data-invalid={Boolean(errors.vendors)}
+                  className="rounded-xl border bg-muted/20 p-4"
+                >
                   <FieldLegend variant="label">Choose vendors</FieldLegend>
                   <FieldDescription>
                     {selectedVendorIds.length.toLocaleString("en-NG")} selected
@@ -432,85 +530,100 @@ function CreditGiftForm() {
                 </Alert>
               )}
 
-              <div className="grid gap-5 md:grid-cols-2">
-                <Field data-invalid={Boolean(errors.points)}>
-                  <FieldLabel htmlFor="gift-points">
-                    Points per vendor
-                  </FieldLabel>
-                  <Input
-                    id="gift-points"
-                    type="number"
-                    min={1}
-                    step={1}
-                    value={points}
-                    onChange={(event) => {
-                      setPoints(event.target.value);
-                      setErrors((current) => ({
-                        ...current,
-                        points: undefined,
-                      }));
-                    }}
-                    placeholder="e.g. 25"
-                    aria-invalid={Boolean(errors.points)}
-                  />
-                  <FieldError>{errors.points}</FieldError>
-                </Field>
-                <Field data-invalid={Boolean(errors.name)}>
-                  <FieldLabel htmlFor="gift-name">Gift name</FieldLabel>
-                  <Input
-                    id="gift-name"
-                    value={name}
-                    onChange={(event) => {
-                      setName(event.target.value);
-                      setErrors((current) => ({
-                        ...current,
-                        name: undefined,
-                      }));
-                    }}
-                    placeholder="e.g. Loyalty Bonus"
-                    aria-invalid={Boolean(errors.name)}
-                  />
-                  <FieldError>{errors.name}</FieldError>
-                </Field>
-                <Field data-invalid={Boolean(errors.expiresAt)}>
-                  <FieldLabel htmlFor="gift-expiry">Expires at</FieldLabel>
-                  <Input
-                    id="gift-expiry"
-                    type="datetime-local"
-                    min={futureDateTimeLocal(0)}
-                    value={expiresAt}
-                    onChange={(event) => {
-                      setExpiresAt(event.target.value);
-                      setErrors((current) => ({
-                        ...current,
-                        expiresAt: undefined,
-                      }));
-                    }}
-                    aria-invalid={Boolean(errors.expiresAt)}
-                  />
-                  <FieldError>{errors.expiresAt}</FieldError>
-                </Field>
-                <Field data-invalid={Boolean(errors.reason)}>
-                  <FieldLabel htmlFor="gift-reason">Reason</FieldLabel>
-                  <Textarea
-                    id="gift-reason"
-                    value={reason}
-                    onChange={(event) => {
-                      setReason(event.target.value);
-                      setErrors((current) => ({
-                        ...current,
-                        reason: undefined,
-                      }));
-                    }}
-                    placeholder="Explain why this credit gift is being issued"
-                    aria-invalid={Boolean(errors.reason)}
-                  />
-                  <FieldError>{errors.reason}</FieldError>
-                </Field>
-              </div>
+              <FieldSet className="rounded-xl border bg-background p-4 sm:p-5">
+                <FieldLegend>2. Set gift details</FieldLegend>
+                <FieldDescription>
+                  Define the amount each vendor receives and provide a clear
+                  audit description and expiry.
+                </FieldDescription>
+                <FieldGroup className="grid gap-5 md:grid-cols-2">
+                  <Field data-invalid={Boolean(errors.points)}>
+                    <FieldLabel htmlFor="gift-points">
+                      Points per vendor
+                    </FieldLabel>
+                    <Input
+                      id="gift-points"
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={points}
+                      onChange={(event) => {
+                        setPoints(event.target.value);
+                        setErrors((current) => ({
+                          ...current,
+                          points: undefined,
+                        }));
+                      }}
+                      placeholder="e.g. 25"
+                      aria-invalid={Boolean(errors.points)}
+                    />
+                    <FieldError>{errors.points}</FieldError>
+                  </Field>
+                  <Field data-invalid={Boolean(errors.name)}>
+                    <FieldLabel htmlFor="gift-name">Gift name</FieldLabel>
+                    <Input
+                      id="gift-name"
+                      value={name}
+                      onChange={(event) => {
+                        setName(event.target.value);
+                        setErrors((current) => ({
+                          ...current,
+                          name: undefined,
+                        }));
+                      }}
+                      placeholder="e.g. Loyalty Bonus"
+                      aria-invalid={Boolean(errors.name)}
+                    />
+                    <FieldError>{errors.name}</FieldError>
+                  </Field>
+                  <Field data-invalid={Boolean(errors.expiresAt)}>
+                    <FieldLabel htmlFor="gift-expiry">Expires at</FieldLabel>
+                    <Input
+                      id="gift-expiry"
+                      type="datetime-local"
+                      min={futureDateTimeLocal(0)}
+                      value={expiresAt}
+                      onChange={(event) => {
+                        setExpiresAt(event.target.value);
+                        setErrors((current) => ({
+                          ...current,
+                          expiresAt: undefined,
+                        }));
+                      }}
+                      aria-invalid={Boolean(errors.expiresAt)}
+                    />
+                    <FieldError>{errors.expiresAt}</FieldError>
+                  </Field>
+                  <Field data-invalid={Boolean(errors.reason)}>
+                    <FieldLabel htmlFor="gift-reason">Reason</FieldLabel>
+                    <Textarea
+                      id="gift-reason"
+                      value={reason}
+                      onChange={(event) => {
+                        setReason(event.target.value);
+                        setErrors((current) => ({
+                          ...current,
+                          reason: undefined,
+                        }));
+                      }}
+                      placeholder="Explain why this credit gift is being issued"
+                      aria-invalid={Boolean(errors.reason)}
+                    />
+                    <FieldError>{errors.reason}</FieldError>
+                  </Field>
+                </FieldGroup>
+              </FieldSet>
             </FieldGroup>
           </CardContent>
-          <CardFooter className="justify-end">
+          <CardFooter className="flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center">
+            <div>
+              <p className="text-sm font-medium">3. Review and issue</p>
+              <p className="text-xs text-muted-foreground">
+                {recipientCount > 0 && totalGiftPoints > 0
+                  ? `${pointValue.toLocaleString("en-NG")} points × ${recipientCount.toLocaleString("en-NG")} vendor${recipientCount === 1 ? "" : "s"} = ${totalGiftPoints.toLocaleString("en-NG")} total points`
+                  : "Choose recipients and enter an amount to preview the total gift."}
+              </p>
+            </div>
             <Button type="submit" disabled={gift.isPending}>
               {gift.isPending ? (
                 <LoaderCircle
@@ -596,7 +709,10 @@ function CreditGiftHistory() {
       <CardHeader className="border-b py-5">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <CardTitle>Credit gift history</CardTitle>
+            <Badge variant="outline" className="mb-2">
+              <History aria-hidden="true" /> Audit trail
+            </Badge>
+            <CardTitle className="text-xl">Credit gift history</CardTitle>
             <CardDescription>
               Audit previously issued vendor gifts, recipients, expiry, and the
               administrator who sent them.
@@ -738,15 +854,26 @@ function SettingsForm({ initial }: { initial: CreditPointSettings }) {
 
   return (
     <form onSubmit={submit}>
-      <Card>
-        <CardHeader>
-          <CardTitle>Point rules and pricing</CardTitle>
+      <Card className="overflow-hidden border-primary/15 shadow-sm">
+        <CardHeader className="border-b bg-muted/30">
+          <Badge variant="outline" className="mb-1 w-fit">
+            <Settings2 aria-hidden="true" /> Configuration
+          </Badge>
+          <CardTitle className="text-xl">Point rules and pricing</CardTitle>
           <CardDescription>
             Changes affect future vendor charges and purchases. Existing ledger
             entries remain unchanged.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="flex flex-col gap-6">
+          <Alert>
+            <ShieldCheck />
+            <AlertTitle>Future activity only</AlertTitle>
+            <AlertDescription>
+              Saving new values changes future purchases, bonuses, listings, and
+              featured placements. Historical wallet entries are preserved.
+            </AlertDescription>
+          </Alert>
           <FieldGroup className="grid gap-5 md:grid-cols-2">
             {fields.map((field) => (
               <Field key={field.key}>
@@ -764,7 +891,7 @@ function SettingsForm({ initial }: { initial: CreditPointSettings }) {
                     }))
                   }
                 />
-                <p className="text-xs text-muted-foreground">{field.help}</p>
+                <FieldDescription>{field.help}</FieldDescription>
               </Field>
             ))}
             <Field>
@@ -780,22 +907,22 @@ function SettingsForm({ initial }: { initial: CreditPointSettings }) {
                   }))
                 }
               />
-              <p className="text-xs text-muted-foreground">
+              <FieldDescription>
                 Paystack settlement and display currency.
-              </p>
+              </FieldDescription>
             </Field>
           </FieldGroup>
-          <div className="flex justify-end border-t pt-5">
-            <Button type="submit" disabled={update.isPending}>
-              {update.isPending ? (
-                <LoaderCircle className="animate-spin" />
-              ) : (
-                <Save />
-              )}
-              {update.isPending ? "Saving changes..." : "Save point settings"}
-            </Button>
-          </div>
         </CardContent>
+        <CardFooter className="justify-end">
+          <Button type="submit" disabled={update.isPending}>
+            {update.isPending ? (
+              <LoaderCircle data-icon="inline-start" className="animate-spin" />
+            ) : (
+              <Save data-icon="inline-start" />
+            )}
+            {update.isPending ? "Saving changes..." : "Save point settings"}
+          </Button>
+        </CardFooter>
       </Card>
     </form>
   );
@@ -807,61 +934,95 @@ export function AdminPointsManagementPage() {
 
   return (
     <AdminWorkspace>
-      <main className="mx-auto max-w-[1400px] space-y-6 p-4 sm:p-6 lg:p-8">
-        <header>
-          <Badge variant="secondary" className="mb-3">
-            <ShieldCheck /> Admin controlled
-          </Badge>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Points Management
-          </h1>
-          <p className="mt-2 max-w-2xl text-muted-foreground">
-            Control how vendors receive, purchase, and spend credit points
-            across PropertyArk.
-          </p>
-        </header>
+      <main className="mx-auto flex max-w-[1500px] flex-col gap-6 p-4 sm:p-6 lg:p-8">
+        <Card className="relative gap-0 overflow-hidden border-primary/15 bg-linear-to-br from-card via-card to-primary/10 py-0 shadow-sm ring-primary/10">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-24 -right-20 size-72 rounded-full bg-primary/10 blur-3xl"
+          />
+          <CardHeader className="relative gap-3 p-5 pb-3 sm:p-6 sm:pb-4 lg:p-8 lg:pb-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary">
+                <ShieldCheck aria-hidden="true" /> Admin controlled
+              </Badge>
+              <Badge variant="outline">
+                <Sparkles aria-hidden="true" /> Live credit configuration
+              </Badge>
+            </div>
+            <CardTitle>
+              <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+                Points Management
+              </h1>
+            </CardTitle>
+            <CardDescription className="max-w-3xl text-sm leading-6 sm:text-base">
+              A central control room for vendor credits. Set the value of each
+              point, define how vendors earn and spend them, issue rewards, and
+              review every administrative gift.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="relative flex flex-wrap gap-2 p-5 pt-0 sm:p-6 sm:pt-0 lg:p-8 lg:pt-0">
+            <Badge variant="outline">Purchase rules</Badge>
+            <Badge variant="outline">Bonus and gifting</Badge>
+            <Badge variant="outline">Listing costs</Badge>
+            <Badge variant="outline">Featured placement</Badge>
+            <Badge variant="outline">Audit history</Badge>
+          </CardContent>
+        </Card>
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <Coins className="size-5 text-primary" />
-              <CardDescription>Point price</CardDescription>
-              <CardTitle>
-                {query.isPending ? (
-                  <Skeleton className="h-8 w-24" />
-                ) : (
-                  `₦${settings.pricePerPoint.toLocaleString("en-NG")}`
-                )}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader>
-              <Gift className="size-5 text-secondary" />
-              <CardDescription>New vendor bonus</CardDescription>
-              <CardTitle>
-                {query.isPending ? (
-                  <Skeleton className="h-8 w-24" />
-                ) : (
-                  `${settings.newVendorBonusPoints.toLocaleString("en-NG")} points`
-                )}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader>
-              <Star className="size-5 text-primary" />
-              <CardDescription>Featured placement</CardDescription>
-              <CardTitle>
-                {query.isPending ? (
-                  <Skeleton className="h-8 w-24" />
-                ) : (
-                  `${settings.featurePropertyCost.toLocaleString("en-NG")} points`
-                )}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
+        <section aria-labelledby="current-point-rules-heading">
+          <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2
+                id="current-point-rules-heading"
+                className="text-xl font-semibold tracking-tight"
+              >
+                Current point rules
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                The live values currently applied to vendor activity.
+              </p>
+            </div>
+            <Badge variant="success">System active</Badge>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <AdminStatCard
+              icon={Coins}
+              label="Point purchase price"
+              value={`₦${settings.pricePerPoint.toLocaleString("en-NG")}`}
+              note={`Vendors must purchase at least ${settings.minimumPurchasePoints.toLocaleString("en-NG")} points per transaction.`}
+              action={<Badge variant="outline">Live rule</Badge>}
+              tone="primary"
+              loading={query.isPending}
+            />
+            <AdminStatCard
+              icon={Gift}
+              label="New vendor bonus"
+              value={`${settings.newVendorBonusPoints.toLocaleString("en-NG")} points`}
+              note={`Onboarding reward, valid for ${settings.newVendorBonusExpiryDays.toLocaleString("en-NG")} days.`}
+              action={<Badge variant="outline">Live rule</Badge>}
+              tone="secondary"
+              loading={query.isPending}
+            />
+            <AdminStatCard
+              icon={Building2}
+              label="Property listing cost"
+              value={`${settings.propertyCreationCost.toLocaleString("en-NG")} points`}
+              note="Deducted when a vendor publishes a new property listing."
+              action={<Badge variant="outline">Live rule</Badge>}
+              tone="primary"
+              loading={query.isPending}
+            />
+            <AdminStatCard
+              icon={Star}
+              label="Featured placement"
+              value={`${settings.featurePropertyCost.toLocaleString("en-NG")} points`}
+              note={`Keeps a property featured for ${settings.featurePropertyDurationDays.toLocaleString("en-NG")} days.`}
+              action={<Badge variant="outline">Live rule</Badge>}
+              tone="warning"
+              loading={query.isPending}
+            />
+          </div>
+        </section>
 
         {query.isError && (
           <Card className="border-secondary/30 bg-secondary/5">

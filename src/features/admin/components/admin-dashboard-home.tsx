@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import {
   Bell,
   Building2,
+  CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Clock3,
   Download,
   HelpCircle,
   House,
@@ -18,6 +20,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Sparkles,
   Users,
   UserRound,
   UserPlus,
@@ -118,6 +121,54 @@ const userTabs = [
   { value: "vendors", label: "Vendors" },
   { value: "admins", label: "Admins" },
 ] as const;
+
+function AdminDateTime() {
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    const updateTime = () => setNow(new Date());
+    const initialUpdate = window.setTimeout(updateTime, 0);
+    const interval = window.setInterval(updateTime, 1_000);
+
+    return () => {
+      window.clearTimeout(initialUpdate);
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  const date = now
+    ? new Intl.DateTimeFormat("en-NG", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "Africa/Lagos",
+      }).format(now)
+    : "Loading current date";
+  const time = now
+    ? new Intl.DateTimeFormat("en-NG", {
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+        timeZone: "Africa/Lagos",
+      }).format(now)
+    : "--:--:--";
+
+  return (
+    <div className="flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:gap-5">
+      <div className="flex items-center gap-2 text-foreground">
+        <CalendarDays className="size-4 text-primary" aria-hidden="true" />
+        <time dateTime={now?.toISOString()}>{date}</time>
+      </div>
+      <div className="flex items-center gap-2 text-foreground">
+        <Clock3 className="size-4 text-primary" aria-hidden="true" />
+        <time dateTime={now?.toISOString()}>{time}</time>
+        <span className="text-xs text-muted-foreground">West Africa Time</span>
+      </div>
+    </div>
+  );
+}
 
 function transactionAmount(metadata: Record<string, unknown>) {
   const amountKeys = [
@@ -719,27 +770,35 @@ function PropertiesTable({
         </CardAction>
       </CardHeader>
       <CardContent className="p-0">
-        <Table>
+        <Table className="min-w-[720px] table-fixed">
           <TableHeader className="bg-primary/5">
             <TableRow>
-              <TableHead className="h-12 pl-5">Listing name</TableHead>
-              <TableHead>Vendor</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="pr-5 text-right">Actions</TableHead>
+              <TableHead className="h-12 w-[30%] pl-5">Listing name</TableHead>
+              <TableHead className="w-[16%]">Vendor</TableHead>
+              <TableHead className="w-[20%]">Location</TableHead>
+              <TableHead className="w-[14%]">Price</TableHead>
+              <TableHead className="w-[11%]">Status</TableHead>
+              <TableHead className="w-[9%] pr-5 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((property) => {
-              const pending = property.listingStatus === "PENDING";
+              const status = (
+                property.listingStatus || "PENDING"
+              ).toUpperCase();
+              const pending = status === "PENDING";
               const price = property.priceDisplay?.amount
                 ? money.format(property.priceDisplay.amount)
                 : (property.priceDisplay?.display ?? "—");
               return (
                 <TableRow key={property.id} className="h-[68px]">
-                  <TableCell className="max-w-44 whitespace-normal pl-5 font-semibold">
-                    {property.name}
+                  <TableCell className="max-w-0 whitespace-normal pl-5">
+                    <p
+                      className="line-clamp-2 break-words font-semibold leading-5"
+                      title={property.name}
+                    >
+                      {property.name}
+                    </p>
                   </TableCell>
                   <TableCell className="max-w-36 whitespace-normal">
                     {property.vendor?.fullName || "—"}
@@ -752,16 +811,20 @@ function PropertiesTable({
                   <TableCell className="font-medium">{price}</TableCell>
                   <TableCell>
                     <Badge
-                      variant={pending ? "outline" : "secondary"}
+                      variant={
+                        status === "ACTIVE"
+                          ? "success"
+                          : status === "REJECTED"
+                            ? "destructive"
+                            : "outline"
+                      }
                       className={cn(
-                        !pending && "bg-secondary text-secondary-foreground",
+                        "capitalize",
+                        pending &&
+                          "border-warning/20 bg-warning/10 text-warning",
                       )}
                     >
-                      {pending
-                        ? "Pending"
-                        : property.listingStatus
-                            .toLowerCase()
-                            .replace(/^./, (letter) => letter.toUpperCase())}
+                      {status.replaceAll("_", " ").toLowerCase()}
                     </Badge>
                   </TableCell>
                   <TableCell className="pr-5 text-right">
@@ -1160,36 +1223,50 @@ export function AdminDashboardHome() {
       </div>
       <DashboardHeader />
       <main className="mx-auto max-w-[1500px] p-4 sm:p-6 lg:p-7">
-        <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-semibold tracking-tight">
-                Platform Overview
-              </h1>
-              {!dashboard.isPending && dashboard.isFetching && (
-                <Badge variant="outline">Syncing</Badge>
-              )}
-            </div>
-            <p className="mt-1 text-muted-foreground">
-              Monitor and manage all activities happening across PropertyArk.
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Welcome back, {identity.name}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              variant="outline"
-              className="border-secondary text-secondary"
-            >
-              <Download data-icon="inline-start" />
-              Generate Report
-            </Button>
-            <Button>
-              <UserPlus data-icon="inline-start" />
-              Add Admin
-            </Button>
-          </div>
+        <section aria-labelledby="admin-welcome-heading">
+          <Card className="relative gap-0 overflow-hidden border-primary/15 bg-linear-to-br from-card via-card to-primary/10 py-0 shadow-sm ring-primary/10">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-20 -right-16 size-64 rounded-full bg-primary/10 blur-3xl"
+            />
+            <CardHeader className="relative gap-3 p-5 pb-3 sm:p-6 sm:pb-4 lg:p-7 lg:pb-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary">
+                  <Sparkles aria-hidden="true" />
+                  Platform Overview
+                </Badge>
+                {!dashboard.isPending && dashboard.isFetching && (
+                  <Badge variant="outline">Syncing</Badge>
+                )}
+              </div>
+              <CardTitle>
+                <h1
+                  id="admin-welcome-heading"
+                  className="text-2xl font-semibold tracking-tight sm:text-3xl lg:text-4xl"
+                >
+                  Welcome back, {identity.name}
+                </h1>
+              </CardTitle>
+              <CardDescription className="max-w-2xl text-sm sm:text-base">
+                Here&apos;s what&apos;s happening across PropertyArk today.
+                Monitor activity, review pending items, and keep the platform
+                moving.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="relative flex flex-col gap-5 p-5 pt-0 sm:p-6 sm:pt-0 lg:flex-row lg:items-end lg:justify-between lg:p-7 lg:pt-0">
+              <AdminDateTime />
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <Button variant="outline" size="lg">
+                  <Download data-icon="inline-start" />
+                  Generate Report
+                </Button>
+                <Button size="lg">
+                  <UserPlus data-icon="inline-start" />
+                  Add Admin
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </section>
         {/* <section className="mt-6 grid gap-3 lg:grid-cols-2">
           <div className="flex items-center gap-3 rounded-lg border border-destructive/25 bg-destructive/10 p-4 text-sm text-destructive">

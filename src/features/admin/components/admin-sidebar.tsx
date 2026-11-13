@@ -31,6 +31,9 @@ export function AdminSidebar({
   const indicators = useAdminNotificationIndicators();
   const indicatorByHref: Record<string, number> = {
     "/admin/properties": indicators.propertyPending,
+    "/admin/professional-services": indicators.professionalServicesNew,
+    "/admin/contacts": indicators.contactMessagesNew,
+    "/admin/newsletter": indicators.newsletterNew,
     "/admin/kyc": indicators.kycPending,
     "/admin/support": indicators.supportUnread,
     "/admin/notifications": indicators.notificationTotal,

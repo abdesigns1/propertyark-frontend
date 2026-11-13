@@ -16,6 +16,7 @@ export interface AvailablePropertyFilters {
   listingTypes?: string[];
   propertyTypes?: string[];
   city?: string;
+  state?: string;
   minPrice?: number;
   maxPrice?: number;
   bedrooms?: number;

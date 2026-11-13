@@ -52,7 +52,7 @@ const SOCIAL_LINKS = [
 export function SocialLinks({
   variant = "plain",
 }: {
-  variant?: "plain" | "circle";
+  variant?: "plain" | "circle" | "footer";
 }) {
   return (
     <div className="flex items-center gap-3 text-muted-foreground">
@@ -66,12 +66,14 @@ export function SocialLinks({
           title={title}
           className={cn(
             "flex items-center justify-center transition-colors hover:text-foreground",
-            variant === "circle"
-              ? "size-10 rounded-full border hover:border-primary hover:text-primary"
-              : "rounded-md p-1.5 hover:bg-muted",
+            variant === "circle" &&
+              "size-10 rounded-full border hover:border-primary hover:text-primary",
+            variant === "footer" &&
+              "size-10 rounded-full border border-primary/20 bg-primary/10 text-primary shadow-sm hover:border-primary hover:bg-primary hover:text-primary-foreground",
+            variant === "plain" && "rounded-md p-1.5 hover:bg-muted",
           )}
         >
-          <Icon className="size-4" />
+          <Icon className={cn("size-4", variant === "footer" && "size-5")} />
         </a>
       ))}
     </div>

@@ -1,5 +1,10 @@
 import type { MetadataRoute } from "next";
 import { getAvailablePropertiesServer } from "@/features/properties/server/get-available-properties";
+import { getPublishedBlogPosts } from "@/features/blog/server/blog-content";
+import {
+  getActivePropertySeoLandings,
+  propertySeoLandingPath,
+} from "@/features/properties/seo/property-seo-landings";
 import { SITE_URL } from "@/lib/seo";
 
 const STATIC_ROUTES = [
@@ -9,6 +14,8 @@ const STATIC_ROUTES = [
   "/about",
   "/contact",
   "/insights",
+  "/blog",
+  "/locations",
   "/faq",
   "/professional-services",
   "/privacy-policy",
@@ -21,6 +28,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: path === "" ? "daily" : "weekly",
     priority: path === "" ? 1 : path === "/properties" ? 0.9 : 0.7,
   }));
+
+  let blogEntries: MetadataRoute.Sitemap = [];
+  try {
+    const posts = await getPublishedBlogPosts();
+    blogEntries = posts.map((post) => ({
+      url: `${SITE_URL}/blog/${post.slug}`,
+      lastModified: post.updatedAt ?? post.publishedAt,
+      changeFrequency: "monthly",
+      priority: 0.7,
+      images: [new URL(post.featuredImage, SITE_URL).href],
+    }));
+  } catch {
+    // Keep the public sitemap available if an unpublished article is malformed.
+  }
 
   try {
     const firstPage = await getAvailablePropertiesServer({
@@ -39,6 +60,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...remainingPages.flatMap((page) => page.properties),
     ];
     const publicVendors = new Map<string, string>();
+    const propertySeoLandings = getActivePropertySeoLandings(properties);
 
     for (const property of properties) {
       if (!property.vendorId) continue;
@@ -55,6 +77,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     return [
       ...staticEntries,
+      ...blogEntries,
+      ...propertySeoLandings.map((landing) => ({
+        url: `${SITE_URL}${propertySeoLandingPath(landing.location, landing.intent)}`,
+        lastModified: landing.properties.reduce((latest, property) => {
+          const modifiedAt = property.updatedAt ?? property.createdAt;
+          return Date.parse(modifiedAt) > Date.parse(latest)
+            ? modifiedAt
+            : latest;
+        }, landing.properties[0].updatedAt ?? landing.properties[0].createdAt),
+        changeFrequency: "daily" as const,
+        priority: 0.8,
+        images: landing.properties
+          .flatMap((property) => property.images)
+          .slice(0, 5),
+      })),
       ...properties.map((property) => ({
         url: `${SITE_URL}/properties/${property.id}`,
         lastModified: property.updatedAt ?? property.createdAt,
@@ -70,6 +107,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       })),
     ];
   } catch {
-    return staticEntries;
+    return [...staticEntries, ...blogEntries];
   }
 }

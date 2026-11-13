@@ -10,6 +10,8 @@ const FOOTER_COLUMNS = [
       { label: "Properties", href: "/properties" },
       // { label: "Investments", href: "/investments" },
       { label: "Market Insights", href: "/insights" },
+      { label: "Blog", href: "/blog" },
+      { label: "Property Locations", href: "/locations" },
     ],
   },
   {
@@ -18,7 +20,6 @@ const FOOTER_COLUMNS = [
       { label: "About Us", href: "/about" },
       // { label: "Pricing", href: "/pricing" },
       { label: "Help Center", href: "/faq" },
-      // { label: "Guides & Blog", href: "/blog" },
     ],
   },
   {
@@ -27,6 +28,43 @@ const FOOTER_COLUMNS = [
       { label: "Legal", href: "/professional-services" },
       { label: "Privacy Policy", href: "/privacy-policy" },
       { label: "Terms of Service", href: "/terms" },
+    ],
+  },
+  {
+    title: "Popular property searches",
+    links: [
+      {
+        label: "Properties for sale in Lagos",
+        href: "/locations/lagos/properties-for-sale",
+      },
+      {
+        label: "Land for sale in Lagos",
+        href: "/locations/lagos/land-for-sale",
+      },
+      {
+        label: "Properties for sale in Abuja",
+        href: "/locations/abuja/properties-for-sale",
+      },
+      {
+        label: "Land for sale in Abuja",
+        href: "/locations/abuja/land-for-sale",
+      },
+      {
+        label: "Shortlets in Abuja",
+        href: "/locations/abuja/shortlets",
+      },
+      {
+        label: "Land for sale in Port Harcourt",
+        href: "/locations/port-harcourt/land-for-sale",
+      },
+      {
+        label: "Properties for sale in Ibadan",
+        href: "/locations/ibadan/properties-for-sale",
+      },
+      {
+        label: "Land for sale in Lekki",
+        href: "/locations/lekki/land-for-sale",
+      },
     ],
   },
 ];
@@ -63,7 +101,7 @@ export function Footer() {
       {/* Link columns */}
       <div className="bg-card py-12">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <Link href="/" className="inline-flex items-center">
                 <Image
@@ -76,11 +114,12 @@ export function Footer() {
                 />
               </Link>
               <p className="mt-3 max-w-xs text-sm text-muted-foreground">
-                Redefining real estate through technology, transparency, and
-                trust. Your premier portal for global property investment.
+                PropertyArk is a technology-driven real estate marketplace
+                designed to simplify how people discover, market, invest in, and
+                transact property across Nigeria and beyond.
               </p>
               <div className="mt-4">
-                <SocialLinks />
+                <SocialLinks variant="footer" />
               </div>
             </div>
 

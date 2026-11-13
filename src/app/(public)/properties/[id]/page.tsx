@@ -26,6 +26,7 @@ import {
 } from "@/features/properties/server/get-available-properties";
 import { CONTAINER, cn } from "@/lib/utils";
 import { serializeJsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
+import type { Property } from "@/features/properties/types";
 
 const getPropertyResults = cache(getAllAvailablePropertiesServer);
 
@@ -42,6 +43,19 @@ function propertyDescription(description: string) {
   return normalized.length > 155
     ? `${normalized.slice(0, 152).trimEnd()}...`
     : normalized;
+}
+
+function propertySchemaType(type: Property["type"]) {
+  if (type === "apartment") return "Apartment";
+  if (type === "shortlet") return "Accommodation";
+  if (type === "land" || type === "commercial") return "Place";
+  return "House";
+}
+
+function offerBusinessFunction(purpose: Property["purpose"]) {
+  return purpose === "rent" || purpose === "shortlet"
+    ? "http://purl.org/goodrelations/v1#LeaseOut"
+    : "http://purl.org/goodrelations/v1#Sell";
 }
 
 export async function generateMetadata({
@@ -122,53 +136,124 @@ export default async function PropertyDetailPage({
     .filter((candidate) => candidate.id !== property.id)
     .slice(0, 12);
   const propertyUrl = `${SITE_URL}/properties/${property.id}`;
+  const propertyEntityId = `${propertyUrl}#property`;
+  const offerEntityId = `${propertyUrl}#offer`;
+  const address = {
+    "@type": "PostalAddress",
+    streetAddress: property.location.address,
+    addressLocality: property.location.city,
+    addressRegion: property.location.state,
+    addressCountry: property.location.country || "NG",
+  };
   const propertyJsonLd = {
     "@context": "https://schema.org",
-    "@type": "Product",
-    "@id": `${propertyUrl}#listing`,
-    name: property.title,
-    description: propertyDescription(property.description),
-    image: property.images,
-    url: propertyUrl,
-    sku: property.id,
-    category: property.type,
-    brand: { "@type": "Brand", name: SITE_NAME },
-    offers: {
-      "@type": "Offer",
-      url: propertyUrl,
-      price: property.price,
-      priceCurrency: property.currency,
-      availability:
-        property.status === "available"
-          ? "https://schema.org/InStock"
-          : "https://schema.org/OutOfStock",
-      seller: {
-        "@type": "Organization",
-        name: property.vendorName || SITE_NAME,
-      },
-    },
-    additionalProperty: [
+    "@graph": [
       {
-        "@type": "PropertyValue",
-        name: "Location",
-        value: [
-          property.location.address,
-          property.location.city,
-          property.location.state,
-          property.location.country,
-        ]
-          .filter(Boolean)
-          .join(", "),
+        "@type": "RealEstateListing",
+        "@id": `${propertyUrl}#listing`,
+        url: propertyUrl,
+        name: property.title,
+        description: propertyDescription(property.description),
+        datePosted: property.listedAt ?? property.createdAt,
+        dateModified: property.updatedAt ?? property.createdAt,
+        primaryImageOfPage: property.images[0]
+          ? {
+              "@type": "ImageObject",
+              url: property.images[0],
+            }
+          : undefined,
+        mainEntity: { "@id": propertyEntityId },
+        about: [{ "@id": propertyEntityId }, { "@id": offerEntityId }],
       },
       {
-        "@type": "PropertyValue",
-        name: "Bedrooms",
-        value: property.bedrooms,
+        "@type": propertySchemaType(property.type),
+        "@id": propertyEntityId,
+        name: property.title,
+        description: propertyDescription(property.description),
+        image: property.images,
+        address,
+        geo:
+          typeof property.location.latitude === "number" &&
+          typeof property.location.longitude === "number"
+            ? {
+                "@type": "GeoCoordinates",
+                latitude: property.location.latitude,
+                longitude: property.location.longitude,
+              }
+            : undefined,
+        floorSize: property.sizeSqm
+          ? {
+              "@type": "QuantitativeValue",
+              value: property.sizeSqm,
+              unitCode: property.sizeUnit === "sqft" ? "FTK" : "MTK",
+            }
+          : undefined,
+        numberOfBedrooms:
+          property.type === "land" || property.type === "commercial"
+            ? undefined
+            : property.bedrooms,
+        numberOfBathroomsTotal:
+          property.type === "land" || property.type === "commercial"
+            ? undefined
+            : property.bathrooms,
+        amenityFeature: property.amenities?.map((amenity) => ({
+          "@type": "LocationFeatureSpecification",
+          name: amenity,
+          value: true,
+        })),
+        aggregateRating:
+          property.rating && property.reviewCount
+            ? {
+                "@type": "AggregateRating",
+                ratingValue: property.rating,
+                ratingCount: property.reviewCount,
+              }
+            : undefined,
+        subjectOf: { "@id": `${propertyUrl}#listing` },
+        additionalProperty: [
+          {
+            "@type": "PropertyValue",
+            name: "Property type",
+            value: property.type,
+          },
+          {
+            "@type": "PropertyValue",
+            name: "Listing purpose",
+            value: property.purpose,
+          },
+          property.landSizeSqm
+            ? {
+                "@type": "PropertyValue",
+                name: "Land size",
+                value: property.landSizeSqm,
+                unitText: "square metres",
+              }
+            : undefined,
+        ].filter(Boolean),
       },
       {
-        "@type": "PropertyValue",
-        name: "Bathrooms",
-        value: property.bathrooms,
+        "@type": "Offer",
+        "@id": offerEntityId,
+        url: propertyUrl,
+        price: property.price,
+        priceCurrency: property.currency,
+        availability:
+          property.status === "available"
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock",
+        businessFunction: offerBusinessFunction(property.purpose),
+        itemOffered: { "@id": propertyEntityId },
+        availableAtOrFrom: {
+          "@type": "Place",
+          address,
+        },
+        seller: {
+          "@type": "Organization",
+          name: property.vendorName || SITE_NAME,
+          url: property.vendorId
+            ? `${SITE_URL}/vendors/${encodeURIComponent(property.vendorId)}`
+            : SITE_URL,
+        },
       },
     ],
   };

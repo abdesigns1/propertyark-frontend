@@ -9,6 +9,22 @@ import type { Property } from "@/features/properties/types";
 
 const RETRY_DELAYS_MS = [0, 1_000, 2_000] as const;
 
+export interface AvailablePropertyServerFilters {
+  listingType?: string;
+  type?: string;
+  city?: string;
+  state?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  bedrooms?: number;
+  search?: string;
+}
+
+interface AvailablePropertyServerOptions extends AvailablePropertyServerFilters {
+  page?: number;
+  limit?: number;
+}
+
 async function fetchWithRetry(url: URL) {
   let lastError: unknown;
 
@@ -39,13 +55,19 @@ async function fetchWithRetry(url: URL) {
 export async function getAvailablePropertiesServer({
   page = 1,
   limit = 100,
-}: { page?: number; limit?: number } = {}) {
+  ...filters
+}: AvailablePropertyServerOptions = {}) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   if (!baseUrl) throw new Error("NEXT_PUBLIC_API_BASE_URL is not configured");
 
   const url = new URL(`${baseUrl.replace(/\/$/, "")}/properties/available`);
   url.searchParams.set("page", String(page));
   url.searchParams.set("limit", String(limit));
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") {
+      url.searchParams.set(key, String(value));
+    }
+  });
 
   const response = await fetchWithRetry(url);
   if (!response.ok)
@@ -58,15 +80,25 @@ export async function getAvailablePropertiesServer({
   };
 }
 
-export async function getAllAvailablePropertiesServer() {
-  const firstPage = await getAvailablePropertiesServer({ page: 1, limit: 100 });
+export async function getAllAvailablePropertiesServer(
+  filters: AvailablePropertyServerFilters = {},
+) {
+  const firstPage = await getAvailablePropertiesServer({
+    ...filters,
+    page: 1,
+    limit: 100,
+  });
   const pageCount = firstPage.pagination.pages;
 
   if (pageCount <= 1) return firstPage.properties;
 
   const remainingPages = await Promise.all(
     Array.from({ length: pageCount - 1 }, (_, index) =>
-      getAvailablePropertiesServer({ page: index + 2, limit: 100 }),
+      getAvailablePropertiesServer({
+        ...filters,
+        page: index + 2,
+        limit: 100,
+      }),
     ),
   );
 

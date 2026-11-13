@@ -9,32 +9,32 @@ import {
 
 const CATEGORIES = [
   {
-    label: "Land",
-    description: "Prime plots for development",
+    label: "Land for Sale",
+    description: "Find land and plots across Nigeria",
     href: "/properties?type=land",
     icon: Mountain,
     iconBg: "bg-orange-100",
     iconColor: "text-orange-600",
   },
   {
-    label: "Rent",
-    description: "Comfortable living",
+    label: "Properties for Rent",
+    description: "Browse homes and apartments for rent",
     href: "/properties?type=rent",
     icon: Home,
     iconBg: "bg-blue-100",
     iconColor: "text-blue-600",
   },
   {
-    label: "Shortlet",
-    description: "Temporary stays",
+    label: "Shortlets",
+    description: "Book verified shortlets in Nigeria",
     href: "/properties?type=shortlet",
     icon: Briefcase,
     iconBg: "bg-slate-100",
     iconColor: "text-slate-600",
   },
   {
-    label: "Sale",
-    description: "Investment opportunities",
+    label: "Properties for Sale",
+    description: "Explore houses and properties for sale",
     href: "/properties?type=sale",
     icon: Gem,
     iconBg: "bg-amber-100",
@@ -47,10 +47,11 @@ export function ExploreByCategory() {
     <section className="mx-auto w-full max-w-7xl px-6 pb-10 sm:pb-12 lg:px-8">
       <SlideInTop className="text-center">
         <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
-          Explore by Category
+          Explore Properties in Nigeria by Category
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Tailored real estate solutions for every investor and home-seeker.
+          Browse land, rentals, shortlets and properties for sale from verified
+          vendors.
         </p>
       </SlideInTop>
 
@@ -70,9 +71,9 @@ export function ExploreByCategory() {
                 >
                   <Icon className={cn("h-6 w-6", iconColor)} />
                 </span>
-                <span className="text-sm font-semibold text-foreground">
+                <h3 className="text-sm font-semibold text-foreground">
                   {label}
-                </span>
+                </h3>
                 <span className="text-xs text-muted-foreground">
                   {description}
                 </span>

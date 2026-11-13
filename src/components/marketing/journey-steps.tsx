@@ -8,22 +8,22 @@ const STEPS = [
   {
     number: 1,
     title: "Register",
-    description: "Create your premium account and set your preferences.",
+    description: "Create an account and save your property preferences.",
   },
   {
     number: 2,
     title: "Verify",
-    description: "Complete identity verification for secure transactions.",
+    description: "Complete identity verification for trusted transactions.",
   },
   {
     number: 3,
     title: "Browse",
-    description: "Explore verified properties with deep market insights.",
+    description: "Explore verified property listings across Nigeria.",
   },
   {
     number: 4,
-    title: "Purchase",
-    description: "Finalize your investment with digital legal support.",
+    title: "Connect",
+    description: "Contact vendors and book property inspections directly.",
   },
 ];
 
@@ -33,10 +33,11 @@ export function JourneySteps() {
       <div className="mx-auto max-w-7xl px-6 text-center">
         <SlideInTop>
           <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
-            Your Journey with PropertyArk
+            Your Property Search Journey with PropertyArk
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            A seamless, data-driven process to secure your real estate future.
+            Discover verified properties for sale, rent, land and shortlets in
+            Nigeria.
           </p>
         </SlideInTop>
 
@@ -47,9 +48,9 @@ export function JourneySteps() {
                 <span className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary/30 bg-card text-lg font-semibold text-primary">
                   {step.number}
                 </span>
-                <p className="mt-4 text-base font-semibold text-foreground">
+                <h3 className="mt-4 text-base font-semibold text-foreground">
                   {step.title}
-                </p>
+                </h3>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {step.description}
                 </p>

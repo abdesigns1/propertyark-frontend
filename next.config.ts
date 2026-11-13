@@ -51,6 +51,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "i.ytimg.com",
+        pathname: "/vi/**",
+      },
+      {
+        protocol: "https",
         hostname: "propertyark-media-prod.s3.eu-west-1.amazonaws.com",
         pathname: "/**",
       },

@@ -34,7 +34,7 @@ export default function HomePage() {
         <PropertySearchForm />
       </div>
       <HomepageAnnouncementMarquee className="mt-8 sm:mt-10" />
-      <HomepageSeoIntro />
+      {/* <HomepageSeoIntro /> */}
       <FeaturedListings />
       <ExploreByCategory />
       <FeaturedProperties />

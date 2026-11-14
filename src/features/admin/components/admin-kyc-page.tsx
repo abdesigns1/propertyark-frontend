@@ -13,6 +13,7 @@ import {
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
 import { AdminKycDocumentPreview } from "@/features/admin/components/admin-kyc-document-preview";
 import { AdminStatCard } from "@/features/admin/components/admin-stat-card";
+import { AdminTablePagination } from "@/features/admin/components/admin-table-pagination";
 import {
   useAdminKycRequests,
   useAdminKycStats,
@@ -20,7 +21,12 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +53,15 @@ export function AdminKycPage() {
   const query = useAdminKycRequests(page, status, "VENDOR");
   const stats = useAdminKycStats();
   const requests = query.data?.requests ?? [];
+  const currentPage = query.data?.pagination.page ?? page;
+  const totalPages = query.data?.pagination.pages ?? 1;
+  const totalRequests = query.data?.pagination.total ?? 0;
+  const pageSize = query.data?.pagination.limit ?? 20;
+  const firstRequest = requests.length ? (currentPage - 1) * pageSize + 1 : 0;
+  const lastRequest = Math.min(
+    (currentPage - 1) * pageSize + requests.length,
+    totalRequests,
+  );
 
   function exportReport() {
     const csv = [
@@ -122,31 +137,28 @@ export function AdminKycPage() {
               <KycTable requests={requests} />
             )}
           </CardContent>
-          <div className="flex items-center justify-between border-t px-6 py-4 text-sm text-muted-foreground">
-            <span>
-              Showing {requests.length} of {query.data?.pagination.total ?? 0}{" "}
+          <CardFooter className="flex flex-col gap-4 border-t bg-surface/40 px-4 py-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+            <p className="w-fit rounded-lg border bg-background px-3 py-2 shadow-xs">
+              Showing{" "}
+              <span className="font-semibold text-foreground">
+                {firstRequest}–{lastRequest}
+              </span>{" "}
+              of{" "}
+              <span className="font-semibold text-foreground">
+                {totalRequests.toLocaleString()}
+              </span>{" "}
               requests
-            </span>
-            <div className="flex gap-2">
-              <Button
-                size="icon-sm"
-                variant="outline"
-                disabled={page <= 1}
-                onClick={() => setPage(page - 1)}
-              >
-                ‹
-              </Button>
-              <Button size="icon-sm">{page}</Button>
-              <Button
-                size="icon-sm"
-                variant="outline"
-                disabled={page >= (query.data?.pagination.pages ?? 1)}
-                onClick={() => setPage(page + 1)}
-              >
-                ›
-              </Button>
-            </div>
-          </div>
+            </p>
+            {totalPages > 1 && (
+              <div className="max-w-full overflow-x-auto rounded-xl border bg-background p-1 shadow-xs [&_[data-active=true]]:border-primary [&_[data-active=true]]:bg-primary [&_[data-active=true]]:text-primary-foreground [&_[data-active=true]]:hover:bg-primary/90">
+                <AdminTablePagination
+                  page={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                />
+              </div>
+            )}
+          </CardFooter>
         </Card>
       </main>
     </AdminWorkspace>
@@ -221,7 +233,7 @@ function KycTable({ requests }: { requests: AdminKycRequest[] }) {
               <TableHead className="pl-6">User</TableHead>
               <TableHead>User Type</TableHead>
               <TableHead>Documents</TableHead>
-              <TableHead>Submitted</TableHead>
+              <TableHead>Last updated</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="pr-6 text-right">Actions</TableHead>
             </TableRow>

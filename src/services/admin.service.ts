@@ -104,6 +104,7 @@ export interface AdminManagedProperty {
   city: string;
   state: string;
   createdAt: string;
+  updatedAt?: string;
   rentAmount: number | null;
   salePrice: number | null;
   landFee: number | null;
@@ -289,6 +290,58 @@ function kycDocumentName(url: string | null, fallback: string) {
   }
 }
 
+const KYC_ACTIVITY_DATE_KEYS = [
+  "reuploadedAt",
+  "reUploadAt",
+  "resubmittedAt",
+  "ninUploadedAt",
+  "ninSubmittedAt",
+  "uploadedAt",
+  "submittedAt",
+  "updatedAt",
+  "createdAt",
+] as const;
+
+function dateValue(source: UnknownRecord) {
+  return KYC_ACTIVITY_DATE_KEYS.reduce((latest, key) => {
+    const value = source[key];
+    if (typeof value !== "string" && !(value instanceof Date)) return latest;
+
+    const timestamp = new Date(value).getTime();
+    return Number.isFinite(timestamp) ? Math.max(latest, timestamp) : latest;
+  }, Number.NEGATIVE_INFINITY);
+}
+
+function latestKycDocument(...sources: unknown[]) {
+  const candidates = sources.flatMap((value) => {
+    const source = record(value);
+    return [
+      source.documents,
+      source.ninDocuments,
+      source.identityDocuments,
+      source.uploads,
+    ].flatMap((items) => (Array.isArray(items) ? items : []));
+  });
+
+  return candidates.reduce<UnknownRecord>((latest, candidate) => {
+    const document = record(candidate);
+    const type = text(document, ["type", "documentType"]);
+    if (type && !/(nin|identity|kyc)/i.test(type)) return latest;
+
+    return dateValue(document) > dateValue(latest) ? document : latest;
+  }, {});
+}
+
+function latestKycActivityAt(...sources: unknown[]) {
+  const timestamp = sources.reduce<number>((latest, value) => {
+    return Math.max(latest, dateValue(record(value)));
+  }, Number.NEGATIVE_INFINITY);
+
+  return Number.isFinite(timestamp)
+    ? new Date(timestamp).toISOString()
+    : new Date(0).toISOString();
+}
+
 function cachedKycDocumentUrl(id: string) {
   if (!id || typeof window === "undefined") return null;
   try {
@@ -317,6 +370,9 @@ function rememberKycDocumentUrl(ids: string[], url: string | null) {
 function normalizeKycRequest(value: unknown): AdminKycRequest {
   const source = record(value);
   const user = record(source.user ?? source.vendor ?? source.account);
+  // A vendor account can be much older than its latest NIN document. Using the
+  // newest document keeps re-submissions at the front of the admin queue.
+  const latestDocument = latestKycDocument(source, user);
   const id = text(source, ["id", "_id", "verificationId"]);
   const userId = text(
     source,
@@ -324,6 +380,7 @@ function normalizeKycRequest(value: unknown): AdminKycRequest {
     text(user, ["id", "_id"], id),
   );
   const endpointDocumentUrl = kycDocumentUrl(
+    latestDocument,
     source,
     user,
     source.document,
@@ -351,16 +408,16 @@ function normalizeKycRequest(value: unknown): AdminKycRequest {
       ["status", "ninVerificationStatus"],
       "PENDING",
     ).toUpperCase(),
-    submittedAt: text(
-      source,
-      ["submittedAt", "createdAt", "updatedAt"],
-      new Date().toISOString(),
-    ),
+    submittedAt: latestKycActivityAt(latestDocument, source, user),
     documentUrl,
     documentName: text(
-      source,
-      ["documentName", "fileName"],
-      kycDocumentName(documentUrl, `Identity-${userId || id}`),
+      latestDocument,
+      ["documentName", "fileName", "name"],
+      text(
+        source,
+        ["documentName", "fileName"],
+        kycDocumentName(documentUrl, `Identity-${userId || id}`),
+      ),
     ),
     rejectionReason: text(source, ["rejectionReason"]) || null,
     phone: text(source, ["phone"], text(user, ["phone"])) || null,
@@ -452,6 +509,32 @@ function matchesKycFilters(request: AdminKycRequest, filters: AdminKycFilters) {
       request.role.toUpperCase() === role ||
       (role === "USER" && request.role.toUpperCase() === "BUYER"))
   );
+}
+
+interface AdminPropertyManagementParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+}
+
+function getPropertyManagementPage({
+  page = 1,
+  limit = 10,
+  status,
+}: AdminPropertyManagementParams) {
+  return api
+    .get<ApiEnvelope<AdminPropertyManagementData>>("/admin/property-stats", {
+      params: { page, limit, status: status === "ALL" ? undefined : status },
+    })
+    .then(({ data }) => data.data);
+}
+
+function propertyActivityTime(property: AdminManagedProperty) {
+  const updatedAt = new Date(property.updatedAt ?? "").getTime();
+  if (Number.isFinite(updatedAt)) return updatedAt;
+
+  const createdAt = new Date(property.createdAt).getTime();
+  return Number.isFinite(createdAt) ? createdAt : 0;
 }
 
 export const adminService = {
@@ -620,20 +703,54 @@ export const adminService = {
     rejectionReason?: string,
   ) => api.patch(`/nin/${userId}/verify`, { status, rejectionReason }),
 
-  getPropertyManagement: ({
+  getPropertyManagement: (params: AdminPropertyManagementParams) =>
+    getPropertyManagementPage(params),
+
+  getPropertyManagementByLatestUpdate: async ({
     page = 1,
     limit = 10,
     status,
-  }: {
-    page?: number;
-    limit?: number;
-    status?: string;
-  }) =>
-    api
-      .get<ApiEnvelope<AdminPropertyManagementData>>("/admin/property-stats", {
-        params: { page, limit, status: status === "ALL" ? undefined : status },
-      })
-      .then(({ data }) => data.data),
+  }: AdminPropertyManagementParams) => {
+    // The backend currently paginates by createdAt. Load every matching page
+    // before sorting so an older property edited today can move to page one.
+    const batchSize = 250;
+    const first = await getPropertyManagementPage({
+      page: 1,
+      limit: batchSize,
+      status,
+    });
+    const remaining = await Promise.all(
+      Array.from(
+        { length: Math.max(0, first.pagination.pages - 1) },
+        (_, index) =>
+          getPropertyManagementPage({
+            page: index + 2,
+            limit: batchSize,
+            status,
+          }),
+      ),
+    );
+    const properties = [first, ...remaining]
+      .flatMap((result) => result.properties)
+      .sort((firstProperty, secondProperty) => {
+        const activityDifference =
+          propertyActivityTime(secondProperty) -
+          propertyActivityTime(firstProperty);
+        if (activityDifference !== 0) return activityDifference;
+
+        return secondProperty.id.localeCompare(firstProperty.id);
+      });
+    const total = properties.length;
+    const pages = Math.max(1, Math.ceil(total / limit));
+    const currentPage = Math.min(Math.max(1, page), pages);
+    const start = (currentPage - 1) * limit;
+
+    return {
+      ...first,
+      properties: properties.slice(start, start + limit),
+      pagination: { page: currentPage, limit, total, pages },
+    } satisfies AdminPropertyManagementData;
+  },
 
   approveProperty: (propertyId: string) =>
     api.patch(`/properties/${propertyId}/review`, { status: "accept" }),

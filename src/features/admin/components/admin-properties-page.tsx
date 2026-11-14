@@ -201,7 +201,7 @@ export function AdminPropertiesPage() {
       property.vendor?.fullName ?? "",
       adminPropertyPrice(property),
       adminPropertyCategory(property),
-      property.createdAt,
+      property.updatedAt ?? property.createdAt,
       property.listingStatus ?? "PENDING",
       property.status ?? "AVAILABLE",
     ]);
@@ -211,7 +211,7 @@ export function AdminPropertiesPage() {
         "Vendor",
         "Price",
         "Category",
-        "Date Listed",
+        "Last Updated",
         "Approval Status",
         "Property Status",
       ],
@@ -519,7 +519,7 @@ function PropertiesTable({
             <TableHead>Vendor</TableHead>
             <TableHead>Price (₦)</TableHead>
             <TableHead>Category</TableHead>
-            <TableHead>Date Listed</TableHead>
+            <TableHead>Last Updated</TableHead>
             <TableHead>Approval</TableHead>
             <TableHead>Property Status</TableHead>
             <TableHead>Featured placement</TableHead>
@@ -610,7 +610,7 @@ function PropertyRow({
           month: "short",
           day: "numeric",
           year: "numeric",
-        }).format(new Date(property.createdAt))}
+        }).format(new Date(property.updatedAt ?? property.createdAt))}
       </TableCell>
       <TableCell>
         <StatusBadge status={approvalStatus} />

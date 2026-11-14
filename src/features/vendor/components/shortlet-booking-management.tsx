@@ -73,6 +73,7 @@ import {
   useShortletBookings,
   useUpdateShortletBooking,
 } from "@/features/vendor/hooks/use-shortlet-bookings";
+import { useVendorProperties } from "@/features/vendor/hooks/use-vendor-properties";
 import type {
   ShortletBooking,
   ShortletBookingStatus,
@@ -763,6 +764,7 @@ function sameUtcDay(first: Date, second: Date) {
 
 export function ShortletBookingManagement() {
   const dashboard = useShortletBookings();
+  const vendorProperties = useVendorProperties();
   const updateBooking = useUpdateShortletBooking();
   const calendarRef = useRef<HTMLDivElement>(null);
   const availabilityRef = useRef<HTMLDivElement>(null);
@@ -779,6 +781,27 @@ export function ShortletBookingManagement() {
     () => dashboard.data?.bookings ?? [],
     [dashboard.data?.bookings],
   );
+  const properties = useMemo(() => {
+    const shortlets = new Map<string, string>();
+
+    (vendorProperties.data?.properties ?? [])
+      .filter((property) =>
+        property.listingType.toUpperCase().includes("SHORTLET"),
+      )
+      .forEach((property) => shortlets.set(property.id, property.name));
+
+    // Preserve historical booking properties if an older listing is no
+    // longer returned by the current vendor inventory endpoint.
+    (dashboard.data?.properties ?? []).forEach((property) => {
+      if (!shortlets.has(property.id)) {
+        shortlets.set(property.id, property.name);
+      }
+    });
+
+    return Array.from(shortlets, ([id, name]) => ({ id, name })).sort(
+      (first, second) => first.name.localeCompare(second.name),
+    );
+  }, [dashboard.data?.properties, vendorProperties.data?.properties]);
 
   const filteredBookings = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -828,7 +851,7 @@ export function ShortletBookingManagement() {
     );
   }
 
-  const { stats, properties, activities } = dashboard.data;
+  const { stats, activities } = dashboard.data;
 
   function confirmBooking(bookingId: string) {
     updateBooking.mutate({ bookingId, action: "approve" });

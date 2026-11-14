@@ -202,7 +202,7 @@ export function useAdminProperties(page: number, status: string, limit = 10) {
   return useQuery({
     queryKey: ["admin", "properties", page, status, limit],
     queryFn: () =>
-      adminService.getPropertyManagement({ page, limit, status }),
+      adminService.getPropertyManagementByLatestUpdate({ page, limit, status }),
     placeholderData: (previous) => previous,
     staleTime: 30_000,
     refetchOnMount: "always",

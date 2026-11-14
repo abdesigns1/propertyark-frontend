@@ -38,9 +38,11 @@ import {
 import { useAccountKey } from "@/lib/account-identity";
 import { getApiErrorMessage } from "@/services/api-error";
 import {
+  rememberVendorKycSubmission,
   vendorKycService,
   type VendorKycState,
 } from "@/services/vendor-kyc.service";
+import { cn } from "@/lib/utils";
 
 const onboardingSchema = z.object({ kycDocument: kycDocumentSchema });
 type OnboardingValues = z.infer<typeof onboardingSchema>;
@@ -63,12 +65,14 @@ export function VendorKycOnboarding() {
       }),
     onSuccess: async () => {
       if (accountKey) {
+        rememberVendorKycSubmission(accountKey);
         queryClient.setQueryData<VendorKycState>(
           vendorKycQueryKey(accountKey),
           {
             status: "PENDING",
             rejectionReason: null,
             hasDocument: true,
+            reportedStatus: "PENDING",
           },
         );
       }
@@ -136,8 +140,17 @@ export function VendorKycOnboarding() {
           tone="warning"
         >
           <div className="flex flex-wrap justify-center gap-3">
-            <Button variant="outline" onClick={() => kyc.refetch()}>
-              <RefreshCw /> Refresh status
+            <Button
+              variant="outline"
+              onClick={() => kyc.refetch()}
+              disabled={kyc.isFetching}
+            >
+              {kyc.isFetching ? (
+                <Spinner data-icon="inline-start" />
+              ) : (
+                <RefreshCw data-icon="inline-start" />
+              )}
+              {kyc.isFetching ? "Checking…" : "Refresh status"}
             </Button>
             <Button asChild>
               <Link href="/vendor/dashboard">Go to dashboard</Link>
@@ -249,11 +262,7 @@ function OnboardingFrame({
           complete={stage === "approval" || stage === "complete"}
           label="Identity check"
         />
-        <Step
-          active={stage === "approval"}
-          complete={stage === "complete"}
-          label="Admin approval"
-        />
+        <Step complete={stage === "complete"} label="Identity Verified" />
       </div>
       {children}
     </div>
@@ -270,12 +279,17 @@ function Step({
   complete?: boolean;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       <div
-        className={`h-1.5 rounded-full ${complete || active ? "bg-primary" : "bg-muted"}`}
+        className={cn(
+          "h-1.5 rounded-full",
+          complete || active ? "bg-primary" : "bg-muted",
+        )}
       />
       <p
-        className={complete || active ? "font-medium" : "text-muted-foreground"}
+        className={cn(
+          complete || active ? "font-medium" : "text-muted-foreground",
+        )}
       >
         {label}
       </p>

@@ -30,6 +30,8 @@ export function useCreditInfo(enabled = true) {
     enabled,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 60_000,
   });
 }
 

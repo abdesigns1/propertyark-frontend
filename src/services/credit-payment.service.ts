@@ -135,6 +135,53 @@ function numberFor(value: unknown, keys: readonly string[]) {
   return null;
 }
 
+function directNumberFor(record: ApiRecord, keys: readonly string[]) {
+  for (const key of keys) {
+    const candidate = record[key];
+    if (typeof candidate === "number" && Number.isFinite(candidate)) {
+      return candidate;
+    }
+    if (typeof candidate === "string" && candidate.trim()) {
+      const parsed = Number(candidate.replace(/,/g, ""));
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return null;
+}
+
+function currentCreditBalanceFor(value: unknown) {
+  // The current API returns the wallet summary as
+  // `data.balance.current`. Prefer that authoritative value over rebuilding a
+  // balance from historical transactions, which can include expired grants.
+  for (const record of recordsIn(value)) {
+    if (!isRecord(record.balance)) continue;
+    const current = directNumberFor(record.balance, [
+      "current",
+      "currentBalance",
+      "current_balance",
+      "available",
+      "availablePoints",
+      "available_points",
+    ]);
+    if (current !== null) return current;
+  }
+
+  for (const record of recordsIn(value)) {
+    const current = directNumberFor(record, [
+      "creditBalance",
+      "credit_balance",
+      "currentBalance",
+      "current_balance",
+      "availablePoints",
+      "available_points",
+      "balance",
+    ]);
+    if (current !== null) return current;
+  }
+
+  return null;
+}
+
 function isPaystackAuthorizationUrl(value: string) {
   try {
     const url = new URL(value);
@@ -353,16 +400,7 @@ export const creditPaymentService = {
     const { data } = await api.get("/credit-points/my-credit");
     const currency = stringFor(data, ["currency"]) ?? "NGN";
     const transactions = transactionsFor(data, currency);
-    const reportedBalance = numberFor(data, [
-      "creditBalance",
-      "credit_balance",
-      "currentBalance",
-      "current_balance",
-      "availablePoints",
-      "available_points",
-      "balance",
-      "points",
-    ]);
+    const reportedBalance = currentCreditBalanceFor(data);
     const completedLedgerBalance = transactions
       .filter((transaction) => transaction.status === "success")
       .reduce((total, transaction) => total + transaction.points, 0);

@@ -28,7 +28,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { showPropertyImageFallback } from "@/features/properties/utils/normalize-property-response";
+import { normalizePropertyResponse } from "@/features/properties/utils/normalize-property-response";
 import {
   Table,
   TableBody,
@@ -38,11 +38,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useDashboardUser } from "@/features/dashboard/hooks/use-dashboard-user";
-import {
-  useAvailableProperties,
-  useFeaturedProperties,
-} from "@/features/properties/hooks/use-available-properties";
+import { useFeaturedProperties } from "@/features/properties/hooks/use-available-properties";
 import type { Property } from "@/features/properties/types";
+import type { PropertyApiItem } from "@/features/properties/types/api";
 import { useVendorDashboard } from "@/features/vendor/hooks/use-vendor-dashboard";
 import { useVendorProperties } from "@/features/vendor/hooks/use-vendor-properties";
 import { propertyStatus } from "@/features/vendor/lib/vendor-property-display";
@@ -55,6 +53,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { formatCurrencyParts } from "@/utils/formatters";
 import { VendorAnalyticsCharts } from "./vendor-analytics-charts";
 import { FeaturedPlacementCountdown } from "./featured-placement-countdown";
+import { VendorPropertyThumbnail } from "./vendor-property-thumbnail";
 
 const ZERO_STATS: VendorDashboardStats = {
   totalListings: 0,
@@ -163,7 +162,7 @@ function statusVariant(
   return "outline";
 }
 
-function RecentProperties({ properties }: { properties: Property[] }) {
+function RecentProperties({ properties }: { properties: PropertyApiItem[] }) {
   return (
     <Card id="properties">
       <CardHeader className="border-b">
@@ -190,48 +189,48 @@ function RecentProperties({ properties }: { properties: Property[] }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {properties.map((property) => (
-                <TableRow key={property.id}>
-                  <TableCell className="pl-4">
-                    <div className="flex min-w-56 items-center gap-3">
-                      <div className="relative size-12 overflow-hidden rounded-lg bg-muted">
-                        <Image
-                          src={property.images[0]}
-                          alt=""
-                          fill
-                          crossOrigin="anonymous"
-                          unoptimized
-                          onError={(event) =>
-                            showPropertyImageFallback(event.currentTarget)
-                          }
-                          sizes="48px"
-                          className="object-cover"
-                        />
+              {properties.map((property) => {
+                const displayProperty = normalizePropertyResponse(property);
+
+                return (
+                  <TableRow key={property.id}>
+                    <TableCell className="pl-4">
+                      <div className="flex min-w-56 items-center gap-3">
+                        <div className="relative size-12 overflow-hidden rounded-lg bg-muted">
+                          <VendorPropertyThumbnail
+                            property={property}
+                            sizes="48px"
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">
+                            {displayProperty.title}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {displayProperty.location.city},{" "}
+                            {displayProperty.location.state}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{property.title}</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {property.location.city}, {property.location.state}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <PropertyPrice property={property} />
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={statusVariant(property.status)}>
-                      {property.status.replaceAll("-", " ")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="capitalize text-muted-foreground">
-                    {property.purpose}
-                  </TableCell>
-                  <TableCell>
-                    <FeaturedPlacementCountdown property={property} />
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell>
+                      <PropertyPrice property={displayProperty} />
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={statusVariant(displayProperty.status)}>
+                        {displayProperty.status.replaceAll("-", " ")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="capitalize text-muted-foreground">
+                      {displayProperty.purpose}
+                    </TableCell>
+                    <TableCell>
+                      <FeaturedPlacementCountdown property={property} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         ) : (
@@ -317,12 +316,9 @@ function RecentInquiries({ inquiries }: { inquiries: VendorInquiry[] }) {
 
 export function VendorDashboard() {
   const dashboardUser = useDashboardUser();
-  const storedUser = useAuthStore((state) => state.user);
-  const userId = useAuthStore((state) => state.userId);
   const updateUser = useAuthStore((state) => state.updateUser);
   const dashboard = useVendorDashboard();
   const vendorPropertiesQuery = useVendorProperties();
-  const availableProperties = useAvailableProperties(1, 100);
   const featuredProperties = useFeaturedProperties();
   const profile = dashboard.data?.profile;
 
@@ -373,7 +369,6 @@ export function VendorDashboard() {
   const stats = vendorPropertiesQuery.data
     ? { ...backendStats, ...listingStats }
     : backendStats;
-  const vendorId = profile?.id ?? storedUser?.id ?? userId;
   const featuredById = useMemo(
     () =>
       new Map(
@@ -386,10 +381,8 @@ export function VendorDashboard() {
   );
   const vendorProperties = useMemo(
     () =>
-      (availableProperties.data?.properties ?? [])
-        .filter((property) =>
-          Boolean(vendorId && property.vendorId === vendorId),
-        )
+      (vendorPropertiesQuery.data?.properties ?? [])
+        .filter((property) => propertyStatus(property).key === "published")
         .map((property) => {
           const featuredProperty = featuredById.get(property.id);
           return featuredProperty
@@ -402,7 +395,11 @@ export function VendorDashboard() {
               }
             : property;
         }),
-    [availableProperties.data?.properties, featuredById, vendorId],
+    [vendorPropertiesQuery.data?.properties, featuredById],
+  );
+  const analyticsProperties = useMemo(
+    () => vendorProperties.map(normalizePropertyResponse),
+    [vendorProperties],
   );
   const properties = vendorProperties.slice(0, 5);
   const firstName =
@@ -485,11 +482,11 @@ export function VendorDashboard() {
         performance={dashboard.data?.performance ?? []}
         propertyStatus={dashboard.data?.propertyStatus ?? []}
         inquiries={dashboard.data?.inquiries ?? []}
-        properties={vendorProperties}
+        properties={analyticsProperties}
         totalViews={totalPropertyViews}
       />
 
-      {availableProperties.isLoading || featuredProperties.isLoading ? (
+      {vendorPropertiesQuery.isLoading || featuredProperties.isLoading ? (
         <Skeleton className="h-80 rounded-xl" />
       ) : (
         <RecentProperties properties={properties} />

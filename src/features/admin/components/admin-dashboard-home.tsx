@@ -37,9 +37,13 @@ import {
   useAdminUsers,
 } from "@/features/admin/hooks/use-admin-dashboard";
 import type { AdminGrowthHistory } from "@/features/admin/hooks/use-admin-dashboard";
-import { useAdminActivities } from "@/features/admin/hooks/use-admin-activity";
+import {
+  useAdminActivities,
+  useAdminAllActivities,
+} from "@/features/admin/hooks/use-admin-activity";
 import { formatActivityTime } from "@/features/admin/lib/admin-activity-display";
 import { adminDisplayIdentity } from "@/features/admin/lib/admin-identity";
+import { formatAdminNaira } from "@/features/admin/lib/admin-property-display";
 import type {
   AdminDashboardData,
   AdminKycRequest,
@@ -370,9 +374,11 @@ function DashboardHeader() {
 function OverviewCards({
   stats,
   totalTransactionVolume,
+  transactionLoading,
 }: {
   stats?: AdminDashboardData["dashboardStats"];
   totalTransactionVolume: number;
+  transactionLoading?: boolean;
 }) {
   const cards = [
     {
@@ -395,11 +401,13 @@ function OverviewCards({
     },
     {
       label: "Transaction Volume",
-      value: new Intl.NumberFormat("en-NG", {
-        style: "currency",
-        currency: "NGN",
-        maximumFractionDigits: 0,
-      }).format(totalTransactionVolume),
+      value: transactionLoading
+        ? "—"
+        : new Intl.NumberFormat("en-NG", {
+            style: "currency",
+            currency: "NGN",
+            maximumFractionDigits: 0,
+          }).format(totalTransactionVolume),
       note: "Total recorded platform transaction value",
       icon: WalletCards,
     },
@@ -751,11 +759,6 @@ function PropertiesTable({
   properties?: AdminProperty[];
 }) {
   const rows = properties.slice(0, 6);
-  const money = new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  });
   return (
     <Card
       id="properties"
@@ -788,7 +791,7 @@ function PropertiesTable({
               ).toUpperCase();
               const pending = status === "PENDING";
               const price = property.priceDisplay?.amount
-                ? money.format(property.priceDisplay.amount)
+                ? formatAdminNaira(property.priceDisplay.amount)
                 : (property.priceDisplay?.display ?? "—");
               return (
                 <TableRow key={property.id} className="h-[68px]">
@@ -936,8 +939,10 @@ function VerificationCard({
 
 function TransactionSummaryCard({
   activities,
+  loading = false,
 }: {
   activities: AdminActivity[];
+  loading?: boolean;
 }) {
   const transactions = platformTransactions(activities);
   const total = transactions.reduce(
@@ -959,12 +964,14 @@ function TransactionSummaryCard({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <p className="text-3xl font-semibold">{money.format(total)}</p>
+        <p className="text-3xl font-semibold">
+          {loading ? "—" : money.format(total)}
+        </p>
         <div className="mt-6 grid grid-cols-2 gap-6 border-t border-primary-foreground/20 pt-5">
           <div>
             <p className="text-xs text-primary-foreground/65">Transactions</p>
             <p className="text-xl font-semibold">
-              {transactions.length.toLocaleString("en-NG")}
+              {loading ? "—" : transactions.length.toLocaleString("en-NG")}
             </p>
           </div>
           <div>
@@ -990,12 +997,14 @@ function UsersTable({
   pages,
   total,
   onPageChange,
+  loading = false,
 }: {
   users: AdminUser[];
   page: number;
   pages: number;
   total: number;
   onPageChange: (page: number) => void;
+  loading?: boolean;
 }) {
   const [filter, setFilter] = useState("all");
   const filtered =
@@ -1045,7 +1054,25 @@ function UsersTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((user) => {
+            {loading
+              ? Array.from({ length: 4 }).map((_, index) => (
+                  <TableRow key={`user-loading-${index}`} className="h-[72px]">
+                    <TableCell className="pl-5">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="size-10 rounded-full" />
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-44" />
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell className="pr-5"><Skeleton className="ml-auto h-8 w-24" /></TableCell>
+                  </TableRow>
+                ))
+              : filtered.map((user) => {
               const verified = user.isVerified;
               const isVendor = user.role.toUpperCase() === "VENDOR";
               const initials = user.fullName
@@ -1099,14 +1126,15 @@ function UsersTable({
                   </TableCell>
                 </TableRow>
               );
-            })}
+                })}
           </TableBody>
         </Table>
       </CardContent>
       <CardFooter className="justify-between bg-surface/50 py-4 text-xs text-muted-foreground">
         <span>
-          Showing {users.length ? (page - 1) * 4 + 1 : 0} to{" "}
-          {Math.min(page * 4, total)} of {total} entries
+          {loading
+            ? "Loading users…"
+            : `Showing ${users.length ? (page - 1) * 4 + 1 : 0} to ${Math.min(page * 4, total)} of ${total} entries`}
         </span>
         <Pagination className="mx-0 w-auto">
           <PaginationContent>
@@ -1114,7 +1142,7 @@ function UsersTable({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                disabled={page <= 1}
+                disabled={loading || page <= 1}
                 onClick={() => onPageChange(page - 1)}
               >
                 <ChevronLeft />
@@ -1128,6 +1156,7 @@ function UsersTable({
                 <Button
                   variant={number === page ? "default" : "ghost"}
                   size="icon-sm"
+                  disabled={loading}
                   onClick={() => onPageChange(number)}
                 >
                   {number}
@@ -1138,7 +1167,7 @@ function UsersTable({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                disabled={page >= pages}
+                disabled={loading || page >= pages}
                 onClick={() => onPageChange(page + 1)}
               >
                 <ChevronRight />
@@ -1165,21 +1194,19 @@ export function AdminDashboardHome() {
   );
   const dashboard = useAdminDashboard();
   const growthHistory = useAdminGrowthHistory();
+  const transactionActivities = useAdminAllActivities();
   const adminUsers = useAdminUsers(usersPage);
   const activities = useAdminActivities(1, 100);
   const kycStats = useAdminKycStats();
   const kycRequests = useAdminKycRequests(1, "PENDING", "ALL");
   const totalTransactionVolume = useMemo(
-    () => transactionVolume(growthHistory.data?.activities ?? []),
-    [growthHistory.data?.activities],
+    () => transactionVolume(transactionActivities.data ?? []),
+    [transactionActivities.data],
   );
-  const initialDataLoading =
-    dashboard.isPending ||
-    growthHistory.isPending ||
-    adminUsers.isPending ||
-    activities.isPending ||
-    kycStats.isPending ||
-    kycRequests.isPending;
+  // The overview endpoint is enough to paint the dashboard. Secondary
+  // analytics and tables render their own loading states instead of blocking
+  // the entire page behind the slowest request.
+  const initialDataLoading = dashboard.isPending;
 
   useEffect(() => {
     if (
@@ -1299,6 +1326,7 @@ export function AdminDashboardHome() {
               <OverviewCards
                 stats={dashboard.data?.dashboardStats}
                 totalTransactionVolume={totalTransactionVolume}
+                transactionLoading={transactionActivities.isPending}
               />
             </section>
             <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(280px,0.95fr)]">
@@ -1320,7 +1348,8 @@ export function AdminDashboardHome() {
                   loading={kycStats.isLoading || kycRequests.isLoading}
                 />
                 <TransactionSummaryCard
-                  activities={growthHistory.data?.activities ?? []}
+                  activities={transactionActivities.data ?? []}
+                  loading={transactionActivities.isPending}
                 />
               </aside>
             </section>
@@ -1331,6 +1360,7 @@ export function AdminDashboardHome() {
                 pages={adminUsers.data?.pagination.pages ?? 1}
                 total={adminUsers.data?.pagination.total ?? 0}
                 onPageChange={setUsersPage}
+                loading={adminUsers.isPending}
               />
             </section>
           </>

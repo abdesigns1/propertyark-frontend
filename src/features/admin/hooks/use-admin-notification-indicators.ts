@@ -14,7 +14,9 @@ import { contactService } from "@/services/contact.service";
 import { newsletterService } from "@/services/newsletter.service";
 import { professionalServiceService } from "@/services/professional-service.service";
 
-const INDICATOR_REFRESH_INTERVAL = 20_000;
+// Navigation badges are useful ambient information, but they should not
+// compete with the active page for bandwidth every few seconds.
+const INDICATOR_REFRESH_INTERVAL = 60_000;
 const INBOX_SEEN_EVENT = "propertyark:admin-inbox-seen";
 
 type InboxIndicator = "contacts" | "newsletter" | "professionalServices";
@@ -118,6 +120,7 @@ export function useAdminNotificationIndicators() {
       }),
     staleTime: INDICATOR_REFRESH_INTERVAL,
     refetchInterval: INDICATOR_REFRESH_INTERVAL,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
   const support = useQuery({
@@ -137,6 +140,7 @@ export function useAdminNotificationIndicators() {
     },
     staleTime: INDICATOR_REFRESH_INTERVAL,
     refetchInterval: INDICATOR_REFRESH_INTERVAL,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
   const contacts = useQuery({
@@ -144,6 +148,7 @@ export function useAdminNotificationIndicators() {
     queryFn: contactService.getAll,
     staleTime: INDICATOR_REFRESH_INTERVAL,
     refetchInterval: INDICATOR_REFRESH_INTERVAL,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
   const newsletter = useQuery({
@@ -151,6 +156,7 @@ export function useAdminNotificationIndicators() {
     queryFn: newsletterService.getSubscribers,
     staleTime: INDICATOR_REFRESH_INTERVAL,
     refetchInterval: INDICATOR_REFRESH_INTERVAL,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
   const professionalServices = useQuery({
@@ -158,6 +164,7 @@ export function useAdminNotificationIndicators() {
     queryFn: professionalServiceService.getAll,
     staleTime: INDICATOR_REFRESH_INTERVAL,
     refetchInterval: INDICATOR_REFRESH_INTERVAL,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
 

@@ -4,6 +4,10 @@ import {
   type AdminManagedProperty,
   type AdminUser,
 } from "@/services/admin.service";
+import {
+  activityService,
+  type AdminActivity,
+} from "@/services/activity.service";
 
 export interface ReportGrowthPoint {
   label: string;
@@ -44,6 +48,7 @@ export interface AdminReportsAnalytics {
   locations: ReportLocation[];
   sourceUsers: AdminUser[];
   sourceProperties: AdminManagedProperty[];
+  sourceActivities: AdminActivity[];
 }
 
 type UnknownRecord = Record<string, unknown>;
@@ -190,11 +195,12 @@ function buildLocations(properties: AdminManagedProperty[]): ReportLocation[] {
 
 export const adminReportsService = {
   getAnalytics: async (): Promise<AdminReportsAnalytics> => {
-    const [overviewResult, usersResult, propertiesResult] =
+    const [overviewResult, usersResult, propertiesResult, activitiesResult] =
       await Promise.allSettled([
         api.get<unknown>("/admin/platform-overview"),
         adminService.getUsers(1, 1000),
         adminService.getPropertyManagement({ page: 1, limit: 1000 }),
+        activityService.getAll({ page: 1, limit: 1000 }),
       ]);
     const overview =
       overviewResult.status === "fulfilled" ? overviewResult.value.data : {};
@@ -203,6 +209,10 @@ export const adminReportsService = {
     const propertyData =
       propertiesResult.status === "fulfilled" ? propertiesResult.value : null;
     const properties = propertyData?.properties ?? [];
+    const activities =
+      activitiesResult.status === "fulfilled"
+        ? activitiesResult.value.activities
+        : [];
     const verifiedUsers = users.filter(
       (user) => user.isVerified && !user.isSuspended,
     ).length;
@@ -224,6 +234,7 @@ export const adminReportsService = {
       locations: buildLocations(properties),
       sourceUsers: users,
       sourceProperties: properties,
+      sourceActivities: activities,
     };
   },
 };
@@ -264,6 +275,7 @@ export function filterReportsAnalytics(
     locations: buildLocations(properties),
     sourceUsers: users,
     sourceProperties: properties,
+    sourceActivities: analytics.sourceActivities,
   };
 }
 

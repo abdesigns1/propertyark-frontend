@@ -14,7 +14,7 @@ export function useAdminActivities(page = 1, limit = 20, entityType = "ALL") {
     refetchInterval: 60_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
-    staleTime: 10_000,
+    staleTime: 60_000,
   });
 }
 
@@ -22,6 +22,8 @@ export function useAdminAllActivities(entityType = "ALL") {
   return useQuery({
     queryKey: ["admin", "activities", "all", entityType],
     queryFn: async () => {
+      // Keep this within the API's supported pagination range, then collect
+      // every page so transaction totals still cover the complete history.
       const limit = 100;
       const filters = {
         limit,
@@ -36,10 +38,8 @@ export function useAdminAllActivities(entityType = "ALL") {
       );
       return [firstPage, ...remainingPages].flatMap((page) => page.activities);
     },
-    refetchInterval: 60_000,
-    refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
-    staleTime: 10_000,
+    refetchOnWindowFocus: false,
+    staleTime: 2 * 60_000,
   });
 }
 
@@ -48,6 +48,6 @@ export function useAdminActivity(activityId: string) {
     queryKey: ["admin", "activity", activityId],
     queryFn: () => activityService.getById(activityId),
     enabled: Boolean(activityId),
-    staleTime: 15_000,
+    staleTime: 60_000,
   });
 }

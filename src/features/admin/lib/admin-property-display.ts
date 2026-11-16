@@ -13,6 +13,17 @@ export function adminPropertyPrice(
     property.landFee ??
     property.shortletAmount ??
     0;
+  return formatAdminNaira(amount);
+}
+
+export function formatAdminNaira(amount: number) {
+  if (amount >= 1_000_000_000) {
+    const billions = new Intl.NumberFormat("en-NG", {
+      maximumFractionDigits: 2,
+    }).format(amount / 1_000_000_000);
+    return `₦${billions}B`;
+  }
+
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency: "NGN",

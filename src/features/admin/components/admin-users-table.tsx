@@ -5,7 +5,6 @@ import { Eye } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AdminRoleBadge } from "@/features/admin/components/admin-role-badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Pagination,
   PaginationContent,
@@ -53,10 +52,7 @@ export function AdminUsersTable({
       <Table>
         <TableHeader className="bg-primary/5">
           <TableRow>
-            <TableHead className="w-14 pl-6">
-              <Checkbox aria-label="Select all visible users" />
-            </TableHead>
-            <TableHead>User</TableHead>
+            <TableHead className="pl-6">User</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Verification</TableHead>
             <TableHead>Join date</TableHead>
@@ -73,9 +69,6 @@ export function AdminUsersTable({
             return (
               <TableRow key={user.id} className="h-[76px]">
                 <TableCell className="pl-6">
-                  <Checkbox aria-label={`Select ${user.fullName}`} />
-                </TableCell>
-                <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="size-10">
                       <AvatarImage src={user.avatar ?? undefined} alt="" />

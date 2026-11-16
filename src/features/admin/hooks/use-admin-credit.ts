@@ -161,7 +161,7 @@ export function useAdminCreditVendors() {
   return useQuery({
     queryKey: ["admin", "credit-points", "vendors"],
     queryFn: async () => {
-      const pageSize = 100;
+      const pageSize = 1_000;
       const firstPage = await adminService.getUsers(1, pageSize);
       const remainingPages = await Promise.all(
         Array.from(
@@ -175,7 +175,7 @@ export function useAdminCreditVendors() {
         .filter((user) => user.role.toUpperCase() === "VENDOR")
         .sort((first, second) => first.fullName.localeCompare(second.fullName));
     },
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
     retry: 1,
   });
 }
@@ -184,7 +184,7 @@ export function useAdminCreditGiftHistory() {
   return useQuery({
     queryKey: giftHistoryKey,
     queryFn: async () => {
-      const limit = 100;
+      const limit = 1_000;
       const firstPage = await activityService.getAll({ page: 1, limit });
       const remainingPages = await Promise.all(
         Array.from(
@@ -203,7 +203,7 @@ export function useAdminCreditGiftHistory() {
             new Date(first.createdAt).getTime(),
         );
     },
-    staleTime: 30_000,
+    staleTime: 2 * 60_000,
     retry: 1,
   });
 }

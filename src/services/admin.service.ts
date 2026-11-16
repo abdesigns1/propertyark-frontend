@@ -105,6 +105,12 @@ export interface AdminManagedProperty {
   state: string;
   createdAt: string;
   updatedAt?: string;
+  submittedAt?: string | null;
+  resubmittedAt?: string | null;
+  lastSubmittedAt?: string | null;
+  moderationSubmittedAt?: string | null;
+  reviewSubmittedAt?: string | null;
+  pendingAt?: string | null;
   rentAmount: number | null;
   salePrice: number | null;
   landFee: number | null;
@@ -529,12 +535,44 @@ function getPropertyManagementPage({
     .then(({ data }) => data.data);
 }
 
-function propertyActivityTime(property: AdminManagedProperty) {
-  const updatedAt = new Date(property.updatedAt ?? "").getTime();
-  if (Number.isFinite(updatedAt)) return updatedAt;
+function validTimestamp(value?: string | null) {
+  const timestamp = new Date(value ?? "").getTime();
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
 
-  const createdAt = new Date(property.createdAt).getTime();
-  return Number.isFinite(createdAt) ? createdAt : 0;
+/**
+ * Returns the timestamp that represents a property entering the admin review
+ * queue. A property's generic `updatedAt` is deliberately ignored after
+ * moderation because read/view tracking can update it and must not reorder the
+ * management table.
+ */
+export function adminPropertyQueueActivityTime(
+  property: AdminManagedProperty,
+) {
+  const createdAt = validTimestamp(property.createdAt) ?? 0;
+  const submissionTimes = [
+    property.submittedAt,
+    property.resubmittedAt,
+    property.lastSubmittedAt,
+    property.moderationSubmittedAt,
+    property.reviewSubmittedAt,
+    property.pendingAt,
+  ]
+    .map(validTimestamp)
+    .filter((timestamp): timestamp is number => timestamp !== null);
+
+  if (submissionTimes.length) {
+    return Math.max(createdAt, ...submissionTimes);
+  }
+
+  const approvalStatus = (property.listingStatus || "").toUpperCase();
+  if (approvalStatus === "PENDING") {
+    // Until the API exposes a dedicated resubmission timestamp consistently,
+    // updatedAt is a safe fallback only for items actively awaiting review.
+    return validTimestamp(property.updatedAt) ?? createdAt;
+  }
+
+  return createdAt;
 }
 
 export const adminService = {
@@ -649,16 +687,57 @@ export const adminService = {
   },
 
   getKycStats: async () => {
-    const [statsResult, requestsResult] = await Promise.allSettled([
-      api.get<unknown>("/admin/nin-stats"),
-      adminService.getKycRequests(1, 1000),
-    ]);
-    const response =
-      statsResult.status === "fulfilled" ? statsResult.value.data : {};
-    const requests =
-      requestsResult.status === "fulfilled"
-        ? requestsResult.value.requests
-        : [];
+    let response: unknown = {};
+
+    try {
+      response = (await api.get<unknown>("/admin/nin-stats")).data;
+      const pending = nestedNumber(response, ["pending", "pendingCount"]);
+      const rejected = nestedNumber(response, [
+        "rejected",
+        "rejectedCount",
+        "flagged",
+        "flaggedCount",
+      ]);
+      const verified = nestedNumber(response, [
+        "verified",
+        "verifiedCount",
+        "approved",
+        "approvedCount",
+      ]);
+
+      // Prefer the dedicated aggregate endpoint. The old fallback requires
+      // downloading the complete KYC and user collections and is only needed
+      // for older backend responses that do not expose the core counts.
+      if (
+        pending !== undefined &&
+        rejected !== undefined &&
+        verified !== undefined
+      ) {
+        return {
+          pending,
+          rejected,
+          verified,
+          verifiedToday:
+            nestedNumber(response, [
+              "verifiedToday",
+              "approvedToday",
+              "todayVerified",
+            ]) ?? 0,
+          averageProcessingHours:
+            nestedNumber(response, [
+              "averageProcessingHours",
+              "avgProcessingHours",
+              "avgProcessingTime",
+              "averageProcessingTime",
+              "processingTimeHours",
+            ]) ?? 0,
+        } satisfies AdminKycStats;
+      }
+    } catch {
+      // Fall back to deriving the overview from the request collection.
+    }
+
+    const requests = (await adminService.getKycRequests(1, 1000)).requests;
     const today = new Date();
     const isToday = (date: string) => {
       const value = new Date(date);
@@ -734,8 +813,8 @@ export const adminService = {
       .flatMap((result) => result.properties)
       .sort((firstProperty, secondProperty) => {
         const activityDifference =
-          propertyActivityTime(secondProperty) -
-          propertyActivityTime(firstProperty);
+          adminPropertyQueueActivityTime(secondProperty) -
+          adminPropertyQueueActivityTime(firstProperty);
         if (activityDifference !== 0) return activityDifference;
 
         return secondProperty.id.localeCompare(firstProperty.id);

@@ -30,6 +30,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Property } from "@/features/properties/types";
 import { AdminInspectionsTable } from "@/features/admin/components/admin-inspections-table";
 import { AdminStatCard } from "@/features/admin/components/admin-stat-card";
+import { AdminTablePagination } from "@/features/admin/components/admin-table-pagination";
+import { formatAdminNaira } from "@/features/admin/lib/admin-property-display";
 import { useAdminVendorInspections } from "@/features/admin/hooks/use-admin-dashboard";
 import type { AdminUser } from "@/services/admin.service";
 import { cn } from "@/lib/utils";
@@ -255,7 +257,7 @@ function VendorHighlights({
               Portfolio Value
             </p>
             <p className="mt-2 text-4xl font-semibold">
-              {formatCurrency(portfolioValue)}
+              {formatAdminNaira(portfolioValue)}
             </p>
           </div>
           <Button variant="secondary" disabled>
@@ -286,7 +288,7 @@ function VendorHighlights({
                   {topProperty.location.city}, {topProperty.location.state}
                 </p>
                 <p className="mt-1 font-medium text-primary">
-                  {formatCurrency(topProperty.price)}
+                  {formatAdminNaira(topProperty.price)}
                 </p>
               </div>
             </div>
@@ -308,6 +310,16 @@ function VendorProperties({
   properties: Property[];
   propertiesLoading: boolean;
 }) {
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(properties.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const firstEntry = (currentPage - 1) * pageSize;
+  const visibleProperties = properties.slice(
+    firstEntry,
+    firstEntry + pageSize,
+  );
+
   if (propertiesLoading) return <Skeleton className="h-96 w-full" />;
 
   if (!properties.length) {
@@ -324,34 +336,51 @@ function VendorProperties({
   }
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2">
-      {properties.map((property) => (
-        <Card key={property.id} className="overflow-hidden py-0">
-          <div className="relative h-40">
-            <Image
-              src={property.images[0]}
-              alt={property.title}
-              fill
-              sizes="(max-width: 768px) 100vw, 360px"
-              className="object-cover"
-            />
-          </div>
-          <CardContent className="p-4">
-            <p className="font-semibold">{property.title}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {property.location.city}, {property.location.state}
-            </p>
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <p className="font-semibold text-primary">
-                {formatCurrency(property.price)}
-              </p>
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/properties/${property.id}`}>View Property</Link>
-              </Button>
+    <div className="flex flex-col gap-6">
+      <div className="grid gap-5 sm:grid-cols-2">
+        {visibleProperties.map((property) => (
+          <Card key={property.id} className="overflow-hidden py-0">
+            <div className="relative h-40">
+              <Image
+                src={property.images[0]}
+                alt={property.title}
+                fill
+                sizes="(max-width: 768px) 100vw, 360px"
+                className="object-cover"
+              />
             </div>
-          </CardContent>
-        </Card>
-      ))}
+            <CardContent className="p-4">
+              <p className="font-semibold">{property.title}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {property.location.city}, {property.location.state}
+              </p>
+              <div className="mt-4 flex items-center justify-between gap-3">
+                <p className="font-semibold text-primary">
+                  {formatAdminNaira(property.price)}
+                </p>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/properties/${property.id}`}>View Property</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex flex-col gap-3 border-t pt-5 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            Showing {firstEntry + 1}-
+            {Math.min(firstEntry + visibleProperties.length, properties.length)}{" "}
+            of {properties.length.toLocaleString()} properties
+          </p>
+          <AdminTablePagination
+            page={currentPage}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -372,7 +401,7 @@ function VendorTransactions({ properties }: { properties: Property[] }) {
         <SummaryCard
           icon={Landmark}
           label="Portfolio value"
-          value={formatCurrency(portfolioValue)}
+          value={formatAdminNaira(portfolioValue)}
         />
         <SummaryCard
           icon={Building2}
@@ -492,14 +521,6 @@ function TabHeading({
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
     </header>
   );
-}
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 function ReliabilityScore({ user }: { user: AdminUser }) {

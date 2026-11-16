@@ -31,7 +31,6 @@ import {
   financeDataFromActivities,
   transactionCountsByLocation,
 } from "@/features/admin/lib/admin-reports-finance";
-import { useAdminGrowthHistory } from "@/features/admin/hooks/use-admin-dashboard";
 import { useAdminReportsAnalytics } from "@/features/admin/hooks/use-admin-reports";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -58,7 +57,6 @@ export function AdminReportsPage() {
   const [showCustomRange, setShowCustomRange] = useState(false);
   const [customRange, setCustomRange] = useState(() => defaultCustomRange());
   const reportsQuery = useAdminReportsAnalytics();
-  const growthHistoryQuery = useAdminGrowthHistory();
   const analytics = useMemo(
     () =>
       reportsQuery.data
@@ -72,7 +70,7 @@ export function AdminReportsPage() {
   );
   const finance = useMemo(
     () =>
-      financeDataFromActivities(growthHistoryQuery.data?.activities ?? [], {
+      financeDataFromActivities(reportsQuery.data?.sourceActivities ?? [], {
         period,
         startDate: customRange.start,
         endDate: customRange.end,
@@ -80,7 +78,7 @@ export function AdminReportsPage() {
     [
       customRange.end,
       customRange.start,
-      growthHistoryQuery.data?.activities,
+      reportsQuery.data?.sourceActivities,
       period,
     ],
   );
@@ -89,14 +87,14 @@ export function AdminReportsPage() {
   const locations = useMemo(() => {
     if (!analytics) return [];
     const counts = transactionCountsByLocation(
-      growthHistoryQuery.data?.activities ?? [],
+      reportsQuery.data?.sourceActivities ?? [],
       analytics.sourceProperties,
     );
     return analytics.locations.map((location) => ({
       ...location,
       successTransactions: counts.get(location.location) ?? 0,
     }));
-  }, [analytics, growthHistoryQuery.data?.activities]);
+  }, [analytics, reportsQuery.data?.sourceActivities]);
 
   const stats = [
     {
@@ -251,7 +249,7 @@ export function AdminReportsPage() {
         </header>
 
         <section className="mt-9 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          {reportsQuery.isLoading || growthHistoryQuery.isLoading
+          {reportsQuery.isLoading
             ? Array.from({ length: 5 }, (_, index) => (
                 <Skeleton key={index} className="h-36 rounded-xl" />
               ))

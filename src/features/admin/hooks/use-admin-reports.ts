@@ -5,6 +5,7 @@ export function useAdminReportsAnalytics() {
   return useQuery({
     queryKey: ["admin", "reports", "analytics"],
     queryFn: adminReportsService.getAnalytics,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 }

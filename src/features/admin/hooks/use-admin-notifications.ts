@@ -8,9 +8,9 @@ export function useAdminNotifications() {
     queryKey: [...notificationKey, "list", "all"],
     queryFn: () => notificationService.getAllMine(100),
     placeholderData: (previous) => previous,
-    staleTime: 30_000,
-    refetchInterval: 20_000,
-    refetchOnMount: "always",
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });

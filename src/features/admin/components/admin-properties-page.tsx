@@ -61,7 +61,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { AdminManagedProperty } from "@/services/admin.service";
+import {
+  adminPropertyQueueActivityTime,
+  type AdminManagedProperty,
+} from "@/services/admin.service";
 import { DEFAULT_CREDIT_SETTINGS } from "@/services/admin-credit.service";
 import { getApiErrorMessage } from "@/services/api-error";
 import { propertyService } from "@/services/property.service";
@@ -261,7 +264,7 @@ export function AdminPropertiesPage() {
         <section className="mt-8">
           <AdminPropertyStats
             stats={statsQuery.data?.stats}
-            loading={statsQuery.isLoading || featuredQuery.isLoading}
+            loading={statsQuery.isLoading}
             featuredCount={activeFeaturedItems.length}
           />
         </section>
@@ -303,7 +306,7 @@ export function AdminPropertiesPage() {
                 setPage(1);
               }}
             />
-            {query.isLoading || featuredQuery.isLoading ? (
+            {query.isLoading ? (
               <Skeleton className="h-[620px] w-full rounded-none" />
             ) : (
               <PropertiesTable
@@ -519,7 +522,7 @@ function PropertiesTable({
             <TableHead>Vendor</TableHead>
             <TableHead>Price (₦)</TableHead>
             <TableHead>Category</TableHead>
-            <TableHead>Last Updated</TableHead>
+            <TableHead>Submitted / Resubmitted</TableHead>
             <TableHead>Approval</TableHead>
             <TableHead>Property Status</TableHead>
             <TableHead>Featured placement</TableHead>
@@ -610,7 +613,7 @@ function PropertyRow({
           month: "short",
           day: "numeric",
           year: "numeric",
-        }).format(new Date(property.updatedAt ?? property.createdAt))}
+        }).format(new Date(adminPropertyQueueActivityTime(property)))}
       </TableCell>
       <TableCell>
         <StatusBadge status={approvalStatus} />

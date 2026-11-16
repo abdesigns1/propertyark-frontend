@@ -19,8 +19,8 @@ export function useAdminDashboard() {
   return useQuery({
     queryKey: ["admin", "dashboard"],
     queryFn: adminService.getDashboard,
-    staleTime: 15_000,
-    refetchInterval: 30_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
     refetchOnWindowFocus: true,
     retry: 1,
   });
@@ -30,6 +30,9 @@ export function useAdminGrowthHistory() {
   return useQuery<AdminGrowthHistory>({
     queryKey: ["admin", "dashboard", "growth-history"],
     queryFn: async () => {
+      // The API reliably paginates historical records at 100 items. Larger
+      // limits can be silently capped and return only the newest records,
+      // which makes earlier months disappear from the growth chart.
       const pageSize = 100;
       const [firstUsers, firstProperties, firstActivities] = await Promise.all([
         adminService.getUsers(1, pageSize),
@@ -78,7 +81,7 @@ export function useAdminGrowthHistory() {
         ),
       };
     },
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
     retry: 1,
   });
@@ -89,7 +92,7 @@ export function useAdminUsers(page: number, limit = 4) {
     queryKey: ["admin", "users", page, limit],
     queryFn: () => adminService.getUsers(page, limit),
     placeholderData: (previous) => previous,
-    staleTime: 30_000,
+    staleTime: 60_000,
   });
 }
 
@@ -119,8 +122,9 @@ export function useAdminKycRequests(
     queryKey: ["admin", "kyc", "requests", page, status, role],
     queryFn: () => adminService.getKycRequests(page, 20, { status, role }),
     placeholderData: (previous) => previous,
-    staleTime: 30_000,
-    refetchInterval: 30_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
 }
@@ -129,8 +133,9 @@ export function useAdminKycStats() {
   return useQuery({
     queryKey: ["admin", "kyc", "stats"],
     queryFn: adminService.getKycStats,
-    staleTime: 30_000,
-    refetchInterval: 30_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
 }
@@ -140,7 +145,7 @@ export function useAdminKycRequest(requestId: string) {
     queryKey: ["admin", "kyc", "request", requestId],
     queryFn: () => adminService.getKycRequestById(requestId),
     enabled: Boolean(requestId),
-    staleTime: 30_000,
+    staleTime: 60_000,
   });
 }
 
@@ -157,7 +162,7 @@ export function useAdminVendorProperties(vendorId: string, enabled = true) {
       );
     },
     enabled: enabled && Boolean(vendorId),
-    staleTime: 30_000,
+    staleTime: 2 * 60_000,
   });
 }
 
@@ -172,7 +177,7 @@ export function useAdminUserInspections({
     queryKey: ["admin", "user", userId, "inspections"],
     queryFn: () => inspectionService.getInspectionsForUser({ userId, email }),
     enabled: Boolean(userId && email),
-    staleTime: 30_000,
+    staleTime: 60_000,
   });
 }
 
@@ -194,7 +199,7 @@ export function useAdminVendorInspections({
         propertyIds,
       }),
     enabled: Boolean(vendorId && email),
-    staleTime: 30_000,
+    staleTime: 60_000,
   });
 }
 
@@ -204,8 +209,7 @@ export function useAdminProperties(page: number, status: string, limit = 10) {
     queryFn: () =>
       adminService.getPropertyManagementByLatestUpdate({ page, limit, status }),
     placeholderData: (previous) => previous,
-    staleTime: 30_000,
-    refetchOnMount: "always",
+    staleTime: 60_000,
     refetchOnWindowFocus: true,
   });
 }
@@ -214,9 +218,9 @@ export function useAdminFeaturedProperties() {
   return useQuery({
     queryKey: ["admin", "properties", "featured"],
     queryFn: propertyService.getFeaturedApiItems,
-    staleTime: 30_000,
+    staleTime: 60_000,
     refetchInterval: 60_000,
-    refetchOnMount: "always",
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
 }
@@ -240,8 +244,7 @@ export function useAdminProperty(propertyId: string) {
       };
     },
     enabled: Boolean(propertyId),
-    staleTime: 30_000,
-    refetchOnMount: "always",
+    staleTime: 60_000,
     refetchOnWindowFocus: true,
   });
 }
@@ -251,8 +254,7 @@ export function useAdminInspections(page: number, limit = 10) {
     queryKey: ["admin", "inspections", page, limit],
     queryFn: () => inspectionService.getAdminInspections({ page, limit }),
     placeholderData: (previous) => previous,
-    staleTime: 30_000,
-    refetchOnMount: "always",
+    staleTime: 60_000,
   });
 }
 
@@ -261,7 +263,7 @@ export function useAdminInspection(inspectionId: string) {
     queryKey: ["admin", "inspection", inspectionId],
     queryFn: () => inspectionService.getAdminInspection(inspectionId),
     enabled: Boolean(inspectionId),
-    staleTime: 30_000,
+    staleTime: 60_000,
   });
 }
 
@@ -270,8 +272,7 @@ export function useAdminShortletBookings(page: number, limit = 10) {
     queryKey: ["admin", "shortlet-bookings", page, limit],
     queryFn: () => shortletBookingService.getAdminBookings({ page, limit }),
     placeholderData: (previous) => previous,
-    staleTime: 30_000,
-    refetchOnMount: "always",
+    staleTime: 60_000,
   });
 }
 
@@ -280,6 +281,6 @@ export function useAdminShortletBooking(bookingId: string) {
     queryKey: ["admin", "shortlet-booking", bookingId],
     queryFn: () => shortletBookingService.getAdminBooking(bookingId),
     enabled: Boolean(bookingId),
-    staleTime: 30_000,
+    staleTime: 60_000,
   });
 }

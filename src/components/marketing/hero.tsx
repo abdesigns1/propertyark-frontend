@@ -7,7 +7,7 @@ export function Hero() {
     <>
       <Navbar />
 
-      <section className="relative isolate min-h-[430px] overflow-hidden pb-28 pt-36 sm:min-h-[450px] sm:pt-40 lg:min-h-[470px] lg:pb-36">
+      <section className="relative isolate min-h-[400px] overflow-hidden pb-16 pt-28 sm:min-h-[450px] sm:pb-28 sm:pt-40 lg:min-h-[470px] lg:pb-36">
         {/* Background image + overlay */}
         <div className="absolute inset-0 -z-10">
           <Image
@@ -21,15 +21,15 @@ export function Hero() {
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/38 via-slate-950/18 to-slate-950/30" />
         </div>
 
-        <div className="mx-auto grid max-w-7xl grid-cols-1 items-center px-6 lg:px-8">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 items-center px-4 sm:px-6 lg:px-8">
           {/* Left: copy */}
           <div className="text-center lg:text-left">
-            <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
+            <h1 className="mx-auto max-w-[20ch] text-[1.9rem] font-semibold leading-[1.12] text-white sm:max-w-none sm:text-5xl sm:leading-tight lg:mx-0">
               Find Verified Property
-              <br />
-              Listings Across Nigeria
+              <br className="hidden sm:block" />
+              <span className="sm:hidden"> </span>Listings Across Nigeria
             </h1>
-            <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/90 lg:mx-0">
+            <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-white/90 sm:mt-5 sm:max-w-xl sm:text-base sm:leading-relaxed lg:mx-0">
               Buy, rent, sell, or book shortlets with confidence on a Nigerian
               property marketplace built around verified listings and trusted
               vendors.

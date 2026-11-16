@@ -612,11 +612,18 @@ export function VendorProperties() {
                   {visible.map((property) => {
                     const approval = getPropertyStatus(property);
                     const propertyStatus = operationalStatus(property);
-                    const viewHref = property.id.startsWith("draft:")
-                      ? `/vendor/properties/new?draft=${property.id.slice("draft:".length)}`
+                    const isDraft = property.id.startsWith("draft:");
+                    const draftId = isDraft
+                      ? property.id.slice("draft:".length)
+                      : null;
+                    const viewHref = isDraft
+                      ? `/vendor/properties/new?draft=${draftId}`
                       : approval.key === "published"
                         ? `/properties/${property.id}`
                         : `/vendor/properties/${property.id}`;
+                    const editHref = isDraft
+                      ? `/vendor/properties/new?draft=${draftId}`
+                      : `/vendor/properties/new?edit=${property.id}`;
                     return (
                       <TableRow key={property.id} className="h-24">
                         <TableCell className="pl-6">
@@ -704,14 +711,12 @@ export function VendorProperties() {
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem asChild>
-                                  <Link
-                                    href={`/vendor/properties/new?edit=${property.id}`}
-                                  >
+                                  <Link href={editHref}>
                                     <FilePenLine />
-                                    Edit property
+                                    {isDraft ? "Continue draft" : "Edit property"}
                                   </Link>
                                 </DropdownMenuItem>
-                                {!property.id.startsWith("draft:") &&
+                                {!isDraft &&
                                   approval.key === "published" &&
                                   featuredQuery.isSuccess &&
                                   !property.isFeatured && (

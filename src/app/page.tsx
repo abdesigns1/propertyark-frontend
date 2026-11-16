@@ -28,7 +28,7 @@ export default function HomePage() {
       <div
         className={cn(
           CONTAINER,
-          "relative z-20 -mt-40 max-w-6xl sm:-mt-16 lg:px-8",
+          "relative z-20 -mt-22 max-w-6xl px-4 sm:-mt-16 sm:px-6 lg:px-8",
         )}
       >
         <PropertySearchForm />

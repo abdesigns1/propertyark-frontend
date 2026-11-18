@@ -1,6 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
-import { Clock3, Play, Video } from "lucide-react";
+import { Play, Video } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +20,7 @@ import {
   VIDEO_GUIDES,
   type VideoGuide,
 } from "@/features/blog/data/video-guides";
+import { YouTubeVideoPlayer } from "@/features/blog/components/youtube-video-player";
 
 function getYouTubeVideoId(value: string) {
   try {
@@ -49,38 +49,17 @@ function VideoGuideCard({ guide }: { guide: VideoGuide }) {
 
   return (
     <Card className="h-full transition-transform duration-200 hover:-translate-y-1">
-      <Link
-        href={guide.youtubeUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="group relative block aspect-video overflow-hidden bg-muted"
-        aria-label={`Watch ${guide.title} on YouTube`}
-      >
-        {videoId ? (
-          <Image
-            src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
-            alt={`Video preview for ${guide.title}`}
-            fill
-            sizes="(min-width: 1280px) 384px, (min-width: 768px) 50vw, 100vw"
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <span className="flex size-full items-center justify-center text-muted-foreground">
-            <Video className="size-10" aria-hidden="true" />
-          </span>
-        )}
-        <span className="absolute inset-0 flex items-center justify-center bg-foreground/20">
-          <span className="flex size-14 items-center justify-center rounded-full bg-background text-primary shadow-lg transition-transform group-hover:scale-110">
-            <Play className="size-6 fill-current" aria-hidden="true" />
-          </span>
-        </span>
-        {guide.duration ? (
-          <Badge className="absolute bottom-3 right-3">
-            <Clock3 data-icon="inline-start" />
-            {guide.duration}
-          </Badge>
-        ) : null}
-      </Link>
+      {videoId ? (
+        <YouTubeVideoPlayer
+          videoId={videoId}
+          title={guide.title}
+          duration={guide.duration}
+        />
+      ) : (
+        <div className="flex aspect-video items-center justify-center bg-muted text-muted-foreground">
+          <Video className="size-10" aria-hidden="true" />
+        </div>
+      )}
 
       <CardHeader className="flex-1">
         <Badge variant="secondary" className="w-fit">

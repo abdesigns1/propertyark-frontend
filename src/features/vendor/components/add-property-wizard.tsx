@@ -1198,7 +1198,7 @@ export function AddPropertyWizard({
               <FieldGroup>
                 <Field data-invalid={Boolean(errors.name)}>
                   <FieldLabel htmlFor="property-name">
-                    Property Title
+                    Property Name
                   </FieldLabel>
                   <Input
                     id="property-name"

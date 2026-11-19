@@ -41,3 +41,17 @@ export const VIDEO_GUIDES: VideoGuide[] = [
     category: "Vendor guide",
   },
 ];
+
+/**
+ * Append new guides to VIDEO_GUIDES. These helpers keep the newest-first
+ * ordering consistent everywhere the video library is displayed.
+ */
+export function getVideoGuidesNewestFirst(): VideoGuide[] {
+  return [...VIDEO_GUIDES].reverse();
+}
+
+export function getLatestVideoGuides(limit = 5): VideoGuide[] {
+  if (limit <= 0) return [];
+
+  return getVideoGuidesNewestFirst().slice(0, limit);
+}

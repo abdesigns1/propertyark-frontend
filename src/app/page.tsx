@@ -12,6 +12,7 @@ import { CONTAINER, cn } from "@/lib/utils";
 import { HomepageAnnouncementMarquee } from "@/components/shared/site-announcement";
 import { WhatsAppChatBubble } from "@/components/shared/whatsapp-chat-bubble";
 import { HomepageSeoIntro } from "@/components/marketing/homepage-seo-intro";
+import { HomepageVideoGuides } from "@/components/marketing/homepage-video-guides";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
@@ -40,6 +41,7 @@ export default function HomePage() {
       <FeaturedProperties />
       <PopularCities />
       <JourneySteps />
+      <HomepageVideoGuides />
       <CtaBanner />
       {/* <TrustStats /> */}
       {/* <Testimonials /> */}

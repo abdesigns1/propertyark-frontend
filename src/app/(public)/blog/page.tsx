@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BookOpenText } from "lucide-react";
 import { PageBanner } from "@/components/shared/page-banner";
 import { Footer } from "@/components/shared/footer";
+import { HomepageVideoGuides } from "@/components/marketing/homepage-video-guides";
 import {
   Empty,
   EmptyDescription,
@@ -10,7 +11,6 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { BlogPostCard } from "@/features/blog/components/blog-post-card";
-import { VideoGuidesSection } from "@/features/blog/components/video-guides-section";
 import {
   blogPostSummary,
   getPublishedBlogPosts,
@@ -72,9 +72,9 @@ export default async function BlogPage() {
             </EmptyHeader>
           </Empty>
         )}
-
-        <VideoGuidesSection />
       </main>
+
+      <HomepageVideoGuides />
 
       <Footer />
     </>

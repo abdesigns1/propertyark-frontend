@@ -20,6 +20,7 @@ const FOOTER_COLUMNS = [
       { label: "About Us", href: "/about" },
       // { label: "Pricing", href: "/pricing" },
       { label: "Help Center", href: "/faq" },
+      { label: "Video Guides", href: "/video-guides" },
     ],
   },
   {

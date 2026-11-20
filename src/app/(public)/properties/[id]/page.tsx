@@ -14,6 +14,8 @@ import { PropertyAmenities } from "@/features/properties/components/property-ame
 import { PropertyDescriptionContent } from "@/features/properties/components/property-description-content";
 import { PropertyVideo } from "@/features/properties/components/property-video";
 import { PropertyMap } from "@/features/properties/components/property-map";
+import { PropertyPriceTrend } from "@/features/properties/components/property-price-trend";
+import { PropertySafetyTip } from "@/features/properties/components/property-safety-tip";
 import { VendorContactCard } from "@/features/properties/components/vendor-contact-card";
 import { SimilarPropertiesCarousel } from "@/features/properties/components/similar-properties-carousel";
 import { PropertyViewTracker } from "@/features/properties/components/property-view-tracker";
@@ -27,6 +29,7 @@ import {
 import { CONTAINER, cn } from "@/lib/utils";
 import { serializeJsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
 import type { Property } from "@/features/properties/types";
+import { buildPropertyPriceComparison } from "@/features/properties/utils/property-price-comparison";
 
 const getPropertyResults = cache(getAllAvailablePropertiesServer);
 
@@ -135,6 +138,7 @@ export default async function PropertyDetailPage({
   const similar = properties
     .filter((candidate) => candidate.id !== property.id)
     .slice(0, 12);
+  const priceComparison = buildPropertyPriceComparison(property, properties);
   const propertyUrl = `${SITE_URL}/properties/${property.id}`;
   const propertyEntityId = `${propertyUrl}#property`;
   const offerEntityId = `${propertyUrl}#offer`;
@@ -295,6 +299,11 @@ export default async function PropertyDetailPage({
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd) }}
       />
       <PropertyViewTracker propertyId={property.id} />
+      <PropertySafetyTip
+        key={property.id}
+        propertyId={property.id}
+        purpose={property.purpose}
+      />
       <Navbar reserveSpace />
       <Breadcrumb
         items={[
@@ -357,6 +366,13 @@ export default async function PropertyDetailPage({
               <PropertyVideo
                 thumbnailSrc={property.images[0]}
                 videoUrl={property.videoUrl}
+              />
+            )}
+
+            {priceComparison && (
+              <PropertyPriceTrend
+                property={property}
+                comparison={priceComparison}
               />
             )}
 

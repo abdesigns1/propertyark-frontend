@@ -39,11 +39,18 @@ export function PropertyHeader({ property }: { property: Property }) {
       </div>
 
       <div className="text-left sm:text-right">
-        <Price
-          amount={property.price}
-          currency={property.currency}
-          className="text-xl font-bold text-primary sm:text-2xl"
-        />
+        <div className="flex items-baseline gap-1 sm:justify-end">
+          <Price
+            amount={property.price}
+            currency={property.currency}
+            className="text-xl font-bold text-primary sm:text-2xl"
+          />
+          {property.purpose === "rent" && property.rentDuration && (
+            <span className="text-sm font-medium text-muted-foreground">
+              /{property.rentDuration.toLowerCase()}
+            </span>
+          )}
+        </div>
         {property.purpose === "shortlet" && (
           <p className="mt-1 text-xs font-medium text-muted-foreground">
             per night

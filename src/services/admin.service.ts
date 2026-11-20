@@ -546,9 +546,7 @@ function validTimestamp(value?: string | null) {
  * moderation because read/view tracking can update it and must not reorder the
  * management table.
  */
-export function adminPropertyQueueActivityTime(
-  property: AdminManagedProperty,
-) {
+export function adminPropertyQueueActivityTime(property: AdminManagedProperty) {
   const createdAt = validTimestamp(property.createdAt) ?? 0;
   const submissionTimes = [
     property.submittedAt,
@@ -675,6 +673,25 @@ export const adminService = {
       requests: requests.slice(start, start + limit),
       pagination: { page, limit, total, pages },
     };
+  },
+
+  /**
+   * Lightweight pending-only queue for dashboard previews. Unlike the full
+   * KYC table, this does not download the complete user history.
+   */
+  getPendingKycRequests: async (limit = 3) => {
+    const { data } = await api.get<unknown>("/nin/pending", {
+      params: { page: 1, limit },
+    });
+
+    return unwrapKycRequests(data)
+      .requests.filter((request) => request.role.toUpperCase() === "VENDOR")
+      .sort(
+        (first, second) =>
+          new Date(second.submittedAt).getTime() -
+          new Date(first.submittedAt).getTime(),
+      )
+      .slice(0, limit);
   },
 
   getKycRequestById: async (requestId: string) => {

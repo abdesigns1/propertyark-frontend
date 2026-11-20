@@ -17,10 +17,12 @@ export function AdminSidebar({
   onNavigate,
   collapsed = false,
   onCollapsedChange,
+  indicatorsEnabled = true,
 }: {
   onNavigate?: () => void;
   collapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
+  indicatorsEnabled?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -28,7 +30,7 @@ export function AdminSidebar({
   const role = useAuthStore((state) => state.role);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const identity = adminDisplayIdentity(user, role);
-  const indicators = useAdminNotificationIndicators();
+  const indicators = useAdminNotificationIndicators(indicatorsEnabled);
   const indicatorByHref: Record<string, number> = {
     "/admin/properties": indicators.propertyPending,
     "/admin/professional-services": indicators.professionalServicesNew,

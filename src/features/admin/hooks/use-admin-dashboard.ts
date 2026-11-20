@@ -3,30 +3,26 @@ import { adminService } from "@/services/admin.service";
 import { propertyService } from "@/services/property.service";
 import { inspectionService } from "@/services/inspection.service";
 import { shortletBookingService } from "@/services/shortlet-booking.service";
-import {
-  activityService,
-  type AdminActivity,
-} from "@/services/activity.service";
 import type { AdminManagedProperty, AdminUser } from "@/services/admin.service";
 
 export interface AdminGrowthHistory {
   users: AdminUser[];
   properties: AdminManagedProperty[];
-  activities: AdminActivity[];
 }
 
 export function useAdminDashboard() {
   return useQuery({
     queryKey: ["admin", "dashboard"],
     queryFn: adminService.getDashboard,
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60_000,
+    refetchInterval: 2 * 60_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
     retry: 1,
   });
 }
 
-export function useAdminGrowthHistory() {
+export function useAdminGrowthHistory(enabled = true) {
   return useQuery<AdminGrowthHistory>({
     queryKey: ["admin", "dashboard", "growth-history"],
     queryFn: async () => {
@@ -34,17 +30,16 @@ export function useAdminGrowthHistory() {
       // limits can be silently capped and return only the newest records,
       // which makes earlier months disappear from the growth chart.
       const pageSize = 100;
-      const [firstUsers, firstProperties, firstActivities] = await Promise.all([
+      const [firstUsers, firstProperties] = await Promise.all([
         adminService.getUsers(1, pageSize),
         adminService.getPropertyManagement({
           page: 1,
           limit: pageSize,
           status: "ALL",
         }),
-        activityService.getAll({ page: 1, limit: pageSize }),
       ]);
 
-      const [userPages, propertyPages, activityPages] = await Promise.all([
+      const [userPages, propertyPages] = await Promise.all([
         Promise.all(
           Array.from(
             { length: Math.max(0, firstUsers.pagination.pages - 1) },
@@ -62,13 +57,6 @@ export function useAdminGrowthHistory() {
               }),
           ),
         ),
-        Promise.all(
-          Array.from(
-            { length: Math.max(0, firstActivities.pagination.pages - 1) },
-            (_, index) =>
-              activityService.getAll({ page: index + 2, limit: pageSize }),
-          ),
-        ),
       ]);
 
       return {
@@ -76,21 +64,20 @@ export function useAdminGrowthHistory() {
         properties: [firstProperties, ...propertyPages].flatMap(
           (page) => page.properties,
         ),
-        activities: [firstActivities, ...activityPages].flatMap(
-          (page) => page.activities,
-        ),
       };
     },
+    enabled,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
     retry: 1,
   });
 }
 
-export function useAdminUsers(page: number, limit = 4) {
+export function useAdminUsers(page: number, limit = 4, enabled = true) {
   return useQuery({
     queryKey: ["admin", "users", page, limit],
     queryFn: () => adminService.getUsers(page, limit),
+    enabled,
     placeholderData: (previous) => previous,
     staleTime: 60_000,
   });
@@ -117,10 +104,12 @@ export function useAdminKycRequests(
   page: number,
   status = "ALL",
   role = "ALL",
+  enabled = true,
 ) {
   return useQuery({
     queryKey: ["admin", "kyc", "requests", page, status, role],
     queryFn: () => adminService.getKycRequests(page, 20, { status, role }),
+    enabled,
     placeholderData: (previous) => previous,
     staleTime: 60_000,
     refetchInterval: 60_000,
@@ -129,14 +118,25 @@ export function useAdminKycRequests(
   });
 }
 
-export function useAdminKycStats() {
+export function useAdminKycStats(enabled = true) {
   return useQuery({
     queryKey: ["admin", "kyc", "stats"],
     queryFn: adminService.getKycStats,
+    enabled,
     staleTime: 60_000,
     refetchInterval: 60_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
+  });
+}
+
+export function useAdminPendingKycRequests(limit = 3, enabled = true) {
+  return useQuery({
+    queryKey: ["admin", "kyc", "pending-preview", limit],
+    queryFn: () => adminService.getPendingKycRequests(limit),
+    enabled,
+    staleTime: 2 * 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 

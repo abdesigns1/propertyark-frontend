@@ -42,7 +42,10 @@ const inboxIndicatorConfig: Record<
 
 function getSeenMarkersSnapshot() {
   return (Object.keys(inboxIndicatorConfig) as InboxIndicator[])
-    .map((key) => window.localStorage.getItem(inboxIndicatorConfig[key].storageKey) ?? "")
+    .map(
+      (key) =>
+        window.localStorage.getItem(inboxIndicatorConfig[key].storageKey) ?? "",
+    )
     .join("|");
 }
 
@@ -97,7 +100,7 @@ function countNewItems(
   }).length;
 }
 
-export function useAdminNotificationIndicators() {
+export function useAdminNotificationIndicators(enabled = true) {
   const pathname = usePathname();
   const seenMarkersSnapshot = useSyncExternalStore(
     subscribeToSeenMarkers,
@@ -108,8 +111,8 @@ export function useAdminNotificationIndicators() {
     () => parseSeenMarkers(seenMarkersSnapshot),
     [seenMarkersSnapshot],
   );
-  const notifications = useAdminNotifications();
-  const kyc = useAdminKycStats();
+  const notifications = useAdminNotifications(enabled);
+  const kyc = useAdminKycStats(enabled);
   const properties = useQuery({
     queryKey: ["admin", "navigation-indicators", "pending-properties"],
     queryFn: () =>
@@ -118,6 +121,7 @@ export function useAdminNotificationIndicators() {
         limit: 1,
         status: "PENDING",
       }),
+    enabled,
     staleTime: INDICATOR_REFRESH_INTERVAL,
     refetchInterval: INDICATOR_REFRESH_INTERVAL,
     refetchIntervalInBackground: false,
@@ -138,6 +142,7 @@ export function useAdminNotificationIndicators() {
         pending: pending.length,
       };
     },
+    enabled,
     staleTime: INDICATOR_REFRESH_INTERVAL,
     refetchInterval: INDICATOR_REFRESH_INTERVAL,
     refetchIntervalInBackground: false,
@@ -146,6 +151,7 @@ export function useAdminNotificationIndicators() {
   const contacts = useQuery({
     queryKey: contactMessageKeys.all,
     queryFn: contactService.getAll,
+    enabled,
     staleTime: INDICATOR_REFRESH_INTERVAL,
     refetchInterval: INDICATOR_REFRESH_INTERVAL,
     refetchIntervalInBackground: false,
@@ -154,6 +160,7 @@ export function useAdminNotificationIndicators() {
   const newsletter = useQuery({
     queryKey: newsletterKeys.subscribers,
     queryFn: newsletterService.getSubscribers,
+    enabled,
     staleTime: INDICATOR_REFRESH_INTERVAL,
     refetchInterval: INDICATOR_REFRESH_INTERVAL,
     refetchIntervalInBackground: false,
@@ -162,6 +169,7 @@ export function useAdminNotificationIndicators() {
   const professionalServices = useQuery({
     queryKey: professionalServiceKeys.all,
     queryFn: professionalServiceService.getAll,
+    enabled,
     staleTime: INDICATOR_REFRESH_INTERVAL,
     refetchInterval: INDICATOR_REFRESH_INTERVAL,
     refetchIntervalInBackground: false,

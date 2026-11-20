@@ -628,7 +628,7 @@ export function AddPropertyWizard({
       }
     }
     if (index === 1) {
-      if (!values.size || Number(values.size) <= 0)
+      if (values.size && Number(values.size) <= 0)
         next.size = "Enter a valid property size.";
       if (
         values.type === "RESIDENTIAL" &&
@@ -1015,7 +1015,7 @@ export function AddPropertyWizard({
       state: values.state.trim(),
       country: values.country.trim(),
       zipCode: values.zipCode.trim(),
-      size: values.size,
+      ...(values.size ? { size: values.size, sizeUnit: values.sizeUnit } : {}),
       bedrooms: values.bedrooms || "0",
       bathrooms: values.bathrooms || "0",
       ...(values.yearBuilt ? { yearBuilt: values.yearBuilt } : {}),
@@ -1197,9 +1197,7 @@ export function AddPropertyWizard({
             <CardContent>
               <FieldGroup>
                 <Field data-invalid={Boolean(errors.name)}>
-                  <FieldLabel htmlFor="property-name">
-                    Property Name
-                  </FieldLabel>
+                  <FieldLabel htmlFor="property-name">Property Name</FieldLabel>
                   <Input
                     id="property-name"
                     value={values.name}
@@ -1763,7 +1761,9 @@ export function AddPropertyWizard({
                     <FieldError>{errors.bathrooms}</FieldError>
                   </Field>
                   <Field data-invalid={Boolean(errors.size)}>
-                    <FieldLabel htmlFor="size">Property Size</FieldLabel>
+                    <FieldLabel htmlFor="size">
+                      Property Size (Optional)
+                    </FieldLabel>
                     <Input
                       id="size"
                       type="number"
@@ -1773,10 +1773,13 @@ export function AddPropertyWizard({
                       placeholder="e.g. 2400"
                       aria-invalid={Boolean(errors.size)}
                     />
+                    <FieldDescription>
+                      Add the measured property area if available.
+                    </FieldDescription>
                     <FieldError>{errors.size}</FieldError>
                   </Field>
                   <Field>
-                    <FieldLabel>Unit</FieldLabel>
+                    <FieldLabel>Unit (Optional)</FieldLabel>
                     <Select
                       value={values.sizeUnit}
                       onValueChange={(value) => update("sizeUnit", value)}
@@ -2389,7 +2392,9 @@ export function AddPropertyWizard({
                 <div>
                   <p className="text-xs text-muted-foreground">Size</p>
                   <p className="mt-1 font-semibold">
-                    {values.size} {values.sizeUnit}
+                    {values.size
+                      ? `${values.size} ${values.sizeUnit}`
+                      : "Not specified"}
                   </p>
                 </div>
                 <div>
@@ -2476,7 +2481,8 @@ export function AddPropertyWizard({
                 <p className="flex items-center gap-2 text-sm">
                   <BedDouble className="size-4" />
                   {values.bedrooms || 0} bedrooms · {values.bathrooms || 0}{" "}
-                  bathrooms · {values.size} {values.sizeUnit}
+                  bathrooms
+                  {values.size ? ` · ${values.size} ${values.sizeUnit}` : ""}
                 </p>
               </CardContent>
             </Card>

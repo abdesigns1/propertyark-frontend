@@ -3,10 +3,11 @@ import { notificationService } from "@/services/notification.service";
 
 const notificationKey = ["admin", "notifications"] as const;
 
-export function useAdminNotifications() {
+export function useAdminNotifications(enabled = true) {
   return useQuery({
     queryKey: [...notificationKey, "list", "all"],
     queryFn: () => notificationService.getAllMine(100),
+    enabled,
     placeholderData: (previous) => previous,
     staleTime: 60_000,
     refetchInterval: 60_000,

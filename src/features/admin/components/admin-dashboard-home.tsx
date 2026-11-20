@@ -32,7 +32,7 @@ import { AdminStatCard } from "@/features/admin/components/admin-stat-card";
 import {
   useAdminDashboard,
   useAdminGrowthHistory,
-  useAdminKycRequests,
+  useAdminPendingKycRequests,
   useAdminKycStats,
   useAdminUsers,
 } from "@/features/admin/hooks/use-admin-dashboard";
@@ -255,7 +255,11 @@ function transactionVolume(activities: AdminActivity[]) {
   );
 }
 
-function DashboardHeader() {
+function DashboardHeader({
+  indicatorsEnabled = true,
+}: {
+  indicatorsEnabled?: boolean;
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
@@ -288,7 +292,10 @@ function DashboardHeader() {
           <SheetHeader className="sr-only">
             <SheetTitle>Admin navigation</SheetTitle>
           </SheetHeader>
-          <AdminSidebar onNavigate={() => setMobileOpen(false)} />
+          <AdminSidebar
+            onNavigate={() => setMobileOpen(false)}
+            indicatorsEnabled={indicatorsEnabled}
+          />
         </SheetContent>
       </Sheet>
       <div className="relative w-full max-w-lg">
@@ -502,9 +509,11 @@ function DashboardContentSkeleton() {
 function GrowthChart({
   data,
   history,
+  activities,
 }: {
   data?: AdminDashboardData["growthRevenue"];
   history?: AdminGrowthHistory;
+  activities?: AdminActivity[];
 }) {
   const [period, setPeriod] = useState<"day" | "month" | "year">("month");
   const now = new Date();
@@ -560,11 +569,6 @@ function GrowthChart({
     const point = buckets.get(keyFor(property.createdAt));
     if (point) point.listings += 1;
   });
-  platformTransactions(history?.activities ?? []).forEach((transaction) => {
-    const point = buckets.get(keyFor(transaction.createdAt));
-    if (point) point.revenue += transaction.amount;
-  });
-
   if (!history) {
     data?.userGrowth.forEach((item) => {
       const point = buckets.get(keyFor(item.date));
@@ -579,6 +583,16 @@ function GrowthChart({
         point.listings += item.newListings ?? 0;
         point.revenue += item.revenue ?? 0;
       }
+    });
+  }
+
+  if (activities) {
+    chartData.forEach((point) => {
+      point.revenue = 0;
+    });
+    platformTransactions(activities).forEach((transaction) => {
+      const point = buckets.get(keyFor(transaction.createdAt));
+      if (point) point.revenue += transaction.amount;
     });
   }
 
@@ -1066,66 +1080,74 @@ function UsersTable({
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell className="pr-5"><Skeleton className="ml-auto h-8 w-24" /></TableCell>
+                    <TableCell>
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell className="pr-5">
+                      <Skeleton className="ml-auto h-8 w-24" />
+                    </TableCell>
                   </TableRow>
                 ))
               : filtered.map((user) => {
-              const verified = user.isVerified;
-              const isVendor = user.role.toUpperCase() === "VENDOR";
-              const initials = user.fullName
-                .split(" ")
-                .map((part) => part[0])
-                .slice(0, 2)
-                .join("");
-              return (
-                <TableRow key={user.id} className="h-[72px]">
-                  <TableCell className="pl-5">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="size-10">
-                        <AvatarFallback className="bg-primary/10 text-xs text-primary">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-semibold">{user.fullName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {user.email}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <AdminRoleBadge role={user.role} />
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={cn(
-                        "text-sm font-medium text-warning",
-                        verified && "text-success",
-                      )}
-                    >
-                      ● {verified ? "Verified" : "In Review"}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {new Intl.DateTimeFormat("en", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    }).format(new Date(user.createdAt))}
-                  </TableCell>
-                  <TableCell className="pr-5 text-right">
-                    <Button size="sm" asChild>
-                      <Link href={`/admin/users/${user.id}`}>
-                        {isVendor ? "View Vendor" : "View User"}
-                      </Link>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
+                  const verified = user.isVerified;
+                  const isVendor = user.role.toUpperCase() === "VENDOR";
+                  const initials = user.fullName
+                    .split(" ")
+                    .map((part) => part[0])
+                    .slice(0, 2)
+                    .join("");
+                  return (
+                    <TableRow key={user.id} className="h-[72px]">
+                      <TableCell className="pl-5">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="size-10">
+                            <AvatarFallback className="bg-primary/10 text-xs text-primary">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-semibold">{user.fullName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {user.email}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <AdminRoleBadge role={user.role} />
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={cn(
+                            "text-sm font-medium text-warning",
+                            verified && "text-success",
+                          )}
+                        >
+                          ● {verified ? "Verified" : "In Review"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Intl.DateTimeFormat("en", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        }).format(new Date(user.createdAt))}
+                      </TableCell>
+                      <TableCell className="pr-5 text-right">
+                        <Button size="sm" asChild>
+                          <Link href={`/admin/users/${user.id}`}>
+                            {isVendor ? "View Vendor" : "View User"}
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
                 })}
           </TableBody>
         </Table>
@@ -1193,20 +1215,37 @@ export function AdminDashboardHome() {
     "propertyark-admin-sidebar-collapsed",
   );
   const dashboard = useAdminDashboard();
-  const growthHistory = useAdminGrowthHistory();
-  const transactionActivities = useAdminAllActivities();
-  const adminUsers = useAdminUsers(usersPage);
-  const activities = useAdminActivities(1, 100);
-  const kycStats = useAdminKycStats();
-  const kycRequests = useAdminKycRequests(1, "PENDING", "ALL");
+  const overviewReady = dashboard.isSuccess;
+  const [loadAnalytics, setLoadAnalytics] = useState(false);
+  const growthHistory = useAdminGrowthHistory(loadAnalytics);
+  const transactionActivitiesQuery = useAdminAllActivities(
+    "ALL",
+    loadAnalytics,
+  );
+  const adminUsers = useAdminUsers(usersPage, 4, overviewReady);
+  const activities = useAdminActivities(1, 8, "ALL", overviewReady);
+  const kycStats = useAdminKycStats(overviewReady);
+  const kycRequests = useAdminPendingKycRequests(3, overviewReady);
+  const transactionActivities = useMemo(
+    () => transactionActivitiesQuery.data ?? [],
+    [transactionActivitiesQuery.data],
+  );
   const totalTransactionVolume = useMemo(
-    () => transactionVolume(transactionActivities.data ?? []),
-    [transactionActivities.data],
+    () => transactionVolume(transactionActivities),
+    [transactionActivities],
   );
   // The overview endpoint is enough to paint the dashboard. Secondary
   // analytics and tables render their own loading states instead of blocking
   // the entire page behind the slowest request.
   const initialDataLoading = dashboard.isPending;
+  const backgroundDataFetched =
+    growthHistory.isFetched && transactionActivitiesQuery.isFetched;
+
+  useEffect(() => {
+    if (!overviewReady) return;
+    const timeout = window.setTimeout(() => setLoadAnalytics(true), 250);
+    return () => window.clearTimeout(timeout);
+  }, [overviewReady]);
 
   useEffect(() => {
     if (
@@ -1246,9 +1285,10 @@ export function AdminDashboardHome() {
         <AdminSidebar
           collapsed={sidebarCollapsed}
           onCollapsedChange={setSidebarCollapsed}
+          indicatorsEnabled={backgroundDataFetched}
         />
       </div>
-      <DashboardHeader />
+      <DashboardHeader indicatorsEnabled={backgroundDataFetched} />
       <main className="mx-auto max-w-[1500px] p-4 sm:p-6 lg:p-7">
         <section aria-labelledby="admin-welcome-heading">
           <Card className="relative gap-0 overflow-hidden border-primary/15 bg-linear-to-br from-card via-card to-primary/10 py-0 shadow-sm ring-primary/10">
@@ -1326,7 +1366,7 @@ export function AdminDashboardHome() {
               <OverviewCards
                 stats={dashboard.data?.dashboardStats}
                 totalTransactionVolume={totalTransactionVolume}
-                transactionLoading={transactionActivities.isPending}
+                transactionLoading={transactionActivitiesQuery.isPending}
               />
             </section>
             <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(280px,0.95fr)]">
@@ -1334,6 +1374,7 @@ export function AdminDashboardHome() {
                 <GrowthChart
                   data={dashboard.data?.growthRevenue}
                   history={growthHistory.data}
+                  activities={transactionActivitiesQuery.data}
                 />
                 <PropertiesTable properties={dashboard.data?.properties} />
               </div>
@@ -1344,12 +1385,12 @@ export function AdminDashboardHome() {
                 />
                 <VerificationCard
                   stats={kycStats.data}
-                  requests={kycRequests.data?.requests ?? []}
+                  requests={kycRequests.data ?? []}
                   loading={kycStats.isLoading || kycRequests.isLoading}
                 />
                 <TransactionSummaryCard
-                  activities={transactionActivities.data ?? []}
-                  loading={transactionActivities.isPending}
+                  activities={transactionActivities}
+                  loading={transactionActivitiesQuery.isPending}
                 />
               </aside>
             </section>

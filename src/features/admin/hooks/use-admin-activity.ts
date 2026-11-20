@@ -1,7 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { activityService } from "@/services/activity.service";
 
-export function useAdminActivities(page = 1, limit = 20, entityType = "ALL") {
+export function useAdminActivities(
+  page = 1,
+  limit = 20,
+  entityType = "ALL",
+  enabled = true,
+) {
   return useQuery({
     queryKey: ["admin", "activities", page, limit, entityType],
     queryFn: () =>
@@ -10,6 +15,7 @@ export function useAdminActivities(page = 1, limit = 20, entityType = "ALL") {
         limit,
         entityType: entityType === "ALL" ? undefined : entityType,
       }),
+    enabled,
     placeholderData: (previous) => previous,
     refetchInterval: 60_000,
     refetchIntervalInBackground: false,
@@ -18,7 +24,7 @@ export function useAdminActivities(page = 1, limit = 20, entityType = "ALL") {
   });
 }
 
-export function useAdminAllActivities(entityType = "ALL") {
+export function useAdminAllActivities(entityType = "ALL", enabled = true) {
   return useQuery({
     queryKey: ["admin", "activities", "all", entityType],
     queryFn: async () => {
@@ -30,16 +36,28 @@ export function useAdminAllActivities(entityType = "ALL") {
         entityType: entityType === "ALL" ? undefined : entityType,
       };
       const firstPage = await activityService.getAll({ ...filters, page: 1 });
-      const remainingPages = await Promise.all(
-        Array.from(
-          { length: Math.max(0, firstPage.pagination.pages - 1) },
-          (_, index) => activityService.getAll({ ...filters, page: index + 2 }),
-        ),
+      const remainingPages = [];
+      const pageNumbers = Array.from(
+        { length: Math.max(0, firstPage.pagination.pages - 1) },
+        (_, index) => index + 2,
       );
+
+      // Avoid flooding the hosted API with every historical page at once.
+      // Small parallel batches complete more reliably on constrained servers.
+      const batchSize = 4;
+      for (let index = 0; index < pageNumbers.length; index += batchSize) {
+        const batch = pageNumbers.slice(index, index + batchSize);
+        const results = await Promise.all(
+          batch.map((page) => activityService.getAll({ ...filters, page })),
+        );
+        remainingPages.push(...results);
+      }
+
       return [firstPage, ...remainingPages].flatMap((page) => page.activities);
     },
+    enabled,
     refetchOnWindowFocus: false,
-    staleTime: 2 * 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 

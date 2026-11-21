@@ -76,14 +76,14 @@ import {
 } from "@/features/properties/utils/normalize-property-response";
 import { PropertyImageLightbox } from "@/features/properties/components/property-image-lightbox";
 import { cn } from "@/lib/utils";
-import { trustedUploadProxyUrl } from "@/lib/property-media-security";
-import { useAuthStore } from "@/store/auth.store";
 import { useAdminCreditSettings } from "@/features/admin/hooks/use-admin-credit";
 import { DEFAULT_CREDIT_SETTINGS } from "@/services/admin-credit.service";
 import { propertyService } from "@/services/property.service";
 import { parsePropertyLandmarks } from "@/features/properties/utils/property-landmarks";
 import { PropertyListingDate } from "@/features/properties/components/property-listing-date";
 import { getPropertyListedAt } from "@/features/properties/utils/property-listing-date";
+import { PdfDocumentPreview } from "@/features/vendor/components/pdf-document-preview";
+import { useAuthStore } from "@/store/auth.store";
 
 export function AdminPropertyDetailsPage({
   propertyId,
@@ -717,10 +717,9 @@ function DocumentsCard({
   const [preview, setPreview] = useState<
     NonNullable<PropertyApiItem["documents"]>[number] | null
   >(null);
-  const rawPreviewUrl = preview?.url ?? preview?.fileUrl;
-  const previewUrl = rawPreviewUrl
-    ? trustedUploadProxyUrl(rawPreviewUrl, "kyc")
-    : null;
+  const previewUrl = preview
+    ? propertyDocumentAccessUrl(preview.id)
+    : undefined;
   const accessToken = useAuthStore((state) => state.accessToken);
 
   return (
@@ -735,8 +734,7 @@ function DocumentsCard({
         <CardContent className="flex flex-col gap-3">
           {documents.length ? (
             documents.map((document) => {
-              const rawUrl = document.url ?? document.fileUrl;
-              const url = rawUrl ? trustedUploadProxyUrl(rawUrl, "kyc") : null;
+              const url = propertyDocumentAccessUrl(document.id);
               const documentName =
                 document.name ?? document.fileName ?? "Property document";
               return (
@@ -814,6 +812,7 @@ function DocumentsCard({
           </DialogHeader>
           {previewUrl && preview ? (
             <AuthenticatedPropertyDocument
+              key={previewUrl}
               url={previewUrl}
               name={preview.name ?? preview.fileName ?? "Property document"}
               declaredType={preview.type}
@@ -823,6 +822,12 @@ function DocumentsCard({
       </Dialog>
     </>
   );
+}
+
+function propertyDocumentAccessUrl(mediaId: string) {
+  return /^[a-zA-Z0-9_-]+$/.test(mediaId)
+    ? `/api/property-document/${encodeURIComponent(mediaId)}`
+    : undefined;
 }
 
 function AuthenticatedPropertyDocument({
@@ -839,7 +844,7 @@ function AuthenticatedPropertyDocument({
     objectUrl: string;
     contentType: string;
   } | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failureMessage, setFailureMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -853,15 +858,28 @@ function AuthenticatedPropertyDocument({
       signal: controller.signal,
     })
       .then(async (response) => {
-        if (!response.ok) throw new Error("Document request failed");
+        if (!response.ok) {
+          const error = (await response.json().catch(() => null)) as {
+            message?: unknown;
+          } | null;
+          throw new Error(
+            typeof error?.message === "string"
+              ? `${error.message} (${response.status})`
+              : `Property document request failed (${response.status}).`,
+          );
+        }
         const blob = await response.blob();
         objectUrl = URL.createObjectURL(blob);
         setFile({ objectUrl, contentType: blob.type });
-        setFailed(false);
+        setFailureMessage(null);
       })
       .catch((error: unknown) => {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
-          setFailed(true);
+          setFailureMessage(
+            error instanceof Error
+              ? error.message
+              : "The property document request failed.",
+          );
         }
       });
 
@@ -871,11 +889,14 @@ function AuthenticatedPropertyDocument({
     };
   }, [accessToken, url]);
 
-  if (!accessToken || failed) {
+  if (!accessToken || failureMessage) {
     return (
       <div className="flex min-h-[55vh] flex-col items-center justify-center rounded-lg border text-center text-muted-foreground">
         <FileText className="size-10" />
-        <p className="mt-3">This document could not be securely loaded.</p>
+        <p className="mt-3">This property document could not be loaded.</p>
+        {failureMessage && (
+          <p className="mt-1 max-w-md text-sm">{failureMessage}</p>
+        )}
       </div>
     );
   }
@@ -885,6 +906,10 @@ function AuthenticatedPropertyDocument({
   const image =
     file.contentType.startsWith("image/") ||
     isImageDocument(name, declaredType);
+  const pdf =
+    file.contentType === "application/pdf" ||
+    String(declaredType).toUpperCase().includes("PDF") ||
+    /\.pdf$/i.test(name);
 
   return (
     <>
@@ -897,6 +922,15 @@ function AuthenticatedPropertyDocument({
             unoptimized
             sizes="90vw"
             className="object-contain"
+          />
+        </div>
+      ) : pdf ? (
+        <div className="h-[70vh] w-full overflow-hidden rounded-lg border">
+          <PdfDocumentPreview
+            src={file.objectUrl}
+            documentLabel={name}
+            loadingLabel="Rendering property document…"
+            errorDescription="The document was loaded, but its PDF pages could not be rendered. Download it to review the original file."
           />
         </div>
       ) : (
@@ -934,7 +968,7 @@ async function downloadAdminDocument(
       credentials: "same-origin",
       cache: "no-store",
     });
-    if (!response.ok) throw new Error("Document download failed");
+    if (!response.ok) throw new Error("Property document download failed");
     const objectUrl = URL.createObjectURL(await response.blob());
     const anchor = window.document.createElement("a");
     anchor.href = objectUrl;
@@ -942,7 +976,7 @@ async function downloadAdminDocument(
     anchor.click();
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
   } catch {
-    toast.error("The document could not be downloaded.");
+    toast.error("The property document could not be downloaded.");
   }
 }
 

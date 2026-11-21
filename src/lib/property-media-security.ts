@@ -68,7 +68,7 @@ export function sanitizeMediaPath(path: readonly string[]) {
  * Accept only PropertyArk-owned S3 objects for the protected KYC viewer. The
  * complete URL is revalidated again by the server-side proxy before fetching.
  */
-export function trustedKycRemoteUrl(input: string) {
+export function trustedPropertyArkStorageUrl(input: string) {
   try {
     const parsed = new URL(input.trim());
     if (
@@ -118,6 +118,9 @@ export function trustedKycRemoteUrl(input: string) {
     return null;
   }
 }
+
+// KYC documents use the same PropertyArk-owned storage allowlist.
+export const trustedKycRemoteUrl = trustedPropertyArkStorageUrl;
 
 export function trustedKycRemoteObjectPath(input: string) {
   const parsed = trustedKycRemoteUrl(input);

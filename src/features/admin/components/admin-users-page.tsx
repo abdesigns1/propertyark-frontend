@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Download, Search } from "lucide-react";
+import { toast } from "sonner";
 import { AdminUsersTable } from "@/features/admin/components/admin-users-table";
 import { AdminUserStatsCards } from "@/features/admin/components/admin-user-stats";
 import { AdminWorkspace } from "@/features/admin/components/admin-workspace";
@@ -20,8 +21,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { adminService } from "@/services/admin.service";
 
 const userFilters = [
   { value: "all", label: "All Users" },
@@ -41,10 +44,9 @@ export function AdminUsersPage() {
   const [filter, setFilter] = useState("all");
   const [verificationFilter, setVerificationFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
   const isFiltering =
-    Boolean(search.trim()) ||
-    filter !== "all" ||
-    verificationFilter !== "all";
+    Boolean(search.trim()) || filter !== "all" || verificationFilter !== "all";
   const usersQuery = useAdminUsers(
     isFiltering ? 1 : page,
     isFiltering ? 1000 : 10,
@@ -69,38 +71,42 @@ export function AdminUsersPage() {
     });
   }, [filter, search, usersQuery.data?.users, verificationFilter]);
 
-  function exportCsv() {
-    const header = [
-      "Name",
-      "Email",
-      "Role",
-      "Verified",
-      "Joined",
-      "Last active",
-    ];
-    const rows = users.map((user) => [
-      user.fullName,
-      user.email,
-      user.role,
-      user.isVerified ? "Yes" : "No",
-      user.createdAt,
-      user.lastLogin ?? "",
-    ]);
-    const csv = [header, ...rows]
-      .map((row) =>
-        row
-          .map((value) => `"${String(value).replaceAll('"', '""')}"`)
-          .join(","),
-      )
-      .join("\n");
-    const url = URL.createObjectURL(
-      new Blob([csv], { type: "text/csv;charset=utf-8" }),
-    );
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `propertyark-users-page-${page}.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+  async function exportCsv() {
+    setIsExporting(true);
+
+    try {
+      const allUsers = await adminService.getAllUsers();
+      const header = ["Name", "Email", "Phone Number"];
+      const rows = allUsers.map((user) => [
+        user.fullName,
+        user.email,
+        user.phone ?? "",
+      ]);
+
+      const safeCsvValue = (value: unknown) => {
+        const text = String(value ?? "");
+        const protectedText = /^[=+\-@]/.test(text) ? `'${text}` : text;
+        return `"${protectedText.replaceAll('"', '""')}"`;
+      };
+
+      const csv = [header, ...rows]
+        .map((row) => row.map(safeCsvValue).join(","))
+        .join("\n");
+      const url = URL.createObjectURL(
+        new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }),
+      );
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `propertyark-all-users-${new Date().toISOString().slice(0, 10)}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+
+      toast.success(`${allUsers.length} users exported successfully.`);
+    } catch {
+      toast.error("Users could not be exported. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   return (
@@ -116,13 +122,13 @@ export function AdminUsersPage() {
               Manage your Platform Total Users
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={exportCsv}
-            disabled={!users.length}
-          >
-            <Download data-icon="inline-start" />
-            Export CSV
+          <Button variant="outline" onClick={exportCsv} disabled={isExporting}>
+            {isExporting ? (
+              <Spinner data-icon="inline-start" />
+            ) : (
+              <Download data-icon="inline-start" />
+            )}
+            {isExporting ? "Exporting all users..." : "Export All Users"}
           </Button>
         </section>
 

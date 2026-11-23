@@ -141,6 +141,16 @@ export interface AdminPropertyManagementData {
   pagination: { page: number; limit: number; total: number; pages: number };
 }
 
+export interface AdminUsersPageData {
+  users: AdminUser[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
 interface ApiEnvelope<T> {
   data: T;
 }
@@ -188,6 +198,31 @@ function nestedNumber(value: unknown, keys: string[]): number | undefined {
   }
 
   return undefined;
+}
+
+function getUsersPage(page = 1, limit = 4) {
+  return api
+    .get<ApiEnvelope<AdminUsersPageData>>("/users/", {
+      params: { page, limit },
+    })
+    .then(({ data }) => data.data);
+}
+
+async function getAllUsers() {
+  const pageSize = 100;
+  const firstPage = await getUsersPage(1, pageSize);
+
+  if (firstPage.pagination.pages <= 1) {
+    return firstPage.users;
+  }
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: firstPage.pagination.pages - 1 }, (_, index) =>
+      getUsersPage(index + 2, pageSize),
+    ),
+  );
+
+  return [firstPage, ...remainingPages].flatMap((page) => page.users);
 }
 
 const KYC_DOCUMENT_KEYS = [
@@ -579,20 +614,9 @@ export const adminService = {
       .get<ApiEnvelope<AdminDashboardData>>("/admin/dashboard")
       .then(({ data }) => data.data),
 
-  getUsers: (page = 1, limit = 4) =>
-    api
-      .get<
-        ApiEnvelope<{
-          users: AdminUser[];
-          pagination: {
-            page: number;
-            limit: number;
-            total: number;
-            pages: number;
-          };
-        }>
-      >("/users/", { params: { page, limit } })
-      .then(({ data }) => data.data),
+  getUsers: getUsersPage,
+
+  getAllUsers,
 
   getUserById: (userId: string) =>
     api

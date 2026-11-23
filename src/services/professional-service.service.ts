@@ -76,7 +76,9 @@ function normalizeServiceType(value: unknown): ProfessionalServiceType {
     .toUpperCase()
     .replace(/[\s-]+/g, "_");
 
-  if (normalized.includes("MORTGAGE")) return "MORTGAGE_BROKER";
+  if (normalized.includes("MORTGAGE") || normalized.includes("MORTAGE")) {
+    return "MORTGAGE_BROKER";
+  }
   if (normalized.includes("LEGAL") || normalized.includes("LAW")) {
     return "LEGAL";
   }
@@ -342,7 +344,14 @@ export const professionalServiceService = {
     formData.append("fullName", input.fullName);
     formData.append("email", input.email);
     formData.append("phone", input.phone);
-    formData.append("serviceType", input.serviceType);
+    // The backend/database currently expose the legacy misspelled enum value.
+    // Keep the correct spelling in the UI and translate only at this boundary.
+    formData.append(
+      "serviceType",
+      input.serviceType === "MORTGAGE_BROKER"
+        ? "MORTAGE_BROKER"
+        : input.serviceType,
+    );
     formData.append("consultationDate", input.consultationDate);
     if (input.propertyReference) {
       formData.append("propertyReference", input.propertyReference);

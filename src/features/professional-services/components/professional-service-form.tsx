@@ -45,10 +45,16 @@ import {
 } from "@/features/professional-services/lib/professional-service-options";
 import { getApiErrorMessage } from "@/services/api-error";
 import { professionalServiceService } from "@/services/professional-service.service";
-import { useAuthStore } from "@/store/auth.store";
 
 interface ProfessionalServiceFormProps {
   initialService: ProfessionalServiceValue;
+}
+
+function localDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function ProfessionalServiceForm({
@@ -56,7 +62,6 @@ export function ProfessionalServiceForm({
 }: ProfessionalServiceFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const user = useAuthStore((state) => state.user);
   const [service, setService] =
     useState<ProfessionalServiceValue>(initialService);
   const [files, setFiles] = useState<File[]>([]);
@@ -80,10 +85,30 @@ export function ProfessionalServiceForm({
     const consultationDate = String(
       formData.get("consultationDate") ?? "",
     ).trim();
+    const consultationTime = String(
+      formData.get("consultationTime") ?? "",
+    ).trim();
     const propertyReference = String(
       formData.get("propertyReference") ?? "",
     ).trim();
     const message = String(formData.get("serviceBrief") ?? "").trim();
+
+    const consultationDateTime = new Date(
+      `${consultationDate}T${consultationTime}:00`,
+    );
+    if (
+      !consultationDate ||
+      !consultationTime ||
+      Number.isNaN(consultationDateTime.getTime())
+    ) {
+      toast.error("Please select a valid consultation date and time.");
+      return;
+    }
+
+    if (consultationDateTime.getTime() <= Date.now()) {
+      toast.error("Consultation date and time must be in the future.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -92,9 +117,7 @@ export function ProfessionalServiceForm({
         email: submittedEmail,
         phone,
         serviceType: professionalServiceApiValue(service),
-        consultationDate: new Date(
-          `${consultationDate}T10:00:00.000Z`,
-        ).toISOString(),
+        consultationDate: consultationDateTime.toISOString(),
         propertyReference: propertyReference || undefined,
         message,
         documents: files,
@@ -128,7 +151,12 @@ export function ProfessionalServiceForm({
 
   return (
     <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <form ref={formRef} onSubmit={handleSubmit} className="min-w-0">
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        autoComplete="off"
+        className="min-w-0"
+      >
         <div>
           <h2 className="text-xl font-semibold text-foreground">
             Request Professional Service
@@ -151,11 +179,9 @@ export function ProfessionalServiceForm({
                   <UserRound />
                 </InputGroupAddon>
                 <InputGroupInput
-                  key={`professional-service-name-${user?.id ?? "guest"}`}
                   id="professional-service-full-name"
                   name="fullName"
-                  defaultValue={user?.fullName ?? ""}
-                  autoComplete="name"
+                  autoComplete="off"
                   placeholder="Enter your full name"
                   required
                 />
@@ -171,12 +197,10 @@ export function ProfessionalServiceForm({
                   <Mail />
                 </InputGroupAddon>
                 <InputGroupInput
-                  key={`professional-service-email-${user?.id ?? "guest"}`}
                   id="professional-service-email"
                   name="email"
                   type="email"
-                  defaultValue={user?.email ?? ""}
-                  autoComplete="email"
+                  autoComplete="off"
                   placeholder="Enter your email address"
                   required
                 />
@@ -184,7 +208,7 @@ export function ProfessionalServiceForm({
             </Field>
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <Field>
               <FieldLabel htmlFor="service-type">Service Type</FieldLabel>
               <Select
@@ -217,6 +241,19 @@ export function ProfessionalServiceForm({
                 id="consultation-date"
                 name="consultationDate"
                 type="date"
+                min={localDateInputValue()}
+                required
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="consultation-time">
+                Preferred Consultation Time
+              </FieldLabel>
+              <Input
+                id="consultation-time"
+                name="consultationTime"
+                type="time"
                 required
               />
             </Field>
@@ -235,7 +272,7 @@ export function ProfessionalServiceForm({
                 name="phone"
                 type="tel"
                 inputMode="tel"
-                autoComplete="tel"
+                autoComplete="off"
                 placeholder="e.g. +234 801 234 5678"
                 required
               />
